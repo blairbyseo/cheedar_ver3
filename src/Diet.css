@@ -1,0 +1,483 @@
+/*(4) 식단 기록 페이지 — 디자인 토큰은 App.css의 :root에서 공급 */
+
+.diet-page {
+  padding-bottom: 24px;
+}
+
+/* 페이지 제목 */
+.diet-page-title {
+  margin-top: 6px;
+  margin-bottom: 16px;
+  padding-left: 4px;
+}
+
+.diet-page-title h2 {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+.diet-page-title p {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-sub);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+.diet-status-badge {
+  display: inline-block;
+  margin-top: 10px;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+/* 1. 식사 타입 선택 — 4개 pill */
+.meal-type-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.meal-type-card {
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub);
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.meal-type-card:hover {
+  transform: translateY(-1px);
+}
+
+.meal-type-card.is-selected {
+  background: #FFF0B8;
+  border-color: rgba(209, 169, 22, 0.28);
+  color: var(--text-main);
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(209, 169, 22, 0.16);
+}
+
+/* 2. 사진 업로드 카드 (노랑 액센트) */
+.meal-photo-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 20px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-soft);
+}
+
+.meal-upload-area {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 6px 0;
+}
+
+.meal-upload-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0 0 4px;
+}
+
+.meal-upload-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-sub);
+  margin: 0 0 14px;
+  line-height: 1.4;
+}
+
+/* 홈 화면의 .welcome-buttons button 톤과 동일 (크림 노랑 + 골든 보더) */
+.meal-upload-button {
+  display: inline-block;
+  background: #FFF0B8;
+  color: var(--text-main);
+  font-size: 14px;
+  font-weight: bold;
+  padding: 9px 18px;
+  border: 1px solid rgba(209, 169, 22, 0.28);
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(209, 169, 22, 0.10);
+  font-family: inherit;
+  transition: transform 0.15s ease;
+}
+
+.meal-upload-button:hover {
+  transform: translateY(-1px);
+}
+
+/* 미리보기 wrapper — X 삭제 버튼 위치 잡기용 */
+.meal-preview-wrap {
+  position: relative;
+  margin-bottom: 12px;
+  z-index: 1;
+}
+
+.meal-preview-image {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 16px;
+  display: block;
+}
+
+/* 미리보기 우상단 X — 이미지 삭제 후 직접 입력으로 전환 가능 */
+.meal-preview-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(46, 42, 36, 0.6);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  font-family: inherit;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.meal-preview-remove:hover {
+  background: rgba(46, 42, 36, 0.85);
+  transform: scale(1.05);
+}
+
+.meal-photo-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+}
+
+.meal-upload-relabel {
+  flex: 0 0 auto;
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  color: var(--text-sub);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* 홈 화면의 .welcome-buttons button 톤과 동일 (크림 노랑 + 골든 보더) */
+.meal-analyze-button {
+  flex: 1;
+  background: #FFF0B8;
+  color: var(--text-main);
+  border: 1px solid rgba(209, 169, 22, 0.28);
+  font-size: 14px;
+  font-weight: bold;
+  padding: 10px 16px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 3px 8px rgba(209, 169, 22, 0.10);
+  transition: transform 0.15s ease;
+}
+
+.meal-analyze-button:hover {
+  transform: translateY(-1px);
+}
+
+/* 3. 직접 입력 — 메뉴 이름 + 영양 정보 4종 */
+.meal-manual-input {
+  margin-bottom: 16px;
+  padding: 0 4px;
+}
+
+.meal-manual-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0 0 8px;
+}
+
+.manual-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.manual-field-full {
+  margin-bottom: 8px;
+}
+
+.manual-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.manual-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sub);
+  padding-left: 4px;
+}
+
+.manual-field input {
+  width: 100%;
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 13px;
+  color: var(--text-main);
+  outline: none;
+  font-family: inherit;
+  box-shadow: var(--shadow-soft);
+  box-sizing: border-box;
+}
+
+.manual-field input::placeholder {
+  color: var(--text-muted);
+}
+
+.manual-field input:focus {
+  border-color: rgba(209, 169, 22, 0.45);
+}
+
+.manual-field-input-wrap {
+  position: relative;
+}
+
+.manual-field-input-wrap input {
+  padding-right: 38px;
+}
+
+.manual-field-unit {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sub);
+  pointer-events: none;
+}
+
+/* number 스피너 숨김 — 모바일/데스크톱 모두 깔끔하게 */
+.manual-field input[type="number"]::-webkit-outer-spin-button,
+.manual-field input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.manual-field input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* 4. AI 분석 결과 카드 (민트 액센트) */
+.ai-result-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
+  border: 1px solid rgba(46, 42, 36, 0.04);
+  border-radius: 22px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-card);
+}
+
+.ai-result-card::before {
+  content: "";
+  position: absolute;
+  right: -18px;
+  bottom: -18px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(94, 159, 138, 0.14);
+  pointer-events: none;
+}
+
+.ai-result-title {
+  position: relative;
+  z-index: 1;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+  margin: 0 0 8px;
+}
+
+.ai-result-summary {
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 12px;
+}
+
+.ai-result-stats {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ai-result-stats > div {
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai-result-stats span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+
+.ai-result-stats strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--primary-strong);
+  letter-spacing: -0.2px;
+}
+
+.ai-result-comment {
+  position: relative;
+  z-index: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main);
+  line-height: 1.5;
+  background: rgba(94, 159, 138, 0.10);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 0 0 10px;
+}
+
+
+/* 5. 저장 버튼 + 보상 피드백 (+10P 배지, 반짝이, 토스트) */
+.meal-save-wrap {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+/* 홈 화면의 .welcome-buttons button 톤과 동일 (크림 노랑 + 골든 보더) */
+.meal-save-button {
+  width: 100%;
+  background: #FFF0B8;
+  color: var(--text-main);
+  border: 1px solid rgba(209, 169, 22, 0.28);
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(209, 169, 22, 0.10);
+  font-family: inherit;
+  transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.meal-save-button:hover {
+  transform: translateY(-1px);
+}
+
+/* 저장 직후 상태는 민트로 전환해 "완료" 시각 피드백 (홈 톤과는 의도적으로 차별) */
+.meal-save-button.is-saved {
+  background: #5E9F8A;
+  color: #FFFFFF;
+  border-color: transparent;
+  box-shadow: 0 3px 8px rgba(94, 159, 138, 0.18);
+}
+
+/* +10P 배지 — 버튼 위로 떠오르며 페이드아웃 */
+.point-reward-badge {
+  position: absolute;
+  right: 18px;
+  top: -10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #FFF3C4;
+  color: #8A641C;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: -0.2px;
+  box-shadow: 0 6px 14px rgba(209, 169, 22, 0.18);
+  pointer-events: none;
+  animation: reward-float 1.6s ease-out forwards;
+}
+
+@keyframes reward-float {
+  0%   { opacity: 0; transform: translateY(8px)  scale(0.9); }
+  20%  { opacity: 1; transform: translateY(0)    scale(1); }
+  100% { opacity: 0; transform: translateY(-28px) scale(1.05); }
+}
+
+/* 작은 반짝이 2~3개 — 화면 폭발 효과 X */
+.reward-sparkle {
+  position: absolute;
+  font-size: 14px;
+  pointer-events: none;
+  opacity: 0;
+  animation: reward-sparkle-pop 1.4s ease-out forwards;
+}
+
+.reward-sparkle-1 { left: 14%;  top: -4px;  animation-delay: 0.05s; }
+.reward-sparkle-2 { right: 32%; top: -16px; animation-delay: 0.20s; }
+.reward-sparkle-3 { right: 8%;  top: 4px;   animation-delay: 0.40s; }
+
+@keyframes reward-sparkle-pop {
+  0%   { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  35%  { opacity: 1; transform: scale(1)   rotate(15deg); }
+  100% { opacity: 0; transform: scale(0.6) rotate(0deg); }
+}
+
+/* 저장 완료 토스트 — 민트 톤, 차분한 성공 메시지 */
+.saved-toast {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #5E9F8A;
+  background: rgba(94, 159, 138, 0.10);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 0 0 18px;
+  animation: reward-fade-in 0.3s ease-out;
+}
+
+@keyframes reward-fade-in {
+  0%   { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+

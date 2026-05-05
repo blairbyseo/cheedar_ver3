@@ -112,13 +112,13 @@ function Home({setActiveTab}) {
         {/* <RankingIcon /> */}
       </div>
 
-      <div className="menu-card menu-point">
+      <div className="menu-card menu-point" onClick={() => setActiveTab("point")} role="button" tabIndex={0}>
         <h3>포인트</h3>
         <p>누적 포인트 <br />확인하기</p>
-        {/* <BadgeIcon /> */} 
+        {/* <BadgeIcon /> */}
       </div>
 
-      <div className="menu-card menu-chat">
+      <div className="menu-card menu-chat" onClick={() => setActiveTab("chat")} role="button" tabIndex={0}>
         <h3>채팅</h3>
         <p>체다 AI와<br/> 대화하기</p>
         {/* <ChatIcon /> */}
@@ -126,7 +126,7 @@ function Home({setActiveTab}) {
 
     </section>
 
-    <section className="menu-card2 feedback">
+    <section className="menu-card2 feedback" role="button" tabIndex={0}>
       <h3>주간 피드백 리포트</h3>
     </section>
     </div>

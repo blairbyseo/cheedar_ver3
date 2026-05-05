@@ -316,7 +316,7 @@ html {
 /*(1) 홈화면 카드2 _ 포인트 */
 .point-card {
   position: relative;
-    background: linear-gradient(180deg, #FFFFFF 0%, #FFF7DC 100%);
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
 ; /* 마지막 값이 투명도 (0~1) */;
   border-radius: var(--radius-card);
   padding: 15px 24px 15px;
@@ -395,7 +395,8 @@ html {
 .day-item {
   text-align: center;
   color: #777;
-  font-weight: bold;
+  font-weight: 500;
+  font-size: 15px;
 }
 
 
@@ -416,6 +417,19 @@ html {
   box-shadow: var(--shadow-card);
   position: relative;
   overflow:hidden;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* 모바일 터치 누름 효과 — 손가락으로 누르는 동안 확실히 보이도록 강하게 */
+.menu-card:active {
+  transform: scale(0.94);
+  background: #FFF8E0;
+  box-shadow: 0 2px 6px rgba(46, 42, 36, 0.06);
 }
 
 .menu-card::before {
@@ -432,7 +446,7 @@ background: rgba(242, 201, 76, 0.24);
 .menu-card h3 {
   position: relative;
   z-index: 1;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 800;
   margin-top: 6px;
   margin-bottom: 8px;
@@ -448,28 +462,42 @@ background: rgba(242, 201, 76, 0.24);
 }
 
 .menu-rank {
-  background: linear-gradient(180deg, #FFFFFF 0%, #FFF7DC 100%);
+  /* 진한거 background: linear-gradient(180deg, #FFFFFF 0%, #FFF7DC 100%); */
+  /* 연한거 */   background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
 }
 
 .menu-point {
-  background: linear-gradient(180deg, #FFFFFF 0%, #FFF7DC 100%);
+  /* 연한거 */   background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
 }
 
 .menu-chat {
-  background: linear-gradient(180deg, #FFFFFF 0%, #FFF7DC  100%);
+  /* 연한거 */   background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
 }
 
 
 /* 마지막 피드백 버튼: menu-card2 */
 .menu-card2 {
-  height: 60px;
-  padding: 16px;
+  height: 50px;
+  padding: 10px 10px;
   border-radius: var(--radius-card);
   background: var(--card-white);
   box-shadow: var(--shadow-card);
   position: relative;
   overflow:hidden;
   text-align: center;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* 모바일 터치 누름 효과 — 메뉴 카드와 동일 톤 */
+.menu-card2:active {
+  transform: scale(0.94);
+  background: #FFF8E0;
+  box-shadow: 0 2px 6px rgba(46, 42, 36, 0.06);
 }
 
 /*.menu-card2 요소 안에 보이지 않는 장식 요소를 하나 만든다는 뜻.
@@ -488,7 +516,7 @@ background: rgba(242, 201, 76, 0.24);
 .menu-card2 h3 {
   position: relative;
   z-index: 1;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 800;
   margin-top: 6px;
   margin-bottom: 8px;
@@ -508,8 +536,7 @@ background: rgba(242, 201, 76, 0.24);
 
 .feedback{
   margin-top: 20px;
-  margin-bottom: 20px;
-  background: linear-gradient(180deg, #FFFFFF 0%, #FFF7DC  100%);
+  /* 연한거 */   background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
 }
 
 /* 메뉴의 동그라미 원 색상

@@ -95,7 +95,7 @@
 }
 
 .point-history-title {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-main);
   letter-spacing: -0.3px;
@@ -241,7 +241,7 @@
 }
 
 .point-rules-title {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   
   color: var(--text-main);
@@ -259,7 +259,7 @@
 .point-rules-card {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, #FFFFFF 0%, #FFF7DC 100%);
+  /* 연한거 */   background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
   border: 1px solid rgba(46, 42, 36, 0.04);
   border-radius: 22px;
   padding: 14px 16px 14px;

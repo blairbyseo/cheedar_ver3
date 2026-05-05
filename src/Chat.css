@@ -32,7 +32,7 @@
 .chat-info-card {
   position: relative;
   overflow: hidden;
-  background: var(--card-white);
+  /* 연한거 */   background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 16px 20px;
@@ -76,6 +76,7 @@
   flex-direction: row-reverse;
 }
 
+/*캐릭터 주변 원..
 .chat-avatar {
   flex: 0 0 auto;
   width: 30px;
@@ -86,7 +87,7 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-}
+} */
 
 .chat-avatar img {
   width: 30px;

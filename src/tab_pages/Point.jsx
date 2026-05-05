@@ -30,6 +30,10 @@ function Point() {
       <div className="hero-bg">
         <header className="home-header">
           <h1 className="home-logo">Cheddar</h1>
+          <div className="point-summary">
+            <span className="point-badge">P</span>
+            <strong>{totalPoint.toLocaleString()}</strong>
+          </div>
         </header>
       </div>
 

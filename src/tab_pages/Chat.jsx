@@ -12,7 +12,7 @@ function Chat() {
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState(initialMessages);
   const [userHasSent, setUserHasSent] = useState(false);
-  const point = 1240;
+  const point = 1040;
 
   function handleSubmit(e) {
     e.preventDefault();
