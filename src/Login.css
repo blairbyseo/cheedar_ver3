@@ -1,0 +1,200 @@
+/* 카카오 로그인 화면 */
+
+.login-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background: #FAF7EF;
+  box-sizing: border-box;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 18px;
+}
+
+.login-logo {
+  font-family: 'Pacifico', cursive;
+  font-size: 56px;
+  color: #d1a916;
+  margin: 0;
+  letter-spacing: 1px;
+  font-weight: 200;
+}
+
+.login-tagline {
+  font-size: 15px;
+  color: var(--text-sub, #6f6552);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.login-kakao-btn {
+  width: 100%;
+  margin-top: 22px;
+  height: 52px;
+  border-radius: 12px;
+  border: none;
+  background: #FEE500;
+  color: #191600;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 14px rgba(254, 229, 0, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+}
+
+.login-kakao-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(254, 229, 0, 0.4);
+}
+
+.login-kakao-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-kakao-icon {
+  font-size: 18px;
+}
+
+.login-error {
+  color: #c0392b;
+  font-size: 13px;
+  margin: 8px 0 0;
+  line-height: 1.4;
+}
+
+/* ───────── 이메일 로그인 / 회원가입 폼 ───────── */
+
+.login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.login-input {
+  width: 100%;
+  height: 48px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #e3dcc8;
+  background: #fff;
+  font-size: 15px;
+  font-family: inherit;
+  color: #3a3320;
+}
+
+.login-input::placeholder {
+  color: #b3a98f;
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: #d1a916;
+}
+
+.login-input:disabled {
+  opacity: 0.6;
+}
+
+.login-submit-btn {
+  width: 100%;
+  height: 50px;
+  margin-top: 4px;
+  border: none;
+  border-radius: 12px;
+  background: #d1a916;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(209, 169, 22, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.login-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(209, 169, 22, 0.4);
+}
+
+.login-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 6자리 인증 코드 입력칸 — 가운데 정렬 + 넓은 자간 */
+.login-code-input {
+  text-align: center;
+  letter-spacing: 8px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.login-divider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #a99f86;
+  font-size: 13px;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e3dcc8;
+}
+
+.login-signup-row {
+  font-size: 14px;
+  color: var(--text-sub, #6f6552);
+  margin: 4px 0 0;
+}
+
+.login-signup-link {
+  color: #d1a916;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.login-info {
+  font-size: 13px;
+  color: var(--text-sub, #6f6552);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.login-text-btn {
+  background: none;
+  border: none;
+  color: #6f6552;
+  font-size: 13px;
+  font-family: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.login-text-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

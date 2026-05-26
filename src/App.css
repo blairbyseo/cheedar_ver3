@@ -245,11 +245,10 @@ html {
 .welcome-card {
   display: flex;
   align-items: center;  /*세로 가운데 정렬*/
-  gap: 20px;
-  /* background: #fff3c4; */ /*background:rgba(249, 249, 249, 1); */
-  /* background: var(--card-white); */
-  padding: 10px 2px 0px;
-  margin-top: -10px;
+  gap: 16px;
+  /* 캐릭터(왼쪽) + 인사 영역(.welcome-content) 두 칸 배치 */
+  padding: 8px 2px 0;
+  margin-top: 6px;
   margin-bottom: 14px;
 }
 
@@ -257,9 +256,40 @@ html {
 .welcome-content {
   flex: 1;
 }
+
+/* 인사말 말풍선 — 이름 + 인사말만 이 흰색 만화풍 풍선 안에 들어간다.
+   (끼니 현황·버튼은 풍선 밖, 아래에 따로 둔다)
+   꼬리는 ::before(테두리색)+::after(흰색) 삼각형을 겹쳐 왼쪽 아래로 빼 캐릭터를 향하게 한다. */
+/* 인사말 말풍선 — 구름 모양. 배경은 public/cloud-bubble.svg.
+   꼬리는 ::before 정사각형을 45° 돌려 만든 뾰족한 삼각 꼬리 — 왼쪽(캐릭터)을 향한다. */
+.welcome-bubble {
+  position: relative;
+  box-sizing: border-box;
+  padding: 18px 24px;
+  background: url("/cloud-bubble.svg") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 2px 4px rgba(46, 42, 36, 0.10));
+}
+
+/* 꼬리 — 흰 정사각형을 45° 회전해 만든 뾰족한 꼬리.
+   왼쪽을 향한 모서리에만 테두리(left+bottom)를 줘 말풍선 꼬리처럼 보이게 하고,
+   반대쪽 모서리는 구름 안에 묻혀 안 보인다. 세로 가운데라 캐릭터 몸통을 향함. */
+.welcome-bubble::before {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: 50%;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-left: 2px solid #E2DED7;
+  border-bottom: 2px solid #E2DED7;
+  transform: translateY(-50%) rotate(45deg);
+}
 .highlight {
   color: var(--primary-strong);
 }
+/* 인사말 — 말풍선 안에 들어가는 일반 텍스트 (풍선은 .welcome-content 가 담당) */
 .welcome-content-sub {
   margin: 0 0 6px;
   font-size: 13px;
@@ -352,10 +382,29 @@ html {
 }
 
 .progress-bar {
+  position: relative;
   height: 8px;
   background: rgba(227, 207, 207, 0.4);
   border-radius: 999px;
   margin-top: 16px;
+  overflow: hidden;
+}
+
+/* 진행 라인 위에 10%마다 세로 눈금을 겹쳐 그린다.
+   pointer-events:none 으로 클릭/터치는 막지 않는다. */
+.progress-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(10% - 1.5px),
+    rgba(255, 255, 255, 0.65) calc(10% - 1.5px),
+    rgba(255, 255, 255, 0.65) 10%
+  );
 }
 
 .progress-fill {

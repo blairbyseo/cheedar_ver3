@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 272 96" preserveAspectRatio="none">
+  <!-- 뒤 레이어: 테두리색 원 (살짝 크게) — 바깥에 2px 윤곽선으로 비침.
+       원 5개를 촘촘히 겹쳐서 가장자리 굴곡을 아주 완만하게(잔잔한 구름). -->
+  <g fill="#E2DED7">
+    <circle cx="50" cy="48" r="48"/>
+    <circle cx="94" cy="49" r="47"/>
+    <circle cx="138" cy="48" r="48"/>
+    <circle cx="182" cy="49" r="47"/>
+    <circle cx="224" cy="50" r="46"/>
+  </g>
+  <!-- 앞 레이어: 흰색 원 (각 2px 작게) — 겹친 안쪽엔 선이 없고 바깥 윤곽선만 남음 -->
+  <g fill="#FFFFFF">
+    <circle cx="50" cy="48" r="46"/>
+    <circle cx="94" cy="49" r="45"/>
+    <circle cx="138" cy="48" r="46"/>
+    <circle cx="182" cy="49" r="45"/>
+    <circle cx="224" cy="50" r="44"/>
+  </g>
+</svg>

@@ -1,5 +1,6 @@
 /*5-4. Diet.jsx: App.jsx 파일에 걸림 */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePoints } from "../usePoints";
 
 const MEAL_TYPES = [
   { id: "breakfast", label: "아침" },
@@ -8,14 +9,18 @@ const MEAL_TYPES = [
   { id: "snack",     label: "간식" },
 ];
 
-// 오늘 기록 상태 mock 초기값 — 추후 API 연결 시 교체.
-// useState 초기값으로만 사용. 저장 시 해당 식사 타입이 "done" 으로 갱신됨.
-const INITIAL_TODAY_STATUS = [
-  { id: "breakfast", label: "아침", state: "done"     },
-  { id: "lunch",     label: "점심", state: "missing"  },
-  { id: "dinner",    label: "저녁", state: "upcoming" },
-  { id: "snack",     label: "간식", state: "selected" },
-];
+// 현재 시간으로 어떤 끼니인지 추정. 사용자는 카드 클릭으로 언제든 바꿀 수 있음.
+// 05~11=아침, 1114시=점심, 17~21시=저녁, 그 외=간식
+function getInitialMealType() {
+  const hour = new Date().getHours();
+  if (hour >= 5  && hour < 11) return "breakfast";
+  if (hour >= 11 && hour < 14) return "lunch";
+  if (hour >= 17 && hour < 21) return "dinner";
+  return "snack";
+}
+
+// 첫 렌더용 placeholder — useEffect 안에서 GET /api/meals/today/status 로 즉시 갱신됨
+const INITIAL_TODAY_STATUS = MEAL_TYPES.map((t) => ({ ...t, state: "missing" }));
 
 const STATE_LABEL = {
   done:     "완료",
@@ -24,11 +29,16 @@ const STATE_LABEL = {
   selected: "선택",
 };
 
-function Diet() {
-  const point = 1040;
+// 끼니별 시간대 시작 시각 — 현재 시각이 이보다 이르면 아직 '예정'
+const MEAL_SLOT_START = { breakfast: 0, lunch: 11, dinner: 17 };
 
-  const [selectedMealType, setSelectedMealType] = useState("lunch");
+function Diet() {
+  // 헤더 우상단 포인트 — 현재 로그인한 환자의 CP
+  const point = usePoints()?.cp ?? 0;
+
+  const [selectedMealType, setSelectedMealType] = useState(getInitialMealType);
   const [uploadedImagePreview, setUploadedImagePreview] = useState(null);
+  const [imageFile, setImageFile] = useState(null);          // 백엔드 업로드용 원본 파일
   const [manualEntry, setManualEntry] = useState({
     menu: "",
     calories: "",
@@ -36,42 +46,140 @@ function Diet() {
     carbs: "",
     fat: "",
   });
-  const [isAnalyzed, setIsAnalyzed] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const [analysis, setAnalysis] = useState(null);            // 분석 결과 객체 (null이면 미분석)
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const [showPointReward, setShowPointReward] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
   const [todayStatus, setTodayStatus] = useState(INITIAL_TODAY_STATUS);
+  // 이미 기록된 끼니에서 "추가하기"를 눌러 업로드 UI를 다시 연 상태인지
+  const [isAdding, setIsAdding] = useState(false);
 
-  const recordedCount = todayStatus.filter((s) => s.state === "done").length;
+  // 끼니 현황 라벨 — 기록했으면 '완료', 아직 그 시간대 전이면 '예정',
+  // 시간대가 지났는데 기록이 없으면 '미기록'.
+  const nowHour = new Date().getHours();
+  const mealStateLabel = (id) => {
+    const state = todayStatus.find((s) => s.id === id)?.state;
+    if (state === "done") return "완료";
+    if (nowHour < MEAL_SLOT_START[id]) return "예정";
+    return "미기록";
+  };
+
+  // 현재 선택된 끼니의 상태 — 기록이 있으면 state === "done"
+  const currentMealStatus = todayStatus.find((s) => s.id === selectedMealType);
+  const hasRecord = currentMealStatus?.state === "done";
+  const selectedMealLabel = currentMealStatus?.label ?? "";
+  // 기록이 없거나, "추가하기"를 눌러 새 입력 중일 때만 업로드 UI 표시
+  const shouldShowUploadUI = !hasRecord || isAdding;
+
+  const didInitRef = useRef(false);
+  const resultRef = useRef(null);
+
+  // 분석 결과가 막 도착했을 때 결과 카드까지 자동 스크롤.
+  // analysis 가 null → 객체로 바뀌는 순간 발화.
+  useEffect(() => {
+    if (analysis) {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [analysis]);
+
+  // 첫 진입: 오늘 식단 현황 불러오기. 인증은 ProtectedRoute 단계에서 이미 통과한 상태.
+  // 백엔드 응답 items: [{ meal_type, state }] → frontend의 todayStatus 형태로 매핑.
+  useEffect(() => {
+    if (didInitRef.current) return;
+    didInitRef.current = true;
+
+    async function init() {
+      try {
+        const res = await fetch("/api/meals/today/status", {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        const data = await res.json();
+
+        setTodayStatus((prev) =>
+          prev.map((s) => {
+            const item = data.items.find((i) => i.meal_type === s.id);
+            return item ? { ...s, state: item.state } : s;
+          })
+        );
+      } catch (err) {
+        console.error("[Diet] init failed:", err);
+      }
+    }
+    init();
+  }, []);
+
+  // 끼니 탭을 바꾸면 화면에 떠 있던 사진/분석/직접입력/저장 진행 상태를 모두 초기화.
+  // (예: 점심용으로 올렸지만 저장 안 한 사진이 저녁 탭에 따라가지 않도록)
+  useEffect(() => {
+    setUploadedImagePreview(null);
+    setImageFile(null);
+    setAnalysis(null);
+    setAnalyzeError("");
+    setManualEntry({ menu: "", calories: "", protein: "", carbs: "", fat: "" });
+    setShowPointReward(false);
+    setSavedMessage("");
+    setIsAdding(false);
+  }, [selectedMealType]);
 
   function handleImageUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImageFile(file);          // 백엔드 업로드용 원본
+    setAnalysis(null);            // 새 사진 → 이전 분석 결과 초기화
+    setAnalyzeError("");
     const reader = new FileReader();
-    reader.onload = () => {
-      setUploadedImagePreview(reader.result);
-      setIsAnalyzed(false); // 새 이미지를 올리면 이전 분석 결과는 초기화
-    };
+    reader.onload = () => setUploadedImagePreview(reader.result);
     reader.readAsDataURL(file);
   }
 
-  function handleAnalyzeMeal() {
-    // MVP: 실제 AI API 미연결 — mock 결과 카드 표시
-    setIsAnalyzed(true);
+  async function handleAnalyzeMeal() {
+    if (!imageFile || isAnalyzing) return;
+    setIsAnalyzing(true);
+    setAnalyzeError("");
+    setAnalysis(null);
+
+    try {
+      // multipart/form-data 로 보내야 FastAPI 의 UploadFile 이 받음.
+      // FormData 의 키 "file" 은 백엔드 함수의 매개변수 이름과 일치해야 함.
+      const formData = new FormData();
+      formData.append("file", imageFile);
+
+      const res = await fetch("/api/meals/analyze", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+        // Content-Type 헤더는 직접 설정하지 않음 — 브라우저가 boundary 포함해 자동 설정
+      });
+      if (!res.ok) throw new Error(`analyze ${res.status}`);
+      const data = await res.json();
+      setAnalysis(data);
+    } catch (err) {
+      console.error("[Diet] analyze failed:", err);
+      setAnalyzeError("분석에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setIsAnalyzing(false);
+    }
   }
 
   // 업로드한 이미지 삭제 — 미리보기 / 분석 결과 모두 초기화.
   // 사진을 빼고 직접 입력만으로 기록할 수 있도록 함.
   function handleRemoveImage() {
     setUploadedImagePreview(null);
-    setIsAnalyzed(false);
+    setImageFile(null);
+    setAnalysis(null);
+    setAnalyzeError("");
   }
 
   function handleManualChange(field, value) {
     setManualEntry((prev) => ({ ...prev, [field]: value }));
   }
 
-  function handleSaveMeal() {
+  async function handleSaveMeal() {
+    if (isSaving) return;
+
     // 직접 입력 4칸: 전부 비워두면 사진 분석만 쓰는 경우로 보고 통과.
     // 일부만 채워두면 미완성 → 차단 + 경고.
     const nutritionFields = [
@@ -88,30 +196,63 @@ function Diet() {
       return;
     }
 
-    // MVP: 저장 API 미연결 — UI 상태와 보상 피드백만 처리
-    const mealLabel =
-      MEAL_TYPES.find((m) => m.id === selectedMealType)?.label ?? "";
+    // 직접 입력이 있으면 그걸 우선, 없으면 AI 분석 결과 사용.
+    // 사진도 분석도 직접입력도 다 없는 경우는 menu/calories 가 모두 비어 차단.
+    const useManual = filled === 4;
+    const payload = {
+      meal_type: selectedMealType,                                // 백엔드가 오늘 날짜 채움
+      menu: manualEntry.menu || analysis?.summary || null,
+      calories: useManual ? Number(manualEntry.calories) : analysis?.calories ?? null,
+      protein_g: useManual ? Number(manualEntry.protein) : analysis?.protein_g ?? null,
+      carbs_g:   useManual ? Number(manualEntry.carbs)   : analysis?.carbs_g   ?? null,
+      fat_g:     useManual ? Number(manualEntry.fat)     : analysis?.fat_g     ?? null,
+      image_path: analysis?.image_path || null,
+      ai_summary: analysis?.summary || null,
+      ai_comment: analysis?.comment || null,
+    };
 
-    setIsSaved(true);
-    setShowPointReward(true);
-    setSavedMessage(`${mealLabel} 기록 완료! 10P가 적립됐어요`);
+    if (!payload.menu && payload.calories == null) {
+      alert("사진을 분석하거나 직접 입력해주세요");
+      return;
+    }
 
-    // 선택한 식사 타입을 "완료"로 표시
-    setTodayStatus((prev) =>
-      prev.map((s) =>
-        s.id === selectedMealType ? { ...s, state: "done" } : s
-      )
-    );
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/meals", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`save ${res.status}`);
 
-    // 1.7s 후 +10P 배지/반짝이 애니메이션 종료. isSaved/메시지는 유지.
-    setTimeout(() => setShowPointReward(false), 1700);
-  }
+      setShowPointReward(true);
+      setSavedMessage(`${selectedMealLabel} 기록 완료! 10P가 적립됐어요`);
 
-  function handleEditMeal() {
-    // 다시 수정할 수 있도록 저장 상태 해제 (오늘 기록 상태는 그대로 둠)
-    setIsSaved(false);
-    setSavedMessage("");
-    setShowPointReward(false);
+      // 오늘 현황: 방금 저장한 끼니를 "완료"로 즉시 반영 (낙관적 업데이트)
+      setTodayStatus((prev) =>
+        prev.map((s) =>
+          s.id === selectedMealType ? { ...s, state: "done" } : s
+        )
+      );
+
+      // 1.7초 뒤: 보상 애니메이션이 끝나면 업로드 진행 상태 초기화 + isAdding 풀어서
+      // "✓ 완료 + 추가하기" 카드로 자연스럽게 전환.
+      setTimeout(() => {
+        setShowPointReward(false);
+        setSavedMessage("");
+        setUploadedImagePreview(null);
+        setImageFile(null);
+        setAnalysis(null);
+        setManualEntry({ menu: "", calories: "", protein: "", carbs: "", fat: "" });
+        setIsAdding(false);
+      }, 1700);
+    } catch (err) {
+      console.error("[Diet] save failed:", err);
+      alert("저장에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -129,7 +270,12 @@ function Diet() {
         <h2>식단 기록</h2>
         <p>AI가 음식 종류와 영양 정보를 분석합니다</p>
         <span className="diet-status-badge">
-          오늘 {recordedCount} / {todayStatus.length}개 기록
+          {MEAL_TYPES.slice(0, 3).map((t, i) => (
+            <span key={t.id}>
+              {i > 0 && " · "}
+              {t.label} {mealStateLabel(t.id)}
+            </span>
+          ))}
         </span>
       </section>
 
@@ -147,9 +293,24 @@ function Diet() {
         ))}
       </section>
 
-      {/* 2. 사진 업로드 카드 */}
+      {/* 2. 사진 업로드 카드 — 이미 기록된 끼니면 "완료 + 추가하기"로 전환 */}
       <section className="meal-photo-card">
-        {uploadedImagePreview ? (
+        {!shouldShowUploadUI ? (
+          // 완료 상태: 저장된 사진은 굳이 띄우지 않고 표식 + 추가하기 버튼만
+          <div className="meal-upload-area">
+            <p className="meal-upload-title">✓ {selectedMealLabel} 기록 완료</p>
+            <p className="meal-upload-sub">
+              추가 기록하려면 아래 버튼을 누르세요
+            </p>
+            <button
+              type="button"
+              className="meal-upload-button"
+              onClick={() => setIsAdding(true)}
+            >
+              추가하기
+            </button>
+          </div>
+        ) : uploadedImagePreview ? (
           <>
             <div className="meal-preview-wrap">
               <img
@@ -162,9 +323,25 @@ function Diet() {
                 className="meal-preview-remove"
                 onClick={handleRemoveImage}
                 aria-label="이미지 삭제"
+                disabled={isAnalyzing}
               >
                 ✕
               </button>
+              {isAnalyzing && (
+                <div className="meal-analyzing-overlay" role="status" aria-live="polite">
+                  <div className="meal-spinner" aria-hidden="true">
+                    <span className="meal-spinner-dot" />
+                    <span className="meal-spinner-dot" />
+                    <span className="meal-spinner-dot" />
+                    <span className="meal-spinner-dot" />
+                    <span className="meal-spinner-dot" />
+                    <span className="meal-spinner-dot" />
+                    <span className="meal-spinner-dot" />
+                    <span className="meal-spinner-dot" />
+                  </div>
+                  <p className="meal-analyzing-text">체다가 사진을 분석 중이에요</p>
+                </div>
+              )}
             </div>
             <div className="meal-photo-actions">
               <label className="meal-upload-relabel">
@@ -181,8 +358,9 @@ function Diet() {
                 type="button"
                 className="meal-analyze-button"
                 onClick={handleAnalyzeMeal}
+                disabled={isAnalyzing || !imageFile}
               >
-                업로드 후 AI분석
+                {isAnalyzing ? "분석 중..." : "업로드 후 AI분석"}
               </button>
             </div>
           </>
@@ -205,130 +383,134 @@ function Diet() {
         )}
       </section>
 
-      {/* 3. 직접 입력 — 메뉴 + 영양 정보 4종 */}
-      <section className="meal-manual-input">
-        <p className="meal-manual-label">직접 입력</p>
+      {/* 완료 상태에서는 직접 입력 / 분석 결과 / 저장 버튼 모두 숨김 */}
+      {shouldShowUploadUI && (
+        <>
+          {/* 3. 직접 입력 — 메뉴 + 영양 정보 4종 */}
+          <section className="meal-manual-input">
+            <p className="meal-manual-label">직접 입력</p>
 
-        <label className="manual-field manual-field-full">
-          <span className="manual-field-label">메뉴 이름</span>
-          <input
-            type="text"
-            value={manualEntry.menu}
-            onChange={(e) => handleManualChange("menu", e.target.value)}
-            placeholder="예: 치킨샐러드"
-          />
-        </label>
-
-        <div className="manual-field-grid">
-          <label className="manual-field">
-            <span className="manual-field-label">칼로리</span>
-            <div className="manual-field-input-wrap">
+            <label className="manual-field manual-field-full">
+              <span className="manual-field-label">메뉴 이름</span>
               <input
-                type="number"
-                inputMode="numeric"
-                min="0"
-                value={manualEntry.calories}
-                onChange={(e) => handleManualChange("calories", e.target.value)}
-                placeholder="0"
+                type="text"
+                value={manualEntry.menu}
+                onChange={(e) => handleManualChange("menu", e.target.value)}
+                placeholder="예: 치킨샐러드"
               />
-              <span className="manual-field-unit">kcal</span>
+            </label>
+
+            <div className="manual-field-grid">
+              <label className="manual-field">
+                <span className="manual-field-label">칼로리</span>
+                <div className="manual-field-input-wrap">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={manualEntry.calories}
+                    onChange={(e) => handleManualChange("calories", e.target.value)}
+                    placeholder="0"
+                  />
+                  <span className="manual-field-unit">kcal</span>
+                </div>
+              </label>
+
+              <label className="manual-field">
+                <span className="manual-field-label">단백질</span>
+                <div className="manual-field-input-wrap">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={manualEntry.protein}
+                    onChange={(e) => handleManualChange("protein", e.target.value)}
+                    placeholder="0"
+                  />
+                  <span className="manual-field-unit">g</span>
+                </div>
+              </label>
+
+              <label className="manual-field">
+                <span className="manual-field-label">탄수화물</span>
+                <div className="manual-field-input-wrap">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={manualEntry.carbs}
+                    onChange={(e) => handleManualChange("carbs", e.target.value)}
+                    placeholder="0"
+                  />
+                  <span className="manual-field-unit">g</span>
+                </div>
+              </label>
+
+              <label className="manual-field">
+                <span className="manual-field-label">지방</span>
+                <div className="manual-field-input-wrap">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={manualEntry.fat}
+                    onChange={(e) => handleManualChange("fat", e.target.value)}
+                    placeholder="0"
+                  />
+                  <span className="manual-field-unit">g</span>
+                </div>
+              </label>
             </div>
-          </label>
+          </section>
 
-          <label className="manual-field">
-            <span className="manual-field-label">단백질</span>
-            <div className="manual-field-input-wrap">
-              <input
-                type="number"
-                inputMode="numeric"
-                min="0"
-                value={manualEntry.protein}
-                onChange={(e) => handleManualChange("protein", e.target.value)}
-                placeholder="0"
-              />
-              <span className="manual-field-unit">g</span>
-            </div>
-          </label>
+          {/* 4. AI 분석 결과 카드 — 실제 API 응답 */}
+          {analyzeError && (
+            <p className="diet-error-text">{analyzeError}</p>
+          )}
+          {analysis && (
+            <section className="ai-result-card" ref={resultRef}>
+              <h3 className="ai-result-title">AI 분석 결과</h3>
+              <p className="ai-result-summary">{analysis.summary}</p>
 
-          <label className="manual-field">
-            <span className="manual-field-label">탄수화물</span>
-            <div className="manual-field-input-wrap">
-              <input
-                type="number"
-                inputMode="numeric"
-                min="0"
-                value={manualEntry.carbs}
-                onChange={(e) => handleManualChange("carbs", e.target.value)}
-                placeholder="0"
-              />
-              <span className="manual-field-unit">g</span>
-            </div>
-          </label>
+              <div className="ai-result-stats">
+                <div><span>예상 칼로리</span><strong>{analysis.calories} kcal</strong></div>
+                <div><span>단백질</span><strong>{analysis.protein_g} g</strong></div>
+                <div><span>탄수화물</span><strong>{analysis.carbs_g} g</strong></div>
+                <div><span>지방</span><strong>{analysis.fat_g} g</strong></div>
+              </div>
 
-          <label className="manual-field">
-            <span className="manual-field-label">지방</span>
-            <div className="manual-field-input-wrap">
-              <input
-                type="number"
-                inputMode="numeric"
-                min="0"
-                value={manualEntry.fat}
-                onChange={(e) => handleManualChange("fat", e.target.value)}
-                placeholder="0"
-              />
-              <span className="manual-field-unit">g</span>
-            </div>
-          </label>
-        </div>
-      </section>
+              <p className="ai-result-comment">{analysis.comment}</p>
+            </section>
+          )}
 
-      {/* 4. AI 분석 결과 카드 (mock) */}
-      {isAnalyzed && (
-        <section className="ai-result-card">
-          <h3 className="ai-result-title">AI 분석 결과</h3>
-          <p className="ai-result-summary">
-            새우버거로 추정돼요
-          </p>
+          {/* 5. 저장 버튼 + 보상 피드백 */}
+          <div className="meal-save-wrap">
+            <button
+              type="button"
+              className={`meal-save-button ${showPointReward ? "is-saved" : ""}`}
+              onClick={handleSaveMeal}
+              disabled={isSaving || showPointReward}
+            >
+              {isSaving
+                ? "저장 중..."
+                : showPointReward
+                ? "기록 완료!"
+                : "식단 기록 저장"}
+            </button>
 
-          <div className="ai-result-stats">
-            <div><span>예상 칼로리</span><strong>520 kcal</strong></div>
-            <div><span>단백질</span><strong>32 g</strong></div>
-            <div><span>탄수화물</span><strong>68 g</strong></div>
-            <div><span>지방</span><strong>14 g</strong></div>
+            {showPointReward && (
+              <>
+                <span className="point-reward-badge">+10P</span>
+                <span className="reward-sparkle reward-sparkle-1">✨</span>
+                <span className="reward-sparkle reward-sparkle-2">✨</span>
+                <span className="reward-sparkle reward-sparkle-3">✨</span>
+              </>
+            )}
           </div>
 
-          <p className="ai-result-comment">
-            단백질은 충분하지만 나트륨 섭취는 조금 주의해보세요
-          </p>
-
-        </section>
+          {savedMessage && <p className="saved-toast">{savedMessage}</p>}
+        </>
       )}
-
-      {/* 5. 저장 버튼 + 보상 피드백 */}
-      <div className="meal-save-wrap">
-        <button
-          type="button"
-          className={`meal-save-button ${isSaved ? "is-saved" : ""}`}
-          onClick={isSaved ? handleEditMeal : handleSaveMeal}
-        >
-          {showPointReward
-            ? "기록 완료!"
-            : isSaved
-            ? "기록 수정하기"
-            : "식단 기록 저장"}
-        </button>
-
-        {showPointReward && (
-          <>
-            <span className="point-reward-badge">+10P</span>
-            <span className="reward-sparkle reward-sparkle-1">✨</span>
-            <span className="reward-sparkle reward-sparkle-2">✨</span>
-            <span className="reward-sparkle reward-sparkle-3">✨</span>
-          </>
-        )}
-      </div>
-
-      {savedMessage && <p className="saved-toast">{savedMessage}</p>}
 
       {/* 6. 오늘 기록 현황 */}
 

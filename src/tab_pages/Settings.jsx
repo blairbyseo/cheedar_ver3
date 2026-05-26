@@ -1,30 +1,81 @@
 /*5-5. Settings.jsx: App.jsx 파일에 걸림 */
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-// 헤더 우상단에 표시할 포인트 
-const HEADER_POINT = 1040;
+import { useAuth } from "../auth/AuthContext";
+import { usePoints } from "../usePoints";
 
 // 기본 프로필 사진 placeholder 로 사용
 const DEFAULT_PROFILE_IMAGE = "/cheese/cheese_profile.jpg";
 
+// 아이디 규칙 — 서버(app/routers/auth.py)와 반드시 동일하게 유지할 것
+const USER_ID_MIN = 3;
+const USER_ID_MAX = 15;
+const USER_ID_REGEX = /^[가-힣a-zA-Z0-9_]+$/;
+// 아이디 변경 제한 — 첫 변경 시점부터 30일간 최대 2번
+const USER_ID_CHANGE_WINDOW_DAYS = 30;
+const USER_ID_MAX_CHANGES = 2;
+
+// 서버에 보내기 전 1차 검증. 통과하면 null, 실패하면 에러 메시지를 돌려준다.
+// (중복·30일 제한은 서버만 알 수 있으니 거기서 최종 검증)
+function validateUserId(value) {
+  if (value.length < USER_ID_MIN || value.length > USER_ID_MAX) {
+    return `아이디는 ${USER_ID_MIN}~${USER_ID_MAX}자로 입력해주세요.`;
+  }
+  if (!USER_ID_REGEX.test(value)) {
+    return "아이디는 한글, 영문, 숫자, 밑줄(_)만 쓸 수 있어요.";
+  }
+  return null;
+}
+
+// 아이디 변경 가능 상태 계산.
+// 서버가 준 윈도우 시작 시각(windowStartRaw)과 변경 횟수(count)로
+// "이번 30일에 몇 번 남았는지"와, 다 썼다면 "언제 다시 가능한지"를 구한다.
+function getUserIdChangeInfo(windowStartRaw, count) {
+  // 윈도우가 아예 없으면 한 번도 안 바꾼 것 → 2번 다 가능
+  if (!windowStartRaw) {
+    return { changesLeft: USER_ID_MAX_CHANGES, unlockDate: null };
+  }
+  const windowEnd = new Date(windowStartRaw);
+  windowEnd.setDate(windowEnd.getDate() + USER_ID_CHANGE_WINDOW_DAYS);
+  // 30일이 지나 윈도우가 만료됐으면 횟수가 리셋되어 다시 2번 가능
+  if (windowEnd.getTime() <= Date.now()) {
+    return { changesLeft: USER_ID_MAX_CHANGES, unlockDate: null };
+  }
+  const changesLeft = Math.max(0, USER_ID_MAX_CHANGES - (count ?? 0));
+  return {
+    changesLeft,
+    unlockDate: changesLeft === 0 ? windowEnd : null,
+  };
+}
+
 function Settings() {
+  const { user, setUser, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // 헤더 우상단 포인트 — 현재 로그인한 환자의 CP
+  const headerPoint = usePoints()?.cp ?? 0;
+
   // ────────────────────────────────────────────────────────
   // [상태 정의]
   // 각 useState 는 화면 한 영역의 "현재 모습"을 기억하는 변수.
   // ────────────────────────────────────────────────────────
 
-  // 1) 프로필 사진 미리보기 URL. null 이면 기본 이미지 사용.
-  const [profileImagePreview, setProfileImagePreview] = useState(null);
+  // 1) 프로필 사진 업로드 진행 상태 + 에러 메시지.
+  //    현재 사진의 단일 출처(source of truth)는 AuthContext 의 user.profile_image_path.
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState("");
 
-  // 2) 화면에 표시되는 "현재 아이디". 저장이 끝나면 이 값이 갱신됨.
-  const [userId, setUserId] = useState("cheddar_user");
-
-  // 3) 아이디 수정 모드에서 input 에 입력 중인 값 — 임시 버퍼.
-  //    저장하면 userId 로 옮기고, 취소하면 그냥 버림.
+  // 2) 아이디 수정 모드에서 input 에 입력 중인 값 — 임시 버퍼.
+  //    "현재 아이디"의 단일 출처(source of truth)는 AuthContext 의 user.user_id.
   const [editedUserId, setEditedUserId] = useState("");
 
-  // 4) 아이디 수정 모드 토글. true 면 input 표시, false 면 일반 표시.
+  // 3) 아이디 수정 모드 토글. true 면 input 표시, false 면 일반 표시.
   const [isEditingUserId, setIsEditingUserId] = useState(false);
+
+  // 4) 아이디 검증 에러 메시지 + 서버 저장 중 여부.
+  const [userIdError, setUserIdError] = useState("");
+  const [isSavingUserId, setIsSavingUserId] = useState(false);
 
   // 5) 알림 4종 — 마스터(전체) + 개별 3종.
   //    마스터가 false 면 개별 토글은 disabled 처리.
@@ -38,43 +89,105 @@ function Settings() {
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
   const [inquiryText, setInquiryText] = useState("");
 
+  // ── 아이디 관련 파생값 (state 가 아니라 user 로부터 매 렌더 계산) ──
+  const currentUserId = user?.user_id ?? "";
+  const { changesLeft: userIdChangesLeft, unlockDate: userIdUnlockDate } =
+    getUserIdChangeInfo(
+      user?.user_id_change_window_start,
+      user?.user_id_change_count,
+    );
+  const isUserIdLocked = userIdChangesLeft === 0;
+
   // ────────────────────────────────────────────────────────
   // [핸들러]
   // ────────────────────────────────────────────────────────
 
-  // 프로필 사진 업로드 — 사용자가 갤러리에서 고른 파일을
-  // FileReader 로 base64 데이터 URL 로 바꿔 미리보기에 사용.
-  function handleProfileImageChange(e) {
+  // 프로필 사진 업로드 — 고른 파일을 서버에 보내 저장하고, 갱신된 user 를 반영.
+  async function handleProfileImageChange(e) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setProfileImagePreview(reader.result);
-    reader.readAsDataURL(file);
+    if (!file || isUploadingImage) return;
+
+    setImageError("");
+    setIsUploadingImage(true);
+    try {
+      // multipart/form-data 로 전송 — Content-Type 헤더는 브라우저가 자동으로 채운다
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/auth/me/profile-image", {
+        method: "PATCH",
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || `사진 업로드에 실패했어요 (${res.status})`);
+      }
+      const updatedUser = await res.json();
+      setUser(updatedUser); // 앱 전역 user 갱신 → 사진이 곧바로 반영됨
+    } catch (err) {
+      console.error("[Settings] 프로필 사진 변경 실패:", err);
+      setImageError(err.message);
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = ""; // 같은 파일을 다시 골라도 onChange 가 또 일어나도록 초기화
+    }
   }
 
   // 아이디 "변경" 버튼 — 수정 모드 진입.
   // 현재 아이디를 input 초기값으로 복사해 사용자가 바로 편집 가능.
   function handleStartEditUserId() {
-    setEditedUserId(userId);
+    setEditedUserId(currentUserId);
+    setUserIdError("");
     setIsEditingUserId(true);
   }
 
-  // 아이디 "저장" 버튼 — 빈 값 검증 후 실제 표시값(userId) 갱신.
-  // ⚠ 실제 30일 제한은 서버에서 마지막 변경일 기준으로 검증 필요.
-  function handleSaveUserId() {
-    const next = editedUserId.trim();
-    if (!next) {
-      alert("아이디를 입력해주세요");
-      return;
-    }
-    setUserId(next);
+  // 아이디 "취소" 버튼 — 임시 버퍼/에러 비우고 수정 모드 종료.
+  function handleCancelEditUserId() {
+    setEditedUserId("");
+    setUserIdError("");
     setIsEditingUserId(false);
   }
 
-  // 아이디 "취소" 버튼 — 임시 버퍼 비우고 수정 모드 종료.
-  function handleCancelEditUserId() {
-    setEditedUserId("");
-    setIsEditingUserId(false);
+  // 아이디 "저장" 버튼 — 1차 검증 후 서버에 PATCH.
+  // 중복·30일 제한 같은 최종 판정은 서버가 하고, 사유는 응답 detail 로 받는다.
+  async function handleSaveUserId() {
+    const next = editedUserId.trim();
+
+    const localError = validateUserId(next);
+    if (localError) {
+      setUserIdError(localError);
+      return;
+    }
+    // 기존과 같으면 서버 호출/30일 소모 없이 그냥 닫기
+    if (next === currentUserId) {
+      handleCancelEditUserId();
+      return;
+    }
+
+    setIsSavingUserId(true);
+    setUserIdError("");
+    try {
+      const res = await fetch("/api/auth/me/user-id", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: next }),
+      });
+      if (!res.ok) {
+        // 서버가 detail 에 한국어 사유를 담아 보냄 (중복/30일 제한 등)
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || `요청에 실패했어요 (${res.status})`);
+      }
+      const updatedUser = await res.json();
+      setUser(updatedUser); // 앱 전역 상태 갱신 → 화면 곳곳의 아이디가 함께 바뀜
+      setEditedUserId("");
+      setIsEditingUserId(false);
+    } catch (err) {
+      console.error("[Settings] 아이디 변경 실패:", err);
+      setUserIdError(err.message);
+    } finally {
+      setIsSavingUserId(false);
+    }
   }
 
   // 마스터(전체 알림) 토글 — 개별 토글 상태는 그대로 유지하고
@@ -127,7 +240,7 @@ function Settings() {
         <h1 className="home-logo">Cheddar</h1>
         <div className="point-summary">
           <span className="point-badge">P</span>
-          <strong>{HEADER_POINT.toLocaleString()}</strong>
+          <strong>{headerPoint.toLocaleString()}</strong>
         </div>
       </header>
 
@@ -145,7 +258,7 @@ function Settings() {
           {/* label 로 input 을 감싸 클릭 시 파일 선택 다이얼로그가 뜨게 함 */}
           <label className="profile-image-upload" aria-label="프로필 사진 변경">
             <img
-              src={profileImagePreview || DEFAULT_PROFILE_IMAGE}
+              src={user?.profile_image_path || DEFAULT_PROFILE_IMAGE}
               alt="프로필"
               className="profile-image"
             />
@@ -153,14 +266,22 @@ function Settings() {
               type="file"
               accept="image/*"
               onChange={handleProfileImageChange}
+              disabled={isUploadingImage}
               hidden
             />
           </label>
           <div className="profile-info">
-            <p className="profile-info-name">{userId}</p>
+            <p className="profile-info-name">{currentUserId}</p>
             <p className="profile-info-hint">
-              프로필 사진은 랭킹 화면에 표시됩니다
+              {isUploadingImage
+                ? "사진 업로드 중..."
+                : "프로필 사진은 랭킹 화면에 표시됩니다"}
             </p>
+            {imageError && (
+              <p style={{ margin: "4px 0 0", color: "#c0392b", fontSize: 13 }}>
+                {imageError}
+              </p>
+            )}
           </div>
         </div>
 
@@ -170,31 +291,47 @@ function Settings() {
             <input
               type="text"
               value={editedUserId}
-              onChange={(e) => setEditedUserId(e.target.value)}
-              placeholder="새 아이디"
-              maxLength={20}
+              onChange={(e) => {
+                setEditedUserId(e.target.value);
+                if (userIdError) setUserIdError("");
+              }}
+              placeholder={`새 아이디 (${USER_ID_MIN}~${USER_ID_MAX}자)`}
+              maxLength={USER_ID_MAX}
+              disabled={isSavingUserId}
+              autoFocus
             />
+            {/* 글자수 제한을 항상 빨강 주의글로 안내.
+                실제 검증 에러가 생기면 그 메시지로 바뀐다(둘 다 빨강). */}
+            <p style={{ margin: "6px 2px 0", color: "#c0392b", fontSize: 13 }}>
+              {userIdError || `아이디는 ${USER_ID_MIN}~${USER_ID_MAX}자로 입력해주세요`}
+            </p>
             <div className="profile-id-edit-buttons">
-              <button type="button" onClick={handleCancelEditUserId}>
+              <button
+                type="button"
+                onClick={handleCancelEditUserId}
+                disabled={isSavingUserId}
+              >
                 취소
               </button>
               <button
                 type="button"
                 className="is-primary"
                 onClick={handleSaveUserId}
+                disabled={isSavingUserId}
               >
-                저장
+                {isSavingUserId ? "저장 중…" : "저장"}
               </button>
             </div>
           </div>
         ) : (
           <div className="profile-id-row">
             <span className="profile-id-row-label">아이디</span>
-            <span className="profile-id-row-value">{userId}</span>
+            <span className="profile-id-row-value">{currentUserId}</span>
             <button
               type="button"
               className="profile-id-row-button"
               onClick={handleStartEditUserId}
+              disabled={isUserIdLocked}
             >
               변경
             </button>
@@ -202,7 +339,9 @@ function Settings() {
         )}
 
         <p className="settings-helper-text">
-          아이디는 30일에 한 번만 변경할 수 있어요
+          {isUserIdLocked
+            ? `${userIdUnlockDate.toLocaleDateString("ko-KR")}부터 다시 변경할 수 있어요`
+            : `아이디는 ${USER_ID_CHANGE_WINDOW_DAYS}일에 ${USER_ID_MAX_CHANGES}번까지 변경할 수 있어요 (${userIdChangesLeft}번 남음)`}
         </p>
       </section>
 
@@ -309,7 +448,12 @@ function Settings() {
         <button
           type="button"
           className="settings-list-row settings-list-danger"
-          onClick={() => handleMockRowClick("로그아웃")}
+          onClick={async () => {
+            const ok = window.confirm("로그아웃 하시겠어요?");
+            if (!ok) return;
+            await logout();
+            navigate("/login", { replace: true });
+          }}
         >
           로그아웃
           <span className="settings-list-row-arrow">›</span>

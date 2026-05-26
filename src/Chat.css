@@ -1,8 +1,13 @@
 /*(3) 챗 페이지 — 디자인 토큰은 App.css의 :root에서 공급 */
 
-/* 입력창이 fixed로 떠 있으므로 본문 하단에 클리어런스 확보 */
+/* 채팅 페이지: 상단 헤더는 고정, 채팅창만 스크롤되도록 flex column 레이아웃.
+   외곽 .wholescreen (max-width 430px, padding 24/20/70, 탭바 72px) 안에서
+   viewport 높이에 정확히 맞춰 chat-thread만 자체 overflow되게 함. */
 .chat-page {
-  padding-bottom: 70px;
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 166px);
+  padding-bottom: 0;
 }
 
 /* 1. 페이지 제목 영역 */
@@ -32,6 +37,10 @@
 .chat-info-card {
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   /* 연한거 */   background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
   border: 1px solid var(--line);
   border-radius: 20px;
@@ -58,12 +67,61 @@
 }
 */
 
-/* 3. 채팅 메시지 영역 */
+.chat-info-card-text {
+  flex: 1;
+  z-index: 1;
+}
+
+/* 대화 초기화 버튼 — 새로고침 아이콘 */
+.chat-reset-button {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid rgba(201, 162, 74, 0.35);
+  border-radius: 50%;
+  background: #FFFFFF;
+  color: #C9A24A;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.chat-reset-button:hover:not(:disabled) {
+  background: #FFF3D6;
+}
+
+.chat-reset-button:active:not(:disabled) {
+  transform: rotate(-120deg);
+}
+
+.chat-reset-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 3. 채팅 메시지 영역 — chat-page 내부에서 유일하게 스크롤되는 영역 */
 .chat-thread {
+  flex: 1;
+  min-height: 0;            /* flex 자식이 overflow-y 동작하게 하는 표준 트릭 */
+  overflow-y: auto;
+  overscroll-behavior: contain; /* 끝까지 스크롤해도 부모(body)는 안 움직이게 */
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
+  padding-bottom: 90px;     /* fixed 입력창에 마지막 메시지가 가려지지 않도록 */
+  /* 스크롤바 시각적 숨김 (스크롤 기능은 유지) */
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE / 구버전 Edge */
+}
+
+.chat-thread::-webkit-scrollbar {
+  display: none;                /* Chrome / Safari / 신버전 Edge */
 }
 
 .chat-message {
@@ -110,6 +168,39 @@
   border: 1px solid var(--line);
   color: var(--text-main);
   border-bottom-left-radius: 4px;
+}
+
+/* 체다 AI가 답변을 만드는 중일 때 보여주는 점 3개 애니메이션 */
+.chat-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 14px;
+  min-height: 20px;
+}
+
+.chat-typing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #C9A24A;
+  display: inline-block;
+  animation: chat-typing-bounce 1.2s infinite ease-in-out both;
+}
+
+.chat-typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.chat-typing-dot:nth-child(2) { animation-delay: -0.16s; }
+.chat-typing-dot:nth-child(3) { animation-delay: 0s; }
+
+@keyframes chat-typing-bounce {
+  0%, 80%, 100% {
+    transform: translateY(0) scale(0.85);
+    opacity: 0.5;
+  }
+  40% {
+    transform: translateY(-5px) scale(1);
+    opacity: 1;
+  }
 }
 
 .bubble-user {

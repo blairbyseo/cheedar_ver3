@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cheddar-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cheddar
+      POSTGRES_PASSWORD: cheddar_dev
+      POSTGRES_DB: cheddar
+    ports:
+      - "5432:5432"
+    volumes:
+      - cheddar_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cheddar -d cheddar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cheddar-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # 컨테이너 안에서는 'postgres' 서비스명으로 DB에 접근.
+      # .env의 DATABASE_URL(localhost)을 여기서 오버라이드.
+      DATABASE_URL: postgresql+psycopg://cheddar:cheddar_dev@postgres:5432/cheddar
+    ports:
+      - "8000:8000"
+    volumes:
+      # 코드 핫리로드 + 업로드 파일 호스트에 보존
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+      - ./uploads:/app/uploads
+
+volumes:
+  cheddar_pg_data:

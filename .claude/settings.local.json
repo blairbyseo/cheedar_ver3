@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(try { $r = Invoke-WebRequest -Uri 'http://localhost:8000/api/auth/kakao/authorize-url' -UseBasicParsing -TimeoutSec 5; \"DIRECT $\\($r.StatusCode\\): $\\($r.Content\\)\" } catch { \"DIRECT ERR $\\($_.Exception.Message\\)\" }; try { $r = Invoke-WebRequest -Uri 'http://localhost:5173/api/auth/kakao/authorize-url' -UseBasicParsing -TimeoutSec 5; \"PROXIED $\\($r.StatusCode\\): $\\($r.Content\\)\" } catch { \"PROXIED ERR $\\($_.Exception.Message\\)\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri 'http://127.0.0.1:8000/api/auth/kakao/authorize-url' -UseBasicParsing -TimeoutSec 5; \"IPv4 $\\($r.StatusCode\\): $\\($r.Content\\)\" } catch { \"IPv4 ERR $\\($_.Exception.Message\\)\" })",
+      "Bash(./.venv/Scripts/python.exe -m py_compile app/routers/chat.py app/services/openai_client.py app/schemas/chat.py)",
+      "Bash(./.venv/Scripts/python.exe *)",
+      "PowerShell($p = 'C:\\\\Users\\\\SAMSUNG\\\\Desktop\\\\new_backend\\\\start.ps1'; $txt = [System.IO.File]::ReadAllText\\($p, [System.Text.Encoding]::UTF8\\); [System.IO.File]::WriteAllText\\($p, $txt, \\(New-Object System.Text.UTF8Encoding $true\\)\\); Write-Output 'start.ps1 -> UTF-8\\(BOM\\) 재저장 완료')",
+      "Bash(docker compose *)",
+      "Bash(curl -s -i http://127.0.0.1:8000/api/auth/kakao/authorize-url)",
+      "Bash(netstat -ano)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://[::1]:3000/api/auth/kakao/authorize-url\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://127.0.0.1:3000/api/auth/kakao/authorize-url\")",
+      "Bash(tasklist /FI \"PID eq 6632\")",
+      "Bash(curl *)",
+      "Bash(docker exec *)",
+      "PowerShell(Out-Null *)",
+      "Bash(npm run *)",
+      "Bash(python -m py_compile app/models/points.py app/models/user.py app/models/__init__.py app/services/points.py app/schemas/points.py app/routers/points.py app/routers/meals.py app/main.py alembic/versions/0005_user_points.py)",
+      "Bash(python3 -m py_compile app/models/points.py app/models/user.py app/models/__init__.py app/services/points.py app/schemas/points.py app/routers/points.py app/routers/meals.py app/main.py alembic/versions/0005_user_points.py)",
+      "PowerShell(try{ $o=Invoke-RestMethod 'http://127.0.0.1:8000/openapi.json' -TimeoutSec 5; $props=$o.components.schemas.PointSummary.properties; \"PointSummary 필드: \" + \\(\\($props.PSObject.Properties.Name\\) -join ', '\\); if\\($props.PSObject.Properties.Name -contains 'week_record_weekdays'\\){ \"=> week_record_weekdays 반영됨 ✅\" }else{ \"=> 아직 없음 \\(컨테이너 재시작 필요\\) ❌\" } }catch{ \"openapi 조회 실패: $_\" })",
+      "PowerShell(npm run *)",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --hide-scrollbars --screenshot=\"C:/Users/SAMSUNG/AppData/Local/Temp/cheddar_home.png\" --window-size=440,1280 --virtual-time-budget=12000 \"http://127.0.0.1:3000/\")",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --hide-scrollbars --screenshot=\"C:/Users/SAMSUNG/AppData/Local/Temp/cheddar_diet.png\" --window-size=440,1280 --virtual-time-budget=12000 \"http://127.0.0.1:3000/\")",
+      "Bash(awk END{print NR} *)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --hide-scrollbars --screenshot=\"C:/Users/SAMSUNG/AppData/Local/Temp/cheddar_home2.png\" --window-size=440,1000 --virtual-time-budget=12000 \"http://127.0.0.1:3000/\")",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --hide-scrollbars --screenshot=\"C:/Users/SAMSUNG/AppData/Local/Temp/cheddar_cloud.png\" --window-size=440,1000 --virtual-time-budget=12000 \"http://127.0.0.1:3000/\")",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --hide-scrollbars --screenshot=\"C:/Users/SAMSUNG/AppData/Local/Temp/cheddar_cloud2.png\" --window-size=440,1000 --virtual-time-budget=12000 \"http://127.0.0.1:3000/\")"
+    ]
+  }
+}

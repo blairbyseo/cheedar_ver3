@@ -1,0 +1,13 @@
+{
+    "comment": "내가 만든 bucket (cheddar-0519)애 대한  policy: Allow public read access to all objects in the bucket",
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+        "Sid": "PublicReadGetObject",
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": "s3:GetObject",
+        "Resource": "arn:aws:s3:::cheddar-0519/*"
+        }
+  ]
+}

@@ -1,0 +1,297 @@
+/*(6) 랭킹 페이지 — 디자인 토큰은 App.css의 :root에서 공급 */
+
+.ranking-page {
+  padding-bottom: 12px;
+}
+
+/* 상단 헤더 — 뒤로가기 + 제목 */
+.ranking-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.ranking-back {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--card-white);
+  color: var(--text-main);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 3px;
+}
+
+.ranking-back:active {
+  transform: scale(0.94);
+}
+
+.ranking-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+/* 제목을 가운데 두기 위한 우측 더미 (뒤로가기 버튼과 같은 폭) */
+.ranking-header-spacer {
+  width: 34px;
+  flex: 0 0 34px;
+}
+
+.ranking-sub {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-sub);
+  margin: 2px 0 20px;
+}
+
+.ranking-state {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-sub);
+  padding: 40px 0;
+}
+
+/* ── 상위 3명 시상대 포디움 ─────────────────────────────────────────
+   막대 3개를 바닥에 정렬(align-items:flex-end). 높이를 1>2>3 으로 두고
+   flex order로 2위-1위-3위 배치 → 가운데 1위가 가장 높다. */
+.ranking-podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.podium-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.podium-1 { order: 2; }   /* 가운데 */
+.podium-2 { order: 1; }   /* 왼쪽 */
+.podium-3 { order: 3; }   /* 오른쪽 */
+
+/* 막대 위에 올라가는 정보 묶음 */
+.podium-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 8px;
+  max-width: 100%;
+}
+
+.podium-medal {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.podium-1 .podium-medal {
+  font-size: 36px;
+}
+
+.podium-user {
+  max-width: 100%;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.podium-level {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--primary-strong);
+}
+
+.podium-xp {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+
+/* 시상대 막대 — 금/은/동 + 높이 차등 */
+.podium-bar {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 14px 14px 0 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10px;
+  box-shadow: var(--shadow-soft);
+}
+
+.podium-1 .podium-bar {
+  height: 104px;
+  background: linear-gradient(180deg, #FFDC6B 0%, #E7B100 100%);
+}
+
+.podium-2 .podium-bar {
+  height: 76px;
+  background: linear-gradient(180deg, #DCE2EA 0%, #A9B3C0 100%);
+}
+
+.podium-3 .podium-bar {
+  height: 58px;
+  background: linear-gradient(180deg, #ECC196 0%, #C2854C 100%);
+}
+
+.podium-bar-rank {
+  font-size: 26px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+.podium-1 .podium-bar-rank {
+  font-size: 32px;
+}
+
+/* 포디움에서 본인 강조 */
+.podium-col.is-me .podium-bar {
+  outline: 3px solid var(--primary-strong);
+  outline-offset: -3px;
+}
+
+.podium-col.is-me .podium-user {
+  color: var(--primary-strong);
+}
+
+/* ── 4위 이하 리스트 ─────────────────────────────────────────────── */
+.ranking-list {
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  padding: 2px 14px;
+}
+
+/* 컬럼 라벨 줄 — 경험치 컬럼 이름을 여기서 한 번만 표기 */
+.ranking-list-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.ranking-row:last-child {
+  border-bottom: none;
+}
+
+/* 컬럼 폭 — 헤더줄과 데이터줄이 같은 클래스를 써서 자동 정렬된다 */
+.ranking-rank {
+  flex: 0 0 34px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-sub);
+}
+
+.ranking-user {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ranking-level {
+  flex: 0 0 46px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--primary-strong);
+}
+
+.ranking-xp {
+  flex: 0 0 72px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.2px;
+}
+
+.ranking-list-head .ranking-level,
+.ranking-list-head .ranking-rank,
+.ranking-list-head .ranking-xp {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* 본인 행 강조 */
+.ranking-row.is-me {
+  background: var(--primary-soft);
+  border-radius: 12px;
+  border-bottom: none;
+  padding-left: 8px;
+  padding-right: 8px;
+  margin: 4px 0;
+}
+
+.ranking-me-tag {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--primary-strong);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+/* 100위 밖일 때 따로 표시되는 내 순위 블록 */
+.ranking-me-floating {
+  margin-top: 14px;
+}
+
+.ranking-me-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+  margin: 8px 2px 2px;
+}
+
+/* 좁은 화면 대응 */
+@media (max-width: 360px) {
+  .podium-1 .podium-bar { height: 92px; }
+  .podium-2 .podium-bar { height: 68px; }
+  .podium-3 .podium-bar { height: 52px; }
+  .podium-user { font-size: 12px; }
+  .ranking-xp { flex-basis: 62px; }
+}
