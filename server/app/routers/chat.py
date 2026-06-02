@@ -10,6 +10,7 @@ from app.core.deps import get_current_user
 from app.models.chat import ChatMessage, ChatRole
 from app.models.user import User
 from app.schemas.chat import ChatMessageOut, ChatSendRequest
+from app.services.diet_context import build_diet_context
 from app.services.openai_client import CHAT_MOCK_RESPONSE, chat_completion_stream
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -72,6 +73,11 @@ def send_message(
     recent.reverse()
     history = [{"role": m.role.value, "text": m.text} for m in recent]
 
+    # 환자의 오늘 식단 + 최근 7일 평균을 스냅샷으로 만들어 system 메시지에
+    # 끼울 준비. 요청 스코프의 db 세션이 살아있는 동안 미리 string 으로
+    # 떠둔다(event_stream 안에서는 이미 닫혀 있을 수 있음).
+    diet_context = build_diet_context(db, current_user.id)
+
     # event_stream() 은 이 함수가 응답을 반환한 *뒤에* 실행된다. 그때 요청
     # 스코프의 db 세션은 이미 닫혔을 수 있으므로, 넘길 값은 미리 평범한
     # dict/숫자로 빼두고 AI 메시지는 제너레이터 전용 세션으로 따로 저장한다.
@@ -89,7 +95,7 @@ def send_message(
         yield user_event
 
         chunks: list[str] = []
-        for delta in chat_completion_stream(history):
+        for delta in chat_completion_stream(history, diet_context=diet_context):
             chunks.append(delta)
             yield _ndjson({"type": "delta", "text": delta})
 

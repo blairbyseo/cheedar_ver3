@@ -1,0 +1,282 @@
+/*(7) 주간 리포트 페이지 — 디자인 토큰은 App.css의 :root에서 공급 */
+
+.report-page {
+  padding-bottom: 16px;
+}
+
+/* 상단 헤더 — 뒤로가기 + 제목/기간 */
+.report-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.report-back {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--card-white);
+  color: var(--text-main);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 3px;
+}
+
+.report-back:active {
+  transform: scale(0.94);
+}
+
+.report-headtext {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.report-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+.report-range {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-sub);
+  margin: 2px 0 0;
+}
+
+/* 제목 가운데 정렬 보정용 더미 */
+.report-header-spacer {
+  width: 34px;
+  flex: 0 0 34px;
+}
+
+.report-state {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-sub);
+  padding: 36px 12px;
+  line-height: 1.5;
+}
+
+/* ── 총 섭취 칼로리 카드 ─────────────────────────────────────────── */
+.report-kcal-card {
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  padding: 18px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.report-kcal-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin: 0;
+}
+
+.report-kcal-value {
+  font-size: 34px;
+  font-weight: 900;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+  margin: 6px 0 4px;
+}
+
+.report-kcal-unit {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-sub);
+  margin-left: 4px;
+}
+
+.report-kcal-avg {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── 섹션 공통 카드 ─────────────────────────────────────────────── */
+.report-section {
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.report-section-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0 0 14px;
+}
+
+.report-section-footer {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin: 14px 0 0;
+}
+
+.report-section-footer strong {
+  color: var(--primary-strong);
+}
+
+/* ── 요일별 기록 ─────────────────────────────────────────────────── */
+.report-week-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.report-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.report-day-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+.report-day-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 주요 3끼를 모두 기록한 날 — 가득 채움 */
+.report-day-circle.full {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  font-size: 14px;
+}
+
+/* 일부만 기록한 날 — 연한 강조 */
+.report-day-circle.partial {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary-strong);
+}
+
+/* 오늘 표시 — 테두리 강조 */
+.report-day-circle.today {
+  outline: 2px solid var(--primary-strong);
+  outline-offset: 1px;
+}
+
+.report-day-exercise {
+  font-size: 11px;
+  line-height: 1;
+  height: 12px;
+}
+
+.report-day-date {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ── 영양소 통계 ─────────────────────────────────────────────────── */
+.report-nutri-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.report-nutri-item {
+  text-align: center;
+  padding: 14px 6px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+}
+
+.report-nutri-item.carbs { background: #FFF3C4; }
+.report-nutri-item.protein { background: #E4F4E8; }
+.report-nutri-item.fat { background: #FBE6D4; }
+/* 운동 통계 카드 톤 */
+.report-nutri-item.burn { background: #FBE0DC; }
+.report-nutri-item.time { background: #E3ECFB; }
+.report-nutri-item.days { background: #E8F5EE; }
+
+/* 운동 시간 값 안의 작은 단위 (3시간20분) */
+.report-nutri-sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-sub);
+  margin: 0 1px 0 1px;
+}
+
+.report-nutri-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+  margin: 0 0 4px;
+}
+
+.report-nutri-value {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.report-nutri-unit {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 2px 0 0;
+}
+
+.report-nutri-avg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+
+.report-nutri-avg-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.report-nutri-avg-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin: 2px 0 0;
+}

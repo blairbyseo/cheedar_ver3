@@ -26,7 +26,25 @@
       "PowerShell(Get-NetTCPConnection *)",
       "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --hide-scrollbars --screenshot=\"C:/Users/SAMSUNG/AppData/Local/Temp/cheddar_home2.png\" --window-size=440,1000 --virtual-time-budget=12000 \"http://127.0.0.1:3000/\")",
       "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --hide-scrollbars --screenshot=\"C:/Users/SAMSUNG/AppData/Local/Temp/cheddar_cloud.png\" --window-size=440,1000 --virtual-time-budget=12000 \"http://127.0.0.1:3000/\")",
-      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --hide-scrollbars --screenshot=\"C:/Users/SAMSUNG/AppData/Local/Temp/cheddar_cloud2.png\" --window-size=440,1000 --virtual-time-budget=12000 \"http://127.0.0.1:3000/\")"
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless --disable-gpu --hide-scrollbars --screenshot=\"C:/Users/SAMSUNG/AppData/Local/Temp/cheddar_cloud2.png\" --window-size=440,1000 --virtual-time-budget=12000 \"http://127.0.0.1:3000/\")",
+      "Bash(npx eslint *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\SAMSUNG\\\\Desktop\\\\Cheddar_Team_26\\\\backend\\\\alembic\\\\versions\\\\\" | Select-Object Name | ForEach-Object { $_.Name })",
+      "Bash(findstr /i \"script_location version\")",
+      "Bash(python -m py_compile app/models/exercise.py app/models/user.py app/schemas/exercise.py app/services/exercise.py app/routers/exercise.py app/routers/auth.py app/schemas/auth.py app/main.py app/core/config.py app/models/__init__.py alembic/versions/0006_exercise_and_user_body.py)",
+      "Bash(git -C \"C:\\\\Users\\\\SAMSUNG\\\\Desktop\\\\new_backend\" status --short -- server)",
+      "Bash(python -c \"import app.main as m; print\\('routes:', [r.path for r in m.app.routes if getattr\\(r,'path',''\\).startswith\\('/api/exercise'\\)]\\); from app.models import ExerciseLog, User; print\\('ExerciseLog table:', ExerciseLog.__tablename__\\); print\\('User has weight_kg:', hasattr\\(User, 'weight_kg'\\)\\)\")",
+      "Bash(ls -d .venv venv env)",
+      "Bash(ls *.toml *.cfg requirements*.txt)",
+      "Bash(ls .venv/Scripts/python.exe venv/Scripts/python.exe)",
+      "Bash(findstr /i \"is_admin age height weight\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(m.upper\\(\\), p\\) for p in d['paths'] for m in d['paths'][p] if '/admin' in p]\")",
+      "Bash(python -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\(len\\(d\\),'awards; labels:',[p['label'] for p in d]\\)\")",
+      "Bash(npx vite *)",
+      "Bash(npm install *)",
+      "Bash(node -p \"require\\('./node_modules/playwright/package.json'\\).version\")",
+      "Bash(npx --no-install playwright --version)",
+      "Bash(node -p \"require\\('./node_modules/puppeteer/package.json'\\).version\")",
+      "Bash(git check-ignore *)"
     ]
   }
 }

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, func, text
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -30,6 +30,13 @@ class User(Base):
     # 아이디/비밀번호 가입자의 비밀번호 해시. 카카오 가입자는 None.
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # --- 신체 정보 (회원가입 때 입력) --------------------------------------
+    # 운동 소모 칼로리 계산(MET×체중×시간) 등에 쓰인다. 카카오 가입자는
+    # 입력 단계가 없어 None 일 수 있고, 그 경우 기본 체중으로 폴백한다.
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     # --- 아이디 변경 제한 (첫 변경부터 30일간 최대 2회) ----------------------
     # 마지막으로 아이디를 바꾼 시각 (참고용)
     user_id_last_changed_at: Mapped[datetime | None] = mapped_column(
@@ -53,6 +60,13 @@ class User(Base):
     )
     cp: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
+    )
+
+    # --- 관리자 여부 -------------------------------------------------------
+    # 관리자 화면(frontend_admin) 접근 권한. 일반 회원은 False.
+    # API 로는 못 바꾸게 막고, scripts/make_admin.py 로만 승격한다.
+    is_admin: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
     )
 
     created_at: Mapped[datetime] = mapped_column(

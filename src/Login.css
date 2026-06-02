@@ -104,6 +104,17 @@
   color: #b3a98f;
 }
 
+/* 회원가입 신체 정보 — 키/체중 가로 2칸 */
+.signup-body-row {
+  display: flex;
+  gap: 10px;
+}
+
+.signup-body-row .login-input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .login-input:focus {
   outline: none;
   border-color: #d1a916;

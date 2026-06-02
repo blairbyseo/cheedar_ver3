@@ -5,8 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
+from app.routers import admin as admin_router
 from app.routers import auth as auth_router
 from app.routers import chat as chat_router
+from app.routers import exercise as exercise_router
 from app.routers import meals as meals_router
 from app.routers import points as points_router
 
@@ -28,8 +30,10 @@ app.mount("/uploads", StaticFiles(directory=str(upload_path)), name="uploads")
 
 app.include_router(auth_router.router)
 app.include_router(meals_router.router)
+app.include_router(exercise_router.router)
 app.include_router(chat_router.router)
 app.include_router(points_router.router)
+app.include_router(admin_router.router)
 
 
 @app.get("/health")

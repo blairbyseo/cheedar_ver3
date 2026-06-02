@@ -1,6 +1,7 @@
 /*5-4. Diet.jsx: App.jsx 파일에 걸림 */
 import { useEffect, useRef, useState } from "react";
 import { usePoints } from "../usePoints";
+import Exercise from "./Exercise";
 
 const MEAL_TYPES = [
   { id: "breakfast", label: "아침" },
@@ -55,6 +56,8 @@ function Diet() {
   const [todayStatus, setTodayStatus] = useState(INITIAL_TODAY_STATUS);
   // 이미 기록된 끼니에서 "추가하기"를 눌러 업로드 UI를 다시 연 상태인지
   const [isAdding, setIsAdding] = useState(false);
+  // 기록 모드 — "diet"(식단) / "exercise"(운동). 한 화면에서 토글로 전환.
+  const [mode, setMode] = useState("diet");
 
   // 끼니 현황 라벨 — 기록했으면 '완료', 아직 그 시간대 전이면 '예정',
   // 시간대가 지났는데 기록이 없으면 '미기록'.
@@ -266,6 +269,28 @@ function Diet() {
         </div>
       </header>
 
+      {/* 식단/운동 전환 — 한 "기록" 화면에서 두 기록을 토글 (Cheddar_Team_26 방식) */}
+      <div className="record-mode-toggle">
+        <button
+          type="button"
+          className={`record-mode-tab ${mode === "diet" ? "is-active" : ""}`}
+          onClick={() => setMode("diet")}
+        >
+          식단
+        </button>
+        <button
+          type="button"
+          className={`record-mode-tab ${mode === "exercise" ? "is-active" : ""}`}
+          onClick={() => setMode("exercise")}
+        >
+          운동
+        </button>
+      </div>
+
+      {mode === "exercise" ? (
+        <Exercise embedded />
+      ) : (
+      <>
       <section className="diet-page-title">
         <h2>식단 기록</h2>
         <p>AI가 음식 종류와 영양 정보를 분석합니다</p>
@@ -513,7 +538,8 @@ function Diet() {
       )}
 
       {/* 6. 오늘 기록 현황 */}
-
+      </>
+      )}
     </div>
   );
 }

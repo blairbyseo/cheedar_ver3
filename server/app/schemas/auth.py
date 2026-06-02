@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class KakaoLoginRequest(BaseModel):
@@ -15,10 +15,16 @@ class UserOut(BaseModel):
     nickname: str | None = None
     email: str | None = None
     profile_image_path: str | None = None
+    # 신체 정보 — 회원가입 때 입력. 운동 칼로리 계산 등에 쓰인다.
+    age: int | None = None
+    height_cm: float | None = None
+    weight_kg: float | None = None
     # 아이디 변경 제한(30일 2회) 계산용 —
     # 프론트가 남은 변경 횟수와 잠금 해제일을 표시하는 데 쓴다.
     user_id_change_window_start: datetime | None = None
     user_id_change_count: int = 0
+    # 관리자 화면 접근 가능 여부 — 프론트(frontend_admin)가 로그인 후 확인.
+    is_admin: bool = False
 
     class Config:
         from_attributes = True
@@ -45,6 +51,11 @@ class UserIdUpdateRequest(BaseModel):
 class SignupRequest(BaseModel):
     user_id: str
     password: str
+    # 신체 정보 — 회원가입 폼에서 함께 입력받는다.
+    # 범위 검증은 명확한 한국어 메시지를 위해 라우터에서 함께 처리.
+    age: int | None = Field(default=None, ge=1, le=120)
+    height_cm: float | None = Field(default=None, ge=50, le=250)
+    weight_kg: float | None = Field(default=None, ge=20, le=400)
 
 
 class LoginRequest(BaseModel):

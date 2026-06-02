@@ -34,3 +34,16 @@ def get_current_user(
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
     return user
+
+
+def get_current_admin(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """관리자 전용 엔드포인트 가드.
+
+    로그인은 됐지만 관리자가 아니면 403 으로 막는다. 관리자 화면
+    (frontend_admin)의 모든 /api/admin/* 엔드포인트가 이 의존성을 쓴다.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin only")
+    return current_user

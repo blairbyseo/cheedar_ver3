@@ -167,7 +167,15 @@ function Home({setActiveTab}) {
 
     </section>
 
-    <section className="menu-card2 feedback" role="button" tabIndex={0}>
+    <section
+      className="menu-card2 feedback"
+      role="button"
+      tabIndex={0}
+      onClick={() => setActiveTab("report")}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") setActiveTab("report");
+      }}
+    >
       <h3>주간 피드백 리포트</h3>
     </section>
     </div>

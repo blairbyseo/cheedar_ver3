@@ -64,12 +64,19 @@ export function AuthProvider({ children }) {
   }
 
   // 아이디/비밀번호 회원가입 — 가입과 동시에 로그인 상태가 됨(백엔드가 쿠키를 심음)
-  async function signup(userId, password) {
+  // profile: { age, height_cm, weight_kg } — 회원가입 폼에서 입력받은 신체 정보
+  async function signup(userId, password, profile = {}) {
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, password }),
+      body: JSON.stringify({
+        user_id: userId,
+        password,
+        age: profile.age ?? null,
+        height_cm: profile.height_cm ?? null,
+        weight_kg: profile.weight_kg ?? null,
+      }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));

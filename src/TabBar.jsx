@@ -38,7 +38,7 @@ function TabBar({ activeTab, setActiveTab }) {
              <DiaryIcon active={true} /> 
             {/*DiaryIcon은 항상 “활성 상태”로 동작하도록 active={true}로 설정 -> 아이콘이 항상 노란색*/}
         </div>
-        <div className="diet-label">식단</div>
+        <div className="diet-label">기록</div>
       </button>
 
     {/*4. 대화버튼*/}

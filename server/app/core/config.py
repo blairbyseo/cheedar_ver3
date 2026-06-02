@@ -32,7 +32,8 @@ class Settings(BaseSettings):
     # --- CORS --------------------------------------------------------------
     # Real .env uses CORS_ALLOW_ORIGINS — accept either name.
     cors_allow_origins: str = Field(
-        default="http://localhost:5173,http://localhost:3000",
+        # 5173: 사용자 프론트(Vite), 3000: 카카오 redirect, 3001: 관리자 프론트
+        default="http://localhost:5173,http://localhost:3000,http://localhost:3001",
         validation_alias="CORS_ALLOW_ORIGINS",
     )
 
@@ -47,6 +48,11 @@ class Settings(BaseSettings):
     # --- Uploads -----------------------------------------------------------
     upload_dir: str = "./uploads"   # 로컬 임시 저장 (S3 업로드 실패 시 fallback 용도)
     max_upload_mb: int = 10
+
+    # --- Exercise ----------------------------------------------------------
+    # 운동 소모 칼로리 계산(MET×체중×시간)용 기본 체중(kg). 회원가입 때 체중을
+    # 입력하지 않은 사용자(예: 카카오 가입자)에게 폴백으로 쓰인다.
+    default_weight_kg: float = 70.0
 
     # --- AWS / S3 ----------------------------------------------------------
     # boto3 가 AWS 자격증명을 찾는 우선순위:

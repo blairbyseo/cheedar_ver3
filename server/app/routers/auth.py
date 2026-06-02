@@ -191,8 +191,15 @@ def signup(
             status.HTTP_409_CONFLICT, "이미 누군가 쓰고 있는 아이디예요."
         )
 
-    # 3) 계정 생성
-    user = User(user_id=new_user_id, password_hash=hash_password(password))
+    # 3) 계정 생성 — 신체 정보(나이/키/체중)도 함께 저장. 범위 검증은
+    #    스키마(SignupRequest)의 Field 제약으로 이미 통과한 값이다.
+    user = User(
+        user_id=new_user_id,
+        password_hash=hash_password(password),
+        age=payload.age,
+        height_cm=payload.height_cm,
+        weight_kg=payload.weight_kg,
+    )
     db.add(user)
     try:
         db.commit()

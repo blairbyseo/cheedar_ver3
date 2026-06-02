@@ -528,6 +528,7 @@ background: rgba(242, 201, 76, 0.24);
 .menu-card2 {
   height: 50px;
   padding: 10px 10px;
+  margin-top: 12px;     /* 메뉴 그리드/카드 사이 간격 (운동·리포트 카드 분리) */
   border-radius: var(--radius-card);
   background: var(--card-white);
   box-shadow: var(--shadow-card);

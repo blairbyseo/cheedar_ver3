@@ -166,11 +166,17 @@ def analyze_meal_image(image_path: Path) -> dict:
         return dict(MOCK_RESPONSE)
 
 
-def chat_completion_stream(history: list[dict]) -> Iterator[str]:
+def chat_completion_stream(
+    history: list[dict],
+    diet_context: str | None = None,
+) -> Iterator[str]:
     """Yield the assistant's reply for a chat turn, chunk by chunk.
 
     `history` is the full ordered conversation, oldest first, including the
     new user message at the end. Each item: {"role": "user"|"ai", "text": str}.
+    `diet_context` 가 비어 있지 않으면 환자 본인의 최근 식단 스냅샷을 두 번째
+    system 메시지로 끼워 넣는다 — AI 가 "오늘 뭐 먹었어요?" 같은 질문에 실제
+    DB 기록을 보고 답하도록.
     Falls back to a fixed mock response when AI is disabled, or when the call
     fails before any text was produced.
     """
@@ -179,6 +185,8 @@ def chat_completion_stream(history: list[dict]) -> Iterator[str]:
         return
 
     messages: list[dict] = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
+    if diet_context:
+        messages.append({"role": "system", "content": diet_context})
     for msg in history:
         role = "assistant" if msg["role"] == "ai" else "user"
         messages.append({"role": role, "content": msg["text"]})

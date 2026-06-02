@@ -12,8 +12,13 @@ const USER_ID_MAX = 15;
 const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 64;
 
+// 신체 정보 허용 범위 — 서버(app/schemas/auth.py SignupRequest)와 동일하게 유지할 것
+const AGE_MIN = 1, AGE_MAX = 120;
+const HEIGHT_MIN = 50, HEIGHT_MAX = 250;
+const WEIGHT_MIN = 20, WEIGHT_MAX = 400;
+
 // 가입 폼 1차 검증. 통과하면 null, 실패하면 에러 메시지를 돌려준다.
-function validateSignupForm(userId, password, passwordConfirm) {
+function validateSignupForm(userId, password, passwordConfirm, body) {
   if (userId.length < USER_ID_MIN || userId.length > USER_ID_MAX) {
     return `아이디는 ${USER_ID_MIN}~${USER_ID_MAX}자로 입력해주세요.`;
   }
@@ -26,6 +31,17 @@ function validateSignupForm(userId, password, passwordConfirm) {
   if (password !== passwordConfirm) {
     return "비밀번호가 서로 일치하지 않아요.";
   }
+  // 신체 정보 — 운동 칼로리 계산 등에 쓰이므로 모두 입력받는다.
+  const { age, height, weight } = body;
+  if (!age || age < AGE_MIN || age > AGE_MAX) {
+    return `나이는 ${AGE_MIN}~${AGE_MAX} 사이로 입력해주세요.`;
+  }
+  if (!height || height < HEIGHT_MIN || height > HEIGHT_MAX) {
+    return `키는 ${HEIGHT_MIN}~${HEIGHT_MAX}cm 사이로 입력해주세요.`;
+  }
+  if (!weight || weight < WEIGHT_MIN || weight > WEIGHT_MAX) {
+    return `체중은 ${WEIGHT_MIN}~${WEIGHT_MAX}kg 사이로 입력해주세요.`;
+  }
   return null;
 }
 
@@ -36,6 +52,9 @@ function SignupPage() {
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [age, setAge] = useState("");
+  const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState("");
   const [errorText, setErrorText] = useState("");
   const [isBusy, setIsBusy] = useState(false);
 
@@ -47,10 +66,14 @@ function SignupPage() {
     if (isBusy) return;
 
     const trimmedUserId = userId.trim();
+    const ageNum = Number(age);
+    const heightNum = Number(height);
+    const weightNum = Number(weight);
     const localError = validateSignupForm(
       trimmedUserId,
       password,
       passwordConfirm,
+      { age: ageNum, height: heightNum, weight: weightNum },
     );
     if (localError) {
       setErrorText(localError);
@@ -61,7 +84,11 @@ function SignupPage() {
     setErrorText("");
     try {
       // 성공 시 AuthContext 가 로그인 상태로 만들어 줌
-      await signup(trimmedUserId, password);
+      await signup(trimmedUserId, password, {
+        age: ageNum,
+        height_cm: heightNum,
+        weight_kg: weightNum,
+      });
       navigate("/", { replace: true });
     } catch (err) {
       console.error("[Signup] signup failed:", err);
@@ -109,6 +136,47 @@ function SignupPage() {
             disabled={isBusy}
             required
           />
+
+          {/* 신체 정보 — 운동 칼로리 계산 등에 쓰여요 */}
+          <input
+            type="number"
+            inputMode="numeric"
+            className="login-input"
+            placeholder="나이 (만)"
+            value={age}
+            onChange={(e) => setAge(e.target.value)}
+            min={AGE_MIN}
+            max={AGE_MAX}
+            disabled={isBusy}
+            required
+          />
+          <div className="signup-body-row">
+            <input
+              type="number"
+              inputMode="decimal"
+              className="login-input"
+              placeholder="키 (cm)"
+              value={height}
+              onChange={(e) => setHeight(e.target.value)}
+              min={HEIGHT_MIN}
+              max={HEIGHT_MAX}
+              disabled={isBusy}
+              required
+            />
+            <input
+              type="number"
+              inputMode="decimal"
+              className="login-input"
+              placeholder="체중 (kg)"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              min={WEIGHT_MIN}
+              max={WEIGHT_MAX}
+              disabled={isBusy}
+              required
+            />
+          </div>
+
           <button type="submit" className="login-submit-btn" disabled={isBusy}>
             {isBusy ? "가입 중..." : "회원가입"}
           </button>

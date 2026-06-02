@@ -1,0 +1,362 @@
+/*(8) 운동 기록 페이지 — 디자인 토큰은 App.css의 :root에서 공급 */
+
+.exercise-page {
+  padding-bottom: 24px;
+}
+
+/* 식단/운동 전환 토글 — Diet 화면 상단. (Exercise.css에 함께 둠) */
+.record-mode-toggle {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  margin: 4px 0 16px;
+  background: #F1ECDD;
+  border-radius: 14px;
+}
+
+.record-mode-tab {
+  flex: 1 1 0;
+  padding: 10px 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-sub);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.record-mode-tab.is-active {
+  background: var(--card-white);
+  color: var(--text-main);
+  box-shadow: var(--shadow-soft);
+}
+
+/* 헤더 — 뒤로가기 + 제목 (랭킹/리포트와 동일 패턴) */
+.exercise-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.exercise-back {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--card-white);
+  color: var(--text-main);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 3px;
+}
+
+.exercise-back:active {
+  transform: scale(0.94);
+}
+
+.exercise-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.exercise-header-spacer {
+  width: 34px;
+  flex: 0 0 34px;
+}
+
+.exercise-sub {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-sub);
+  margin: 2px 0 18px;
+}
+
+.exercise-state {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-sub);
+  padding: 40px 0;
+}
+
+/* 공통 카드 */
+.exercise-card {
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.exercise-card-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0 0 12px;
+}
+
+/* 입력 필드 */
+.exercise-field {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.exercise-field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-sub);
+  margin-bottom: 6px;
+}
+
+.exercise-field input[type="text"],
+.exercise-num-wrap input[type="number"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 15px;
+  color: var(--text-main);
+  background: #fff;
+  outline: none;
+}
+
+.exercise-field input[type="text"]:focus,
+.exercise-num-wrap input[type="number"]:focus {
+  border-color: var(--primary);
+}
+
+/* 추천 종목 칩 */
+.exercise-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -4px 0 14px;
+}
+
+.exercise-chip {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card-white);
+  color: var(--text-sub);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.exercise-chip.is-selected {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary-strong);
+}
+
+.exercise-chip:active {
+  transform: scale(0.95);
+}
+
+/* 시간/분 가로 배치 */
+.exercise-time-row {
+  display: flex;
+  gap: 12px;
+}
+
+.exercise-time-row .exercise-field {
+  flex: 1 1 0;
+}
+
+.exercise-num-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.exercise-num-unit {
+  position: absolute;
+  right: 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* 강도 슬라이더 */
+.exercise-slider {
+  width: 100%;
+  accent-color: var(--primary-strong);
+}
+
+/* 운동 추가 버튼 (점선 보조 버튼) */
+.exercise-add-button {
+  width: 100%;
+  padding: 13px;
+  border-radius: 12px;
+  border: 1px dashed var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.exercise-add-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* "운동 안 함" 링크 */
+.exercise-skip-link {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 4px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.exercise-skip-text {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 6px 0 14px;
+}
+
+.exercise-skip-undo {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text-sub);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 추가된 운동 목록 */
+.exercise-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exercise-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #FAF8F2;
+}
+
+.exercise-item-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.exercise-item-remove {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(46, 42, 36, 0.06);
+  color: var(--text-sub);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 합계 */
+.exercise-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+}
+
+.exercise-total span {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+.exercise-total strong {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--primary-strong);
+}
+
+/* 저장 / 수정 버튼 */
+.exercise-save-button {
+  width: 100%;
+  padding: 15px;
+  border-radius: 14px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+}
+
+.exercise-save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.exercise-edit-button {
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--primary);
+  background: var(--card-white);
+  color: var(--primary-strong);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.exercise-error {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #D7443E;
+  margin: 12px 0 0;
+}
+
+.exercise-saved-toast {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary-strong);
+  margin: 12px 0 0;
+}

@@ -7,6 +7,8 @@ import './Diet.css'
 import './Settings.css'
 import './Login.css'
 import './Ranking.css'
+import './WeeklyReport.css'
+import './Exercise.css'
 
 import { useState } from 'react';
 import { Route, Routes } from 'react-router-dom';
@@ -17,6 +19,7 @@ import Chat from './tab_pages/Chat';
 import Point from './tab_pages/Point';
 import Settings from './tab_pages/Settings';
 import Ranking from './tab_pages/Ranking';
+import WeeklyReport from './tab_pages/WeeklyReport';
 import TabBar from './TabBar';
 
 import { AuthProvider } from './auth/AuthContext';
@@ -39,6 +42,8 @@ function MainShell() {
         {activeTab === "settings" && <Settings />}
         {/* 랭킹 — 홈의 "랭킹" 카드에서 진입. 탭바에는 없고 자체 뒤로가기 사용 */}
         {activeTab === "ranking"  && <Ranking onBack={() => setActiveTab("home")} />}
+        {/* 주간 리포트 — 홈의 "주간 피드백 리포트" 카드에서 진입. 자체 뒤로가기 사용 */}
+        {activeTab === "report"   && <WeeklyReport onBack={() => setActiveTab("home")} />}
       </div>
       <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
