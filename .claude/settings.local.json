@@ -44,7 +44,13 @@
       "Bash(node -p \"require\\('./node_modules/playwright/package.json'\\).version\")",
       "Bash(npx --no-install playwright --version)",
       "Bash(node -p \"require\\('./node_modules/puppeteer/package.json'\\).version\")",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(git ls-remote *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(git add *)",
+      "Bash(git restore *)",
+      "Bash(git ls-tree *)",
+      "Bash(git push *)"
     ]
   }
 }
