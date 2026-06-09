@@ -4,6 +4,7 @@ import { useAuth } from "./auth/AuthContext";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import SafetyEvents from "./pages/SafetyEvents";
 import UserDetail from "./pages/UserDetail";
 import UserManagement from "./pages/UserManagement";
 
@@ -42,6 +43,14 @@ export default function App() {
         element={
           <RequireAdmin>
             <UserManagement />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/safety"
+        element={
+          <RequireAdmin>
+            <SafetyEvents />
           </RequireAdmin>
         }
       />

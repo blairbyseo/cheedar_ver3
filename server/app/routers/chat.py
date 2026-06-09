@@ -13,6 +13,7 @@ from app.schemas.chat import ChatMessageOut, ChatSendRequest
 from app.services.diet_context import build_diet_context
 from app.services.exercise_context import build_exercise_context
 from app.services.openai_client import CHAT_MOCK_RESPONSE, chat_completion_stream
+from app.services.survey_context import build_survey_context
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -79,6 +80,8 @@ def send_message(
     # 떠둔다(event_stream 안에서는 이미 닫혀 있을 수 있음).
     diet_context = build_diet_context(db, current_user.id)
     exercise_context = build_exercise_context(db, current_user.id)
+    # 설문 프로파일 → 오늘의 개인화 지시(렌즈/스레드/금기). 신호 없으면 빈 문자열.
+    survey_context = build_survey_context(db, current_user.id)
 
     # event_stream() 은 이 함수가 응답을 반환한 *뒤에* 실행된다. 그때 요청
     # 스코프의 db 세션은 이미 닫혔을 수 있으므로, 넘길 값은 미리 평범한
@@ -98,7 +101,10 @@ def send_message(
 
         chunks: list[str] = []
         for delta in chat_completion_stream(
-            history, diet_context=diet_context, exercise_context=exercise_context
+            history,
+            diet_context=diet_context,
+            exercise_context=exercise_context,
+            survey_context=survey_context,
         ):
             chunks.append(delta)
             yield _ndjson({"type": "delta", "text": delta})

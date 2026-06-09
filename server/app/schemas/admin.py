@@ -11,6 +11,29 @@ class DashboardStats(BaseModel):
     today_meals: int          # 오늘(KST) 기록된 식단 수
     total_chat_messages: int  # 누적 채팅 메시지 수
     total_points_awarded: int  # 누적 적립 포인트 합 (point_history.amount 합)
+    unresolved_safety_count: int  # 아직 처리 안 된 위험 신호 수
+
+
+class SafetyEventOut(BaseModel):
+    """위험 신호 한 건 — 관리자 화면용. 회원 표시 정보를 함께 담는다."""
+
+    id: int
+    user_id: int            # 내부 PK (상세 화면 이동용)
+    account_id: str         # 로그인 아이디(user.user_id)
+    nickname: str | None
+    risk_level: str         # low | medium | high | critical
+    detected_category: str  # 예: survey_suicide_acute
+    source: str             # survey | chat
+    description: str | None
+    status: str             # unresolved | reviewing | resolved
+    is_resolved: bool
+    created_at: datetime
+
+
+class SafetyEventResolveRequest(BaseModel):
+    """위험 신호 처리 상태 변경 요청."""
+
+    status: str  # unresolved | reviewing | resolved
 
 
 class AdminUserListItem(BaseModel):

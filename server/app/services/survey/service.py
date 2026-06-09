@@ -27,6 +27,7 @@ from app.models.survey import (
     SurveySchema,
 )
 from app.models.user import User
+from app.services.points import award_points_for_survey
 
 from .scoring import score as run_scoring
 from .trigger import (
@@ -211,6 +212,9 @@ def finalize_submission(
     db.add(user)
 
     _emit_safety_events(db, user, response, derived)
+
+    # 설문 완료 보상 — 같은 트랜잭션 안에서 XP/CP 적립(응답 1건당 1회).
+    award_points_for_survey(db, user, response)
 
     db.commit()
     db.refresh(response)

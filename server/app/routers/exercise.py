@@ -19,6 +19,7 @@ from app.schemas.exercise import (
     ExerciseLogOut,
 )
 from app.services.exercise import estimate_met, item_calories
+from app.services.points import award_points_for_exercise
 
 router = APIRouter(prefix="/api/exercise", tags=["exercise"])
 settings = get_settings()
@@ -111,6 +112,11 @@ def upsert_exercise(
         existing.calories_burned = calories_total
         existing.items = items_json
 
+    # flush 로 운동 행을 먼저 반영한다 — 주간 보너스 집계
+    # (count_exercise_days_in_week) 가 방금 저장한 날까지 포함해서 세도록.
+    # 운동 저장과 XP/CP 적립을 한 트랜잭션으로 함께 커밋한다.
+    db.flush()
+    award_points_for_exercise(db, current_user, existing)
     db.commit()
     db.refresh(existing)
     return _row_to_out(existing)

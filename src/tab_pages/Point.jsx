@@ -1,13 +1,18 @@
 /*5-3. Point.jsx: App.jsx 파일에 걸림*/
 import { useState } from "react";
 import { usePoints } from "../usePoints";
+import { useFinalReward } from "../useFinalReward";
 
 // 적립 규칙·내역의 아이콘 — rule(id)별 고정. CSS는 icon-${id} 클래스를 함께 쓴다.
+// 백엔드 services/points.py 의 POINT_RULES 7종과 키를 맞춘다(식단4 + 운동2 + 설문1).
 const RULE_ICONS = {
   "meal-check": "✓",
   "three-meals": "•••",
   "weekly-goal": "★",
   "full-week": "★★★",
+  "exercise-log": "🏃",
+  "exercise-week": "🔥",
+  "survey-done": "📝",
 };
 
 // 카드에는 최근 2건만 미리 보여주고, 나머지는 '전체 보기' 모달에서 확인한다.
@@ -32,6 +37,24 @@ function Point() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   // 백엔드 GET /api/points/me — CP/XP, 적립 기준, 적립 내역을 한 번에 받는다.
   const summary = usePoints();
+  // 최종 레벨 현금 보상 현황 — 별도 엔드포인트(/api/rewards/final-level).
+  const reward = useFinalReward();
+  const rw = reward.status;                  // null 이면 아직 로딩 전
+  const [claimError, setClaimError] = useState("");
+
+  async function handleClaim() {
+    setClaimError("");
+    const res = await reward.claim();
+    if (!res.ok) {
+      setClaimError(
+        res.error === "already_claimed"
+          ? "이미 신청했어요."
+          : res.error === "not_eligible"
+          ? "아직 신청 자격이 안 돼요."
+          : "신청 중 오류가 났어요. 잠시 후 다시 시도해주세요."
+      );
+    }
+  }
 
   const totalPoint = summary?.cp ?? 0;            // 총 누적 포인트 = CP
   const todayPoint = summary?.earned_today ?? 0;
@@ -126,6 +149,63 @@ function Point() {
           )}
         </div>
       </section>
+
+      {/* ───────── 현금 보상 챌린지 (최종 레벨 도달 시) ───────── */}
+      {rw && (
+        <section className="reward-challenge">
+          <div className="reward-challenge-head">
+            <span className="reward-challenge-badge">🏆 현금 보상 챌린지</span>
+            <strong className="reward-challenge-amount">
+              {rw.reward_amount.toLocaleString()}원
+            </strong>
+          </div>
+          <p className="reward-challenge-desc">
+            Lv.{rw.final_level} 달성 시 현금 보상을 신청할 수 있어요.
+          </p>
+
+          <div className="reward-progress-row">
+            <span>Lv.{rw.current_level}</span>
+            <span className="reward-progress-goal">Lv.{rw.final_level}</span>
+          </div>
+          <div className="progress-bar">
+            <div
+              className="progress-fill"
+              style={{
+                width: `${Math.min(
+                  100,
+                  Math.round((rw.current_level / rw.final_level) * 100)
+                )}%`,
+              }}
+            />
+          </div>
+
+          {rw.claim ? (
+            // 이미 신청함 — 상태별 안내
+            <div className={`reward-status reward-status-${rw.claim.status}`}>
+              {rw.claim.status === "pending" &&
+                "✅ 신청 완료 — 관리자 확인 후 지급됩니다."}
+              {rw.claim.status === "paid" && "🎉 지급 완료! 수고하셨어요."}
+              {rw.claim.status === "rejected" && "신청이 반려되었습니다."}
+            </div>
+          ) : rw.eligible ? (
+            // 자격 있음 + 미신청 → 신청 버튼
+            <button
+              type="button"
+              className="reward-claim-btn"
+              disabled={reward.claiming}
+              onClick={handleClaim}
+            >
+              {reward.claiming ? "신청 중…" : "현금 보상 신청하기"}
+            </button>
+          ) : (
+            // 아직 자격 미달 → 남은 레벨 안내
+            <p className="reward-remaining">
+              앞으로 {Math.max(0, rw.final_level - rw.current_level)}레벨 남았어요
+            </p>
+          )}
+          {claimError && <p className="reward-claim-error">{claimError}</p>}
+        </section>
+      )}
 
       <section className="point-rules">
         <div className="point-rules-title-row">

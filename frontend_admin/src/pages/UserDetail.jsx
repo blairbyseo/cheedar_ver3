@@ -1,8 +1,9 @@
-import { ArrowLeft } from "lucide-react";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/api";
+import { categoryLabel, riskMeta, STATUS_LABELS } from "../safety";
 
 const MEAL_LABELS = {
   breakfast: "아침",
@@ -14,6 +15,7 @@ const MEAL_LABELS = {
 const TABS = [
   { key: "meals", label: "식단" },
   { key: "activity", label: "채팅 · 포인트" },
+  { key: "safety", label: "위험 신호" },
 ];
 
 export default function UserDetail() {
@@ -82,11 +84,9 @@ export default function UserDetail() {
             ))}
           </div>
 
-          {tab === "meals" ? (
-            <MealsTab userId={userId} />
-          ) : (
-            <ActivityTab userId={userId} />
-          )}
+          {tab === "meals" && <MealsTab userId={userId} />}
+          {tab === "activity" && <ActivityTab userId={userId} />}
+          {tab === "safety" && <SafetyTab userId={userId} />}
         </>
       )}
     </div>
@@ -208,6 +208,46 @@ function ActivityTab({ userId }) {
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+// --- 위험 신호 탭 ----------------------------------------------------------
+
+function SafetyTab({ userId }) {
+  const [events, setEvents] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api.userSafetyEvents(userId).then(setEvents).catch((e) => setError(e.message));
+  }, [userId]);
+
+  if (error) return <p className="error-banner">{error}</p>;
+  if (!events) return <p className="muted">불러오는 중…</p>;
+  if (events.length === 0) return <p className="muted">감지된 위험 신호가 없어요.</p>;
+
+  return (
+    <div className="safety-list">
+      {events.map((ev) => {
+        const risk = riskMeta(ev.risk_level);
+        return (
+          <div className="safety-card" key={ev.id} style={{ borderLeftColor: risk.color }}>
+            <div className="safety-main">
+              <div className="safety-top">
+                <span className="risk-badge" style={{ color: risk.color, background: risk.bg }}>
+                  <AlertTriangle size={13} /> {risk.label}
+                </span>
+                <span className="safety-category">{categoryLabel(ev.detected_category)}</span>
+                <span className="safety-source">{ev.source === "survey" ? "설문" : "채팅"}</span>
+              </div>
+              <p className="safety-meta">
+                {new Date(ev.created_at).toLocaleString("ko-KR")} ·{" "}
+                {STATUS_LABELS[ev.status] || ev.status}
+              </p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

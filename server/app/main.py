@@ -11,6 +11,7 @@ from app.routers import chat as chat_router
 from app.routers import exercise as exercise_router
 from app.routers import meals as meals_router
 from app.routers import points as points_router
+from app.routers import rewards as rewards_router
 from app.routers import survey as survey_router
 
 settings = get_settings()
@@ -34,6 +35,7 @@ app.include_router(meals_router.router)
 app.include_router(exercise_router.router)
 app.include_router(chat_router.router)
 app.include_router(points_router.router)
+app.include_router(rewards_router.router)
 app.include_router(survey_router.router)
 app.include_router(admin_router.router)
 

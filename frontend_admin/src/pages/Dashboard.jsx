@@ -1,5 +1,6 @@
-import { Coins, MessageSquare, UtensilsCrossed, Users } from "lucide-react";
+import { AlertTriangle, Coins, MessageSquare, UtensilsCrossed, Users } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { api } from "../api/api";
 
@@ -14,10 +15,13 @@ const CARDS = [
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.dashboard().then(setStats).catch((e) => setError(e.message));
   }, []);
+
+  const unresolved = stats?.unresolved_safety_count ?? 0;
 
   return (
     <div className="page">
@@ -27,6 +31,20 @@ export default function Dashboard() {
       </header>
 
       {error && <p className="error-banner">{error}</p>}
+
+      {/* 미해결 위험 신호 — 0보다 크면 빨갛게 강조, 클릭 시 위험 신호 화면으로 */}
+      <button
+        className={`safety-banner${unresolved > 0 ? " alert" : ""}`}
+        onClick={() => navigate("/safety")}
+      >
+        <AlertTriangle size={20} />
+        <span className="safety-banner-text">
+          {unresolved > 0
+            ? `처리하지 않은 위험 신호 ${unresolved}건이 있어요`
+            : "미해결 위험 신호 없음"}
+        </span>
+        <span className="safety-banner-go">위험 신호 보기 →</span>
+      </button>
 
       <div className="card-grid">
         {CARDS.map(({ key, label, icon: Icon, suffix, color }) => (

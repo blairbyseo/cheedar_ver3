@@ -49,4 +49,14 @@ export const api = {
   userMeals: (id) => request(`/admin/users/${id}/meals`),
   userChat: (id) => request(`/admin/users/${id}/chat-messages`),
   userPoints: (id) => request(`/admin/users/${id}/points`),
+
+  // --- 위험 신호 ---
+  safetyEvents: ({ status, risk } = {}) =>
+    request(`/admin/safety-events${qs({ status, risk })}`),
+  userSafetyEvents: (id) => request(`/admin/users/${id}/safety-events`),
+  resolveSafetyEvent: (id, status) =>
+    request(`/admin/safety-events/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
 };

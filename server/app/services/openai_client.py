@@ -170,6 +170,7 @@ def chat_completion_stream(
     history: list[dict],
     diet_context: str | None = None,
     exercise_context: str | None = None,
+    survey_context: str | None = None,
 ) -> Iterator[str]:
     """Yield the assistant's reply for a chat turn, chunk by chunk.
 
@@ -179,6 +180,9 @@ def chat_completion_stream(
     식단·운동 스냅샷을 각각 system 메시지로 끼워 넣는다 — AI 가 "오늘 뭐
     먹었어요?" / "나 운동 잘 하고 있어?" 같은 질문에 실제 DB 기록을 보고
     답하도록.
+    `survey_context` 는 설문 프로파일에서 만든 '오늘의 개인화 지시'(렌즈/스레드/
+    금기)다. 안전·개인화 지침이라 대화 직전(가장 가까운 위치)에 둬서 가장
+    salient 하게 만든다.
     Falls back to a fixed mock response when AI is disabled, or when the call
     fails before any text was produced.
     """
@@ -191,6 +195,9 @@ def chat_completion_stream(
         messages.append({"role": "system", "content": diet_context})
     if exercise_context:
         messages.append({"role": "system", "content": exercise_context})
+    # 개인화 지시는 데이터 컨텍스트 뒤(대화 직전)에 둬서 우선 적용되도록 한다.
+    if survey_context:
+        messages.append({"role": "system", "content": survey_context})
     for msg in history:
         role = "assistant" if msg["role"] == "ai" else "user"
         messages.append({"role": role, "content": msg["text"]})

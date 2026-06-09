@@ -2,7 +2,7 @@ from datetime import date as DateType
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -10,16 +10,25 @@ from app.core.deps import get_current_admin
 from app.models.chat import ChatMessage
 from app.models.meal import Meal
 from app.models.points import PointHistory
+from app.models.reward import RewardClaim, RewardClaimStatus
+from app.models.safety import RiskLevel, SafetyEvent
 from app.models.user import User
 from app.schemas.admin import (
     AdminUserDetail,
     AdminUserListItem,
     AdminUserListResponse,
     DashboardStats,
+    SafetyEventOut,
+    SafetyEventResolveRequest,
 )
 from app.schemas.chat import ChatMessageOut
 from app.schemas.meal import MealOut
 from app.schemas.points import PointHistoryItem
+from app.schemas.rewards import (
+    AdminRewardClaimItem,
+    AdminRewardClaimListResponse,
+    AdminRewardClaimUpdateRequest,
+)
 
 # 모든 엔드포인트가 get_current_admin 으로 보호된다 — 관리자가 아니면 403.
 router = APIRouter(
@@ -52,6 +61,11 @@ def dashboard_stats(db: Session = Depends(get_db)) -> DashboardStats:
     total_points_awarded = db.scalar(
         select(func.coalesce(func.sum(PointHistory.amount), 0))
     ) or 0
+    unresolved_safety_count = db.scalar(
+        select(func.count())
+        .select_from(SafetyEvent)
+        .where(SafetyEvent.is_resolved.is_(False))
+    ) or 0
 
     return DashboardStats(
         total_users=total_users,
@@ -59,7 +73,99 @@ def dashboard_stats(db: Session = Depends(get_db)) -> DashboardStats:
         today_meals=today_meals,
         total_chat_messages=total_chat_messages,
         total_points_awarded=total_points_awarded,
+        unresolved_safety_count=unresolved_safety_count,
     )
+
+
+# -- 위험 신호 (SafetyEvent) ------------------------------------------------
+# 설문 채점에서 위험 플래그가 뜨면 SafetyEvent 로 적재된다(추후 챗봇 감지도 동일).
+# PDF 설계상 '안전 판단은 임상적 판단' — 앱은 신호만 모아 보여주고, 관리자(감독
+# 전문의)가 직접 보고 개입한다. 여기가 그 '관리자에게 넘기는' 통로다.
+
+# critical → high → medium → low 순으로 정렬하기 위한 심각도 랭크.
+_SEVERITY_RANK = case(
+    (SafetyEvent.risk_level == RiskLevel.CRITICAL, 0),
+    (SafetyEvent.risk_level == RiskLevel.HIGH, 1),
+    (SafetyEvent.risk_level == RiskLevel.MEDIUM, 2),
+    else_=3,
+)
+
+
+def _safety_out(event: SafetyEvent, user: User) -> SafetyEventOut:
+    """SafetyEvent + 소유 User → 관리자 화면용 응답으로 변환."""
+    return SafetyEventOut(
+        id=event.id,
+        user_id=event.user_id,
+        account_id=user.user_id,
+        nickname=user.nickname,
+        risk_level=event.risk_level.value,
+        detected_category=event.detected_category,
+        source="survey" if event.detected_category.startswith("survey_") else "chat",
+        description=event.description,
+        status=event.status,
+        is_resolved=event.is_resolved,
+        created_at=event.created_at,
+    )
+
+
+@router.get("/safety-events", response_model=list[SafetyEventOut])
+def list_safety_events(
+    status_filter: str = Query(
+        default="open",
+        alias="status",
+        description="open(미해결) | resolved | all",
+    ),
+    risk: str | None = Query(default=None, description="risk_level 필터(critical 등)"),
+    limit: int = Query(default=200, ge=1, le=500),
+    db: Session = Depends(get_db),
+) -> list[SafetyEventOut]:
+    """위험 신호 목록 — 기본은 미해결, 심각도 높은 순."""
+    stmt = select(SafetyEvent, User).join(User, User.id == SafetyEvent.user_id)
+    if status_filter == "open":
+        stmt = stmt.where(SafetyEvent.is_resolved.is_(False))
+    elif status_filter != "all":
+        stmt = stmt.where(SafetyEvent.status == status_filter)
+    if risk:
+        stmt = stmt.where(SafetyEvent.risk_level == RiskLevel(risk))
+    stmt = stmt.order_by(_SEVERITY_RANK, SafetyEvent.created_at.desc()).limit(limit)
+
+    return [_safety_out(ev, user) for ev, user in db.execute(stmt).all()]
+
+
+@router.get(
+    "/users/{user_id}/safety-events", response_model=list[SafetyEventOut]
+)
+def get_user_safety_events(
+    user_id: int, db: Session = Depends(get_db)
+) -> list[SafetyEventOut]:
+    """특정 회원의 위험 신호 — 심각도 높은 순, 같으면 최신순."""
+    user = _get_user_or_404(user_id, db)
+    stmt = (
+        select(SafetyEvent)
+        .where(SafetyEvent.user_id == user_id)
+        .order_by(_SEVERITY_RANK, SafetyEvent.created_at.desc())
+    )
+    return [_safety_out(ev, user) for ev in db.execute(stmt).scalars()]
+
+
+@router.patch("/safety-events/{event_id}", response_model=SafetyEventOut)
+def update_safety_event(
+    event_id: int,
+    body: SafetyEventResolveRequest,
+    db: Session = Depends(get_db),
+) -> SafetyEventOut:
+    """위험 신호 처리 상태 변경(unresolved | reviewing | resolved)."""
+    if body.status not in ("unresolved", "reviewing", "resolved"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "invalid status")
+    event = db.get(SafetyEvent, event_id)
+    if event is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Safety event not found")
+    event.status = body.status
+    event.is_resolved = body.status == "resolved"
+    db.commit()
+    db.refresh(event)
+    user = db.get(User, event.user_id)
+    return _safety_out(event, user)
 
 
 # -- 회원 목록 / 검색 -------------------------------------------------------
@@ -216,3 +322,91 @@ def get_user_points(
         .order_by(PointHistory.id.desc())
     )
     return list(db.execute(stmt).scalars())
+
+
+# -- 보상(현금) 지급 관리 ---------------------------------------------------
+
+def _claim_to_item(claim: RewardClaim, user: User) -> AdminRewardClaimItem:
+    """(신청, 신청자) → 관리자 목록용 1줄."""
+    return AdminRewardClaimItem(
+        id=claim.id,
+        user_id=claim.user_id,
+        user_login_id=user.user_id,
+        nickname=user.nickname,
+        status=claim.status,
+        amount=claim.amount,
+        level_at_claim=claim.level_at_claim,
+        xp_at_claim=claim.xp_at_claim,
+        requested_at=claim.requested_at,
+        processed_at=claim.processed_at,
+        admin_note=claim.admin_note,
+    )
+
+
+@router.get("/reward-claims", response_model=AdminRewardClaimListResponse)
+def list_reward_claims(
+    status_filter: RewardClaimStatus | None = Query(default=None, alias="status"),
+    db: Session = Depends(get_db),
+) -> AdminRewardClaimListResponse:
+    """현금 보상 신청 목록 — 오래된 신청 순(먼저 신청한 사람 먼저 지급).
+
+    `status` 쿼리로 대기(pending)/지급완료(paid)/반려(rejected)만 골라 볼 수
+    있다. counts 는 상태별 전체 건수(필터와 무관) — 상단 요약 배지용.
+    """
+    stmt = (
+        select(RewardClaim, User)
+        .join(User, RewardClaim.user_id == User.id)
+        .order_by(RewardClaim.requested_at.asc())
+    )
+    if status_filter is not None:
+        stmt = stmt.where(RewardClaim.status == status_filter)
+    rows = db.execute(stmt).all()
+    items = [_claim_to_item(claim, user) for claim, user in rows]
+
+    # 상태별 전체 건수(필터 미적용) — 누락 상태는 0 으로 채운다.
+    counts = {s.value: 0 for s in RewardClaimStatus}
+    count_rows = db.execute(
+        select(RewardClaim.status, func.count())
+        .group_by(RewardClaim.status)
+    ).all()
+    for st, n in count_rows:
+        counts[st.value] = n
+
+    return AdminRewardClaimListResponse(
+        items=items, total=len(items), counts=counts
+    )
+
+
+@router.patch(
+    "/reward-claims/{claim_id}", response_model=AdminRewardClaimItem
+)
+def update_reward_claim(
+    claim_id: int,
+    body: AdminRewardClaimUpdateRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> AdminRewardClaimItem:
+    """신청을 지급완료(paid) 또는 반려(rejected)로 처리한다.
+
+    - pending 으로 되돌리는 요청은 400.
+    - 처리 시각·처리한 관리자를 기록한다(누가 언제 지급했는지 추적).
+    """
+    if body.status == RewardClaimStatus.PENDING:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "cannot_set_pending"
+        )
+
+    claim = db.get(RewardClaim, claim_id)
+    if claim is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "claim_not_found")
+
+    claim.status = body.status
+    if body.admin_note is not None:
+        claim.admin_note = body.admin_note
+    claim.processed_at = datetime.now(timezone.utc)
+    claim.processed_by_id = admin.id
+    db.commit()
+    db.refresh(claim)
+
+    user = db.get(User, claim.user_id)
+    return _claim_to_item(claim, user)

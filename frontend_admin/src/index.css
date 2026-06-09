@@ -414,3 +414,76 @@ button { font-family: inherit; cursor: pointer; }
   .activity-grid { grid-template-columns: 1fr; }
   .detail-header { flex-direction: column; align-items: flex-start; }
 }
+
+/* ---------- 위험 신호 ---------- */
+.safety-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+  text-align: left;
+  box-shadow: var(--shadow);
+}
+.safety-banner.alert {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: var(--danger);
+}
+.safety-banner-text { font-weight: 600; font-size: 14px; }
+.safety-banner-go { margin-left: auto; font-size: 13px; font-weight: 600; }
+
+.safety-list { display: flex; flex-direction: column; gap: 10px; }
+.safety-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.safety-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.safety-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.safety-category { font-size: 14px; font-weight: 600; }
+.safety-source {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.safety-user {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-dark);
+  background: none;
+  border: none;
+  padding: 0;
+  text-decoration: underline;
+}
+.safety-meta { font-size: 12px; color: var(--muted); margin: 0; }
+.safety-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+@media (max-width: 860px) {
+  .safety-card { flex-direction: column; align-items: flex-start; }
+  .safety-actions { width: 100%; }
+}

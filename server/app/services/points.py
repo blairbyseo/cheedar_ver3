@@ -5,9 +5,11 @@
   CP : 소비 가능한 포인트. 적립은 XP 와 '같은 값'으로 함께 일어나지만,
        이후 보상 교환 등으로 차감될 수 있다(차감은 별도 로직).
 
-적립 규칙은 4가지(POINT_RULES) — 프론트 Point.jsx 의 적립 기준 카드와 같다.
-식단이 1건 저장될 때마다 award_points_for_meal() 이 호출돼,
-충족된 규칙만큼 XP 와 CP 를 함께 올린다.
+적립 규칙은 7가지(POINT_RULES) — 프론트 Point.jsx 의 적립 기준 카드와 같다.
+적립처는 3가지이고, 모두 같은 _grant 경로로 XP/CP 를 함께 올린다:
+  - 식단: award_points_for_meal()      식단 1건 저장 시 (규칙 4종)
+  - 운동: award_points_for_exercise()  운동 기록 저장 시 (규칙 2종)
+  - 설문: award_points_for_survey()    설문 제출(완료) 시 (규칙 1종)
 
 같은 적립이 두 번 들어가지 않도록 PointHistory 에 (user_id, rule,
 dedup_key) 유니크 제약을 두고, 적립 전에 같은 키가 이미 있는지 확인한다.
@@ -19,22 +21,33 @@ from datetime import date as DateType
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.exercise import ExerciseLog
 from app.models.meal import Meal, MealType
 from app.models.points import PointHistory
+from app.models.survey import SurveyResponse
 from app.models.user import User
 
 # ── 적립 규칙 ──────────────────────────────────────────────────────────
 # rule 키는 프론트(Point.jsx)의 icon-${id} CSS 클래스와 동일하게 유지할 것.
+# 식단(meal) 4종에 더해, 운동(exercise) 2종·설문(survey) 1종이 같은 _grant
+# 경로로 적립된다 — 적립처는 늘었지만 원장(PointHistory)·중복 방지·XP/CP 동시
+# 적립 규칙은 식단과 완전히 동일하다.
 RULE_MEAL_CHECK = "meal-check"
 RULE_THREE_MEALS = "three-meals"
 RULE_WEEKLY_GOAL = "weekly-goal"
 RULE_FULL_WEEK = "full-week"
+RULE_EXERCISE_LOG = "exercise-log"     # 하루 운동 기록 1건
+RULE_EXERCISE_WEEK = "exercise-week"   # 한 주 운동 N일 보너스
+RULE_SURVEY_DONE = "survey-done"       # 설문 1건 완료
 
 POINT_RULES: list[dict] = [
-    {"id": RULE_MEAL_CHECK,  "label": "식단 1회 기록",      "point": 10},
-    {"id": RULE_THREE_MEALS, "label": "하루 3끼 완료",      "point": 20},
-    {"id": RULE_WEEKLY_GOAL, "label": "주 5일 기록",        "point": 100},
-    {"id": RULE_FULL_WEEK,   "label": "주 7일 기록 보너스", "point": 50},
+    {"id": RULE_MEAL_CHECK,    "label": "식단 1회 기록",      "point": 10},
+    {"id": RULE_THREE_MEALS,   "label": "하루 3끼 완료",      "point": 20},
+    {"id": RULE_WEEKLY_GOAL,   "label": "주 5일 기록",        "point": 100},
+    {"id": RULE_FULL_WEEK,     "label": "주 7일 기록 보너스", "point": 50},
+    {"id": RULE_EXERCISE_LOG,  "label": "운동 1회 기록",      "point": 15},
+    {"id": RULE_EXERCISE_WEEK, "label": "주 3일 운동 보너스", "point": 80},
+    {"id": RULE_SURVEY_DONE,   "label": "설문 완료",          "point": 50},
 ]
 _POINT_BY_RULE: dict[str, int] = {r["id"]: r["point"] for r in POINT_RULES}
 
@@ -51,6 +64,9 @@ _MEAL_LABEL = {
 
 # 주간 목표 — '주 5일 기록'을 한 주의 목표로 본다(Point 화면의 주간 목표 카드).
 WEEK_GOAL_DAYS = 5
+
+# 운동 주간 보너스 기준 — 한 주에 '서로 다른 3일' 이상 운동하면 보너스 1회.
+EXERCISE_WEEK_DAYS = 3
 
 # 레벨 곡선 — 레벨이 오를수록 다음 레벨에 필요한 XP 가 점점 늘어난다.
 #   Lv.N → Lv.N+1 에 드는 XP = LEVEL_BASE + (N-1) * LEVEL_INC
@@ -113,6 +129,25 @@ def meal_dates_in_week(
 def count_meal_days_in_week(db: Session, user_id: int, ref_day: DateType) -> int:
     """ref_day 가 속한 ISO 주에 식단을 기록한 '서로 다른 날' 수 (0~7)."""
     return len(meal_dates_in_week(db, user_id, ref_day))
+
+
+def count_exercise_days_in_week(
+    db: Session, user_id: int, ref_day: DateType
+) -> int:
+    """ref_day 가 속한 ISO 주에 운동을 '실제로 한' 서로 다른 날 수 (0~7).
+
+    운동은 (user, date) 한 행(UPSERT)이고, is_skipped=True 는 '운동 안 함'
+    으로 기록한 날이라 주간 보너스 집계에서 제외한다. 식단의
+    count_meal_days_in_week 와 같은 역할.
+    """
+    target_week = ref_day.isocalendar()[:2]  # (ISO year, ISO week)
+    exercise_days = db.execute(
+        select(ExerciseLog.done_on).where(
+            ExerciseLog.user_id == user_id,
+            ExerciseLog.is_skipped.is_(False),
+        )
+    ).scalars()
+    return sum(1 for d in exercise_days if d.isocalendar()[:2] == target_week)
 
 
 def _grant(
@@ -210,4 +245,64 @@ def award_points_for_meal(db: Session, user: User, meal: Meal) -> list[dict]:
             earned=earned,
         )
 
+    return earned
+
+
+def award_points_for_exercise(
+    db: Session, user: User, log: ExerciseLog
+) -> list[dict]:
+    """운동 기록 1건이 저장된 직후 호출. 식단과 같은 일/주 2단 구조로 적립한다.
+
+    - is_skipped=True('운동 안 함')면 아무것도 적립하지 않는다.
+    - 운동은 (user, date) UPSERT 라 같은 날 여러 번 저장될 수 있지만,
+      dedup_key 가 날짜/주 기준이라 하루치·한 주치 보너스는 각각 1회만 들어간다.
+
+    DB 커밋은 호출하는 쪽(upsert_exercise)에서 한다 — 운동 저장과 적립이
+    한 트랜잭션으로 함께 반영되도록. 반환: 이번에 새로 적립된 규칙 목록.
+    """
+    earned: list[dict] = []
+    if log.is_skipped:
+        return earned
+
+    day = log.done_on
+
+    # 1) 운동 1회 기록 — 그날 운동을 한 번이라도 기록하면 하루 1회.
+    _grant(
+        db, user, RULE_EXERCISE_LOG,
+        dedup_key=f"day:{day.isoformat()}",
+        label="운동 기록 완료",
+        earned=earned,
+    )
+
+    # 2) 주 3일 운동 보너스 — 그 주에 운동한 '서로 다른 날'이 기준 이상일 때 1회.
+    days_in_week = count_exercise_days_in_week(db, user.id, day)
+    if days_in_week >= EXERCISE_WEEK_DAYS:
+        _grant(
+            db, user, RULE_EXERCISE_WEEK,
+            dedup_key=f"week:{_iso_week_key(day)}",
+            label=f"주 {EXERCISE_WEEK_DAYS}일 운동 달성",
+            earned=earned,
+        )
+
+    return earned
+
+
+def award_points_for_survey(
+    db: Session, user: User, response: SurveyResponse
+) -> list[dict]:
+    """설문 1건이 '완료(제출)'된 직후 호출. 응답 1건당 한 번만 적립한다.
+
+    dedup_key 를 응답 id 로 두어, 같은 설문 응답으로는 두 번 적립되지 않는다
+    (재설문은 새 응답 id 라 별개로 적립된다).
+
+    DB 커밋은 호출하는 쪽(finalize_submission)에서 한다 — 제출 처리와 적립이
+    한 트랜잭션으로 함께 반영되도록. 반환: 이번에 새로 적립된 규칙 목록.
+    """
+    earned: list[dict] = []
+    _grant(
+        db, user, RULE_SURVEY_DONE,
+        dedup_key=f"response:{response.id}",
+        label="설문 완료",
+        earned=earned,
+    )
     return earned

@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, Users } from "lucide-react";
+import { AlertTriangle, LayoutDashboard, LogOut, Users } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthContext";
 const NAV = [
   { to: "/", label: "대시보드", icon: LayoutDashboard, end: true },
   { to: "/users", label: "회원 관리", icon: Users, end: false },
+  { to: "/safety", label: "위험 신호", icon: AlertTriangle, end: false },
 ];
 
 export default function Sidebar() {

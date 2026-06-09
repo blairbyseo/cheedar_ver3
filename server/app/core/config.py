@@ -54,6 +54,15 @@ class Settings(BaseSettings):
     # 입력하지 않은 사용자(예: 카카오 가입자)에게 폴백으로 쓰인다.
     default_weight_kg: float = 70.0
 
+    # --- 최종 레벨 현금 보상 ------------------------------------------------
+    # 레벨은 XP(누적, 감소 없음)로만 오른다. 아래 레벨에 '도달'하면 현금 보상을
+    # '신청'할 수 있고(도달자 전원), 관리자가 확인 후 수동 지급한다.
+    # 보상은 CP(소비 포인트)와 무관한 별도 트랙 — XP/레벨 기반 1회성 상금.
+    #   final_level               : 보상 자격이 생기는 목표 레벨(끝판왕).
+    #   final_level_reward_amount : 지급 현금(원). 표시·기록용 스냅샷 값.
+    final_level: int = 10
+    final_level_reward_amount: int = 50000
+
     # --- AWS / S3 ----------------------------------------------------------
     # boto3 가 AWS 자격증명을 찾는 우선순위:
     #   1) .env 또는 환경변수 (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
