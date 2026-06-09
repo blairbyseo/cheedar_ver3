@@ -1,0 +1,454 @@
+/* 설문(Survey) 화면 스타일 — Cheddar 골드/크림 테마.
+ * 색 토큰은 다른 화면(App.css/Exercise.css)과 맞춤:
+ *   primary  #d1a916 / #F2C94C   배경 #FFFCF1   카드선 #E2DED7   글자 #333
+ */
+
+/* 바깥 셸: 앱의 .app 과 동일하게 전체 화면 + 크림 배경.
+ * (설문은 탭 화면(.app/.wholescreen) 대신 통째로 렌더되므로 배경을 직접 깐다) */
+.survey-shell {
+  min-height: 100vh;
+  background: #faf7ef;
+}
+
+/* 안쪽 콘텐츠 컬럼: 앱의 .wholescreen 과 동일한 430px 폭/패딩 */
+.survey-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  /* 하단: sticky 푸터(약 72px) 뒤로 내용이 가리지 않도록 여유 */
+  padding: 24px 20px 88px;
+  color: #333;
+  font-size: 15px;
+}
+
+/* ----- 헤더 / 진행률 ----- */
+.survey-head {
+  margin-bottom: 22px;
+}
+.survey-kicker {
+  margin: 0;
+  font-size: 12px;
+  color: #b08d12;
+  font-weight: 600;
+}
+.survey-section-title {
+  margin: 6px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #2d2a22;
+}
+.survey-section-desc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #888;
+  line-height: 1.5;
+}
+.survey-progress {
+  margin-top: 14px;
+  height: 6px;
+  width: 100%;
+  border-radius: 999px;
+  background: #f0e8cf;
+  overflow: hidden;
+}
+.survey-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #f2c94c, #d1a916);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+/* ----- 문항 리스트 ----- */
+.survey-questions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.survey-question {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.survey-question-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.survey-qid {
+  margin-top: 2px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #c4b88f;
+  flex-shrink: 0;
+}
+.survey-qtext {
+  margin: 0;
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2d2a22;
+  line-height: 1.45;
+}
+.survey-qnote {
+  margin: 0;
+  font-size: 12px;
+  color: #a59b7f;
+}
+
+/* ----- 공통 입력 ----- */
+.survey-input {
+  width: 100%;
+  border: 1px solid #e2ded7;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+  font-size: 15px;
+  color: #333;
+  outline: none;
+}
+.survey-input:focus {
+  border-color: #d1a916;
+  box-shadow: 0 0 0 3px rgba(242, 201, 76, 0.25);
+}
+.survey-input:disabled {
+  background: #f6f3ea;
+  color: #aaa;
+}
+.survey-input--num {
+  width: 120px;
+}
+.survey-input--time {
+  width: auto;
+}
+.survey-textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+.survey-field-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13px;
+  color: #777;
+}
+
+/* ----- 선택 버튼(single/yes-no) ----- */
+.survey-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.survey-yesno {
+  display: flex;
+  gap: 8px;
+}
+.survey-choice {
+  border: 1px solid #e2ded7;
+  border-radius: 10px;
+  background: #fff;
+  padding: 11px 14px;
+  font-size: 15px;
+  color: #444;
+  transition: all 0.15s ease;
+}
+.survey-choice--block {
+  width: 100%;
+  text-align: left;
+}
+.survey-choice--half {
+  flex: 1;
+  text-align: center;
+}
+.survey-choice:hover:not(:disabled) {
+  background: #fdf8e6;
+}
+.survey-choice.is-selected {
+  border-color: #d1a916;
+  background: #fff3c4;
+  color: #2d2a22;
+  font-weight: 600;
+}
+
+/* ----- 다중 선택(chips) ----- */
+.survey-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.survey-chip {
+  border: 1px solid #e2ded7;
+  border-radius: 999px;
+  background: #fff;
+  padding: 7px 14px;
+  font-size: 14px;
+  color: #444;
+  transition: all 0.15s ease;
+}
+.survey-chip:hover:not(:disabled) {
+  background: #fdf8e6;
+}
+.survey-chip.is-selected {
+  border-color: #d1a916;
+  background: #fff3c4;
+  color: #2d2a22;
+  font-weight: 600;
+}
+
+/* ----- Likert(0-3) ----- */
+.survey-likert {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.survey-likert-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid #e2ded7;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 4px;
+  transition: all 0.15s ease;
+}
+.survey-likert-btn:hover:not(:disabled) {
+  background: #fdf8e6;
+}
+.survey-likert-btn.is-selected {
+  border-color: #d1a916;
+  background: #fff3c4;
+}
+.survey-likert-num {
+  font-size: 17px;
+  font-weight: 700;
+  color: #2d2a22;
+}
+.survey-likert-label {
+  font-size: 11px;
+  color: #888;
+}
+
+/* ----- 슬라이더(0-10) ----- */
+.survey-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.survey-range {
+  width: 100%;
+  accent-color: #d1a916;
+}
+.survey-scale-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #888;
+}
+.survey-scale-value {
+  font-weight: 700;
+  color: #2d2a22;
+}
+
+/* ----- numeric + unit ----- */
+.survey-numeric {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.survey-unit {
+  font-size: 14px;
+  color: #888;
+}
+.survey-unknown-btn {
+  border: 1px solid #e2ded7;
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #777;
+}
+.survey-unknown-btn:hover:not(:disabled) {
+  background: #fdf8e6;
+}
+
+/* ----- BMI ----- */
+.survey-bmi {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.survey-bmi-row {
+  display: flex;
+  gap: 12px;
+}
+.survey-bmi-field {
+  flex: 1;
+}
+.survey-bmi-result {
+  font-size: 14px;
+  color: #777;
+}
+.survey-bmi-result strong {
+  color: #2d2a22;
+}
+
+/* ----- Composite ----- */
+.survey-composite {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.survey-composite-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.survey-composite-label {
+  width: 64px;
+  font-size: 14px;
+  color: #777;
+}
+
+/* ----- Checklist + frequency ----- */
+.survey-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.survey-checklist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e2ded7;
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 11px 12px;
+}
+.survey-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #d1a916;
+  flex-shrink: 0;
+}
+.survey-checklist-label {
+  flex: 1;
+  font-size: 14px;
+}
+.survey-checklist-freq {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: #888;
+}
+.survey-freq-input {
+  width: 52px;
+  text-align: center;
+  border: 1px solid #e2ded7;
+  border-radius: 8px;
+  background: #fff;
+  padding: 5px;
+  font-size: 14px;
+}
+.survey-freq-input:disabled {
+  background: #f6f3ea;
+}
+
+/* ----- 알 수 없는 타입 (개발 중 안전망) ----- */
+.survey-unknown-type {
+  border: 1px solid #f0c0c0;
+  background: #fdf0f0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #b04545;
+}
+
+/* ----- 에러 배너 ----- */
+.survey-error {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fdf0f0;
+  border: 1px solid #f0c0c0;
+  color: #b04545;
+  font-size: 13px;
+}
+
+/* ----- 푸터 (이전/다음) — 화면 하단 고정 -----
+ * 설문이 길어도 매번 끝까지 스크롤하지 않게 버튼을 viewport 하단에 sticky 고정.
+ * 위쪽은 크림 그라데이션으로 콘텐츠가 비치며 사라지게 처리. */
+.survey-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 24px -20px 0;  /* 좌우 패딩 상쇄해 가로 꽉 차게 */
+  padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(to top, #faf7ef 72%, rgba(250, 247, 239, 0));
+}
+.survey-btn {
+  border-radius: 12px;
+  padding: 12px 22px;
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+.survey-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.survey-btn--ghost {
+  background: #fff;
+  border-color: #e2ded7;
+  color: #777;
+}
+.survey-btn--ghost:hover:not(:disabled) {
+  background: #f6f3ea;
+}
+.survey-btn--primary {
+  background: linear-gradient(90deg, #f2c94c, #d1a916);
+  color: #fff;
+  flex: 1;
+  max-width: 200px;
+  box-shadow: 0 4px 12px rgba(209, 169, 22, 0.3);
+}
+.survey-btn--primary:hover:not(:disabled) {
+  filter: brightness(1.03);
+}
+
+/* ----- 완료 / 중앙 정렬 ----- */
+.survey-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  min-height: 100vh;
+  padding-bottom: 24px;
+}
+.survey-done-emoji {
+  font-size: 48px;
+}
+.survey-done-title {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2d2a22;
+}
+.survey-done-sub {
+  margin: 0;
+  font-size: 13px;
+  color: #888;
+}

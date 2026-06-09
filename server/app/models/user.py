@@ -69,6 +69,18 @@ class User(Base):
         Boolean, nullable=False, server_default=text("false")
     )
 
+    # --- 설문(Survey) 트리거 상태 ------------------------------------------
+    # onboarded: 회원가입 직후 온보딩 설문을 완료했는지. False 면 로그인 시
+    #   /api/survey/next 가 onboarding 설문을 띄운다.
+    # last_survey_at: 마지막으로 설문을 '완료'한 시각. 활성 스키마의
+    #   trigger_interval_days 가 지나면 재설문(recurring)이 다시 뜬다.
+    onboarded: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    last_survey_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

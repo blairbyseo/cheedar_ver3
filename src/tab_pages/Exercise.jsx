@@ -34,7 +34,7 @@ function Exercise({ onBack, embedded = false }) {
   const [name, setName] = useState("");
   const [hours, setHours] = useState(0);
   const [minutes, setMinutes] = useState(30);
-  const [intensity, setIntensity] = useState(5);
+  const [intensity, setIntensity] = useState(3);
 
   const [isSkipped, setIsSkipped] = useState(false);
   const [savedForToday, setSavedForToday] = useState(false); // 오늘 이미 저장됨
@@ -266,7 +266,7 @@ function Exercise({ onBack, embedded = false }) {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="예: 달리기 (없는 종목은 AI가 분석)"
+                placeholder="예: 펜싱, 줄넘기, 요가"
                 disabled={isAnalyzing}
               />
             </label>
@@ -320,14 +320,52 @@ function Exercise({ onBack, embedded = false }) {
               <span className="exercise-field-label">
                 운동 강도 — {intensity} ({intensityLabel(intensity)})
               </span>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={intensity}
-                onChange={(e) => setIntensity(Number(e.target.value))}
-                className="exercise-slider"
-              />
+              {/* 가는 띠 위에서 동그라미가 1~5 지점으로 슬라이드하며 이동한다. */}
+              <div
+                className="intensity-track"
+                role="slider"
+                tabIndex={0}
+                aria-label="운동 강도"
+                aria-valuemin={1}
+                aria-valuemax={5}
+                aria-valuenow={intensity}
+                aria-valuetext={intensityLabel(intensity)}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setIntensity((v) => Math.max(1, v - 1));
+                  }
+                  if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setIntensity((v) => Math.min(5, v + 1));
+                  }
+                }}
+              >
+                <div className="intensity-rail">
+                  {/* 선택 지점까지 채워지는 띠 */}
+                  <div
+                    className="intensity-rail-fill"
+                    style={{ width: `${((intensity - 1) / 4) * 100}%` }}
+                  />
+                  {/* 1~5 눈금 — 누르면 동그라미가 그 지점으로 이동 */}
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      className="intensity-tick"
+                      style={{ left: `${((n - 1) / 4) * 100}%` }}
+                      onClick={() => setIntensity(n)}
+                      aria-label={`강도 ${n}단계`}
+                    />
+                  ))}
+                  {/* 움직이는 동그라미 */}
+                  <div
+                    className="intensity-thumb"
+                    style={{ left: `${((intensity - 1) / 4) * 100}%` }}
+                    aria-hidden="true"
+                  />
+                </div>
+              </div>
             </div>
 
             <button

@@ -194,9 +194,80 @@
 }
 
 /* 강도 슬라이더 */
-.exercise-slider {
-  width: 100%;
-  accent-color: var(--primary-strong);
+/* 운동 강도 — 가는 띠 위에서 동그라미가 1~5 지점으로 이동하는 슬라이더. */
+.intensity-track {
+  position: relative;
+  /* 좌우 11px = 동그라미 반지름만큼 여백을 줘서 양 끝에서 안 삐져나가게.
+     위아래 패딩으로 손가락 터치 영역을 넉넉히. */
+  padding: 12px 11px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.intensity-track:focus-visible {
+  outline: 2px solid var(--primary-strong);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* 회색 띠 (홈 progress-bar 빈 띠 색) */
+.intensity-rail {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(227, 207, 207, 0.5);
+}
+
+/* 선택 지점까지 채워지는 노란 띠 */
+.intensity-rail-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: #d1a916; /* 홈 progress-fill 색 */
+  transition: width 0.18s ease;
+}
+
+/* 1~5 눈금 — 누르기 쉽게 투명한 큰 영역, 가운데에 작은 흰 점 */
+.intensity-tick {
+  position: absolute;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px; /* 자기 위치 중앙 정렬 */
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.intensity-tick::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1.5px rgba(46, 42, 36, 0.15);
+}
+
+/* 움직이는 동그라미 — 클릭은 눈금(tick)이 받으므로 pointer-events 끔 */
+.intensity-thumb {
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #d1a916;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  transition: left 0.18s ease; /* 지점 사이를 부드럽게 슬라이드 */
 }
 
 /* 운동 추가 버튼 (점선 보조 버튼) */

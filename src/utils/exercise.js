@@ -13,7 +13,7 @@ const MET_MAP = {
   자전거: 7.5,
   "웨이트 트레이닝": 6.0,
   수영: 8.0,
-  "요가/필라테스": 3.0,
+  "필라테스": 3.0,
 };
 
 const EMOJI_MAP = {
@@ -21,7 +21,7 @@ const EMOJI_MAP = {
   자전거: "🚴",
   "웨이트 트레이닝": "🏋️",
   수영: "🏊",
-  "요가/필라테스": "🧘",
+  "필라테스": "🧘",
 };
 
 // 빠른 선택용 추천 종목 목록 (사전 MET 가 있는 것들)
@@ -38,24 +38,20 @@ export const emojiForExercise = (exerciseName) => {
   return EMOJI_MAP[exerciseName?.trim()] ?? "💪";
 };
 
-// 강도 1-10 → MET multiplier (계단식, 백엔드와 동일).
+// 강도 1-5 → MET multiplier (백엔드 intensity_multiplier 와 동일).
+//   1: 0.7 / 2: 0.85 / 3: 1.0 / 4: 1.2 / 5: 1.4
 export const intensityMultiplier = (intensity) => {
-  const n = Number(intensity) || 0;
-  if (n <= 3) return 0.7;
-  if (n <= 6) return 1.0;
-  if (n <= 8) return 1.2;
-  return 1.4;
+  const map = { 1: 0.7, 2: 0.85, 3: 1.0, 4: 1.2, 5: 1.4 };
+  // 범위 밖 값(옛 1-10 기록 등)은 가까운 쪽으로 보정.
+  const n = Math.max(1, Math.min(5, Number(intensity) || 3));
+  return map[n];
 };
 
-// 강도 숫자 → 라벨. 아주 편함(1-2)/편함(3-4)/보통(5-6)/힘듦(7-8)/최대(9-10).
+// 강도 숫자(1-5) → 라벨.
 export const intensityLabel = (intensity) => {
-  const parsed = Number(intensity);
-  const n = Number.isFinite(parsed) ? parsed : 5;
-  if (n <= 2) return "아주 편함";
-  if (n <= 4) return "편함";
-  if (n <= 6) return "보통";
-  if (n <= 8) return "힘듦";
-  return "최대";
+  const map = { 1: "아주 편함", 2: "편함", 3: "보통", 4: "힘듦", 5: "최대" };
+  const n = Math.max(1, Math.min(5, Number(intensity) || 3));
+  return map[n];
 };
 
 // 프론트 미리보기용 칼로리. 서버 저장 시 회원 체중으로 재계산되므로 표시 용도만.

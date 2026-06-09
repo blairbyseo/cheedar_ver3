@@ -10,7 +10,7 @@ class ExerciseItemInput(BaseModel):
     met: float = Field(..., gt=0, le=20)
     duration_hours: int = Field(default=0, ge=0)
     duration_minutes: int = Field(default=0, ge=0, le=59)
-    intensity: int = Field(..., ge=1, le=10)
+    intensity: int = Field(..., ge=1, le=5)
 
 
 class ExerciseItemOutput(BaseModel):

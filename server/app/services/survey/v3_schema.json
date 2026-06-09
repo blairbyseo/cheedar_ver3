@@ -1,0 +1,733 @@
+{
+  "version": "v3",
+  "name": "Cheddar 사전 설문 v3",
+  "description": "BMI + Tier1~3 (K-SADS-PL 차용) + 보조축 + 개인화 분기. 약 10–12분 소요.",
+  "estimated_minutes": 12,
+  "scoring_module": "v3",
+  "question_types": {
+    "numeric": "숫자 입력 (unit, min, max, integer 선택)",
+    "single_select": "단일 선택 (options[])",
+    "multi_select": "다중 선택 (options[])",
+    "scale_0_10": "0–10 슬라이더 (labels 선택)",
+    "likert_0_3": "0/1/2/3 (0=없음 1=가끔 2=자주 3=거의매일 디폴트, labels로 오버라이드 가능)",
+    "yes_no": "예/아니오",
+    "free_text": "자유 서술 (max_length)",
+    "time": "HH:MM",
+    "composite": "여러 sub-field 묶음 (fields[])",
+    "bmi": "키+몸무게+자동 BMI percentile (성장 차트 기반)",
+    "checklist_with_frequency": "체크 + 빈도 (rows[], frequency_unit=days_per_week 디폴트)"
+  },
+  "branching_dsl": {
+    "show_if": "{question_id, op, value} — op ∈ ==, !=, <, <=, >, >=, in, contains",
+    "show_if_all": "[조건...] (AND)",
+    "show_if_any": "[조건...] (OR)",
+    "show_if_sum": "{question_ids: [...], op, value} — 합산 비교"
+  },
+  "sections": [
+    {
+      "id": "A",
+      "title": "기본 정보",
+      "description": "가장 사적이지 않은 항목부터. 입력 거부감 없이 시작.",
+      "questions": [
+        {
+          "id": "A-1",
+          "text": "나이가 어떻게 되나요?",
+          "type": "numeric",
+          "unit": "세",
+          "integer": true,
+          "min": 5,
+          "max": 25,
+          "prefill_from": "user.age",
+          "skippable_if_prefilled": true
+        },
+        {
+          "id": "A-2",
+          "text": "성별이 어떻게 되나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "male", "label": "남"},
+            {"value": "female", "label": "여"},
+            {"value": "no_answer", "label": "응답 안 함"}
+          ],
+          "prefill_from": "user.gender",
+          "skippable_if_prefilled": true
+        },
+        {
+          "id": "A-3",
+          "text": "지금 같이 사는 가족은 누구인가요? (해당하는 것 모두 체크해 주세요)",
+          "type": "multi_select",
+          "options": [
+            {"value": "mother", "label": "엄마"},
+            {"value": "father", "label": "아빠"},
+            {"value": "sibling", "label": "형제자매"},
+            {"value": "grandparent", "label": "조부모"},
+            {"value": "other", "label": "기타"}
+          ]
+        },
+        {
+          "id": "A-4",
+          "text": "학교를 다니고 있나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "enrolled", "label": "다니는 중"},
+            {"value": "leave_dropout", "label": "휴학·자퇴"},
+            {"value": "ged", "label": "검정고시"},
+            {"value": "other", "label": "기타"}
+          ]
+        },
+        {
+          "id": "A-5",
+          "text": "학원·과외는 주에 몇 시간 정도 하나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "0", "label": "0"},
+            {"value": "1_5", "label": "1–5"},
+            {"value": "6_10", "label": "6–10"},
+            {"value": "11_20", "label": "11–20"},
+            {"value": "20_plus", "label": "20시간 이상"}
+          ]
+        },
+        {
+          "id": "A-6",
+          "text": "하루에 평균 몇 시간 정도 앉아 있나요? (학교·학원·공부·게임 다 포함)",
+          "type": "numeric",
+          "unit": "시간",
+          "min": 0,
+          "max": 24
+        },
+        {
+          "id": "A-7",
+          "text": "평소 몇 시쯤 자고 몇 시쯤 일어나나요?",
+          "type": "composite",
+          "fields": [
+            {"id": "sleep_time", "type": "time", "label": "취침"},
+            {"id": "wake_time", "type": "time", "label": "기상"}
+          ]
+        },
+        {
+          "id": "A-8",
+          "text": "운동(체육 수업 제외)을 일주일에 몇 번 하나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "0", "label": "0"},
+            {"value": "1_2", "label": "1–2"},
+            {"value": "3_4", "label": "3–4"},
+            {"value": "5_plus", "label": "5번 이상"}
+          ]
+        },
+        {
+          "id": "A-9",
+          "text": "학교에서 시험을 보면 보통 평균 몇 점쯤 나오나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "95_plus", "label": "95+"},
+            {"value": "85_94", "label": "85–94"},
+            {"value": "75_84", "label": "75–84"},
+            {"value": "65_74", "label": "65–74"},
+            {"value": "below_65", "label": "65 미만"},
+            {"value": "no_exam", "label": "시험 안 봄"}
+          ],
+          "note": "지능검사 대용 proxy"
+        },
+        {
+          "id": "A-10",
+          "text": "지금 본인의 건강 상태를 점수로 매긴다면 0–10점 중 몇 점인가요?",
+          "type": "scale_0_10",
+          "note": "self-rated health (한국 소아청소년 비만 임상진료지침)"
+        }
+      ]
+    },
+    {
+      "id": "B",
+      "title": "Tier 1 — BMI + 변화 동기",
+      "description": "최상위 게이트.",
+      "questions": [
+        {
+          "id": "B-1",
+          "text": "키와 몸무게를 알려 주세요 (BMI는 자동으로 계산할게요)",
+          "type": "bmi",
+          "fields": [
+            {"id": "height", "label": "키", "unit": "cm"},
+            {"id": "weight", "label": "몸무게", "unit": "kg"}
+          ],
+          "prefill_from": "user.height_weight",
+          "skippable_if_prefilled": true,
+          "computes": ["bmi", "bmi_percentile", "bmi_category"]
+        },
+        {
+          "id": "B-1b-1",
+          "text": "지금 본인의 체중이나 체형에 대해 얼마나 만족하나요?",
+          "type": "scale_0_10",
+          "labels": {"0": "매우 불만족", "10": "매우 만족"}
+        },
+        {
+          "id": "B-1b-2",
+          "text": "어떤 부분이 가장 불만족스러운가요?",
+          "type": "single_select",
+          "options": [
+            {"value": "weight", "label": "체중"},
+            {"value": "part", "label": "특정 부위(배·허벅지·얼굴 등)"},
+            {"value": "overall_shape", "label": "전체적인 체형"},
+            {"value": "other", "label": "기타"}
+          ],
+          "allow_other_free_text": true,
+          "show_if": {"question_id": "B-1b-1", "op": "<=", "value": 7}
+        },
+        {
+          "id": "B-1b-3",
+          "text": "체형이나 외모 때문에 다른 사람들의 시선이나 평가가 걱정된 적 있나요?",
+          "type": "yes_no"
+        },
+        {
+          "id": "B-1b-4",
+          "text": "어떤 부분이 걱정되나요?",
+          "type": "free_text",
+          "max_length": 50,
+          "show_if": {"question_id": "B-1b-3", "op": "==", "value": "yes"}
+        },
+        {
+          "id": "B-2-1",
+          "text": "Cheddar로 식습관·생활을 바꾸는 게 본인한테 얼마나 중요한가요?",
+          "type": "scale_0_10",
+          "labels": {"0": "전혀", "10": "엄청"}
+        },
+        {
+          "id": "B-2-2",
+          "text": "식습관·생활을 바꾸는 데 자신이 얼마나 있나요?",
+          "type": "scale_0_10",
+          "labels": {"0": "전혀", "10": "매우"}
+        },
+        {
+          "id": "B-2-3",
+          "text": "식습관이나 생활을 바꾸고 싶은 마음이 얼마나 있나요?",
+          "type": "scale_0_10",
+          "labels": {"0": "전혀", "10": "엄청"}
+        },
+        {
+          "id": "B-2-4",
+          "text": "그렇게 답한 가장 큰 이유가 무엇인가요?",
+          "type": "single_select",
+          "options": [
+            {"value": "family_worry", "label": "가족이 걱정해서"},
+            {"value": "body_mood", "label": "내 몸·기분이 좋아졌으면 해서"},
+            {"value": "doctor_recommend", "label": "의사 선생님이 권해서"},
+            {"value": "friends", "label": "친구 관계 때문에"},
+            {"value": "unknown", "label": "잘 모르겠어요"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C",
+      "title": "Tier 2 — 동반 정신병리",
+      "description": "K-SADS-PL 선별면담 차용. 응답은 0–3 (없음/가끔/자주/거의매일).",
+      "questions": [
+        {
+          "id": "C-1-1",
+          "text": "지난 2주 동안, 무엇을 해도 재미가 없거나 하고 싶지 않은 적이 얼마나 자주 있었나요?",
+          "type": "likert_0_3",
+          "ksads_ref": "p.7",
+          "tag": "PHQ-2"
+        },
+        {
+          "id": "C-1-2",
+          "text": "지난 2주 동안, 기분이 가라앉거나, 우울하거나, 희망이 없다고 느낀 적이 얼마나 자주 있었나요?",
+          "type": "likert_0_3",
+          "ksads_ref": "p.7",
+          "tag": "PHQ-2"
+        },
+        {
+          "id": "C-2-1",
+          "text": "지난 몇 주 동안, '차라리 죽었으면 좋겠다'는 생각이 든 적 있나요?",
+          "type": "yes_no",
+          "ksads_ref": "p.10",
+          "tag": "suicide"
+        },
+        {
+          "id": "C-2-2",
+          "text": "지난 한 주 동안, 스스로를 다치게 하거나 죽고 싶다는 생각이 든 적 있나요?",
+          "type": "yes_no",
+          "ksads_ref": "p.10",
+          "tag": "suicide"
+        },
+        {
+          "id": "C-2-3",
+          "text": "지금 이 순간에도 그런 생각이 드나요?",
+          "type": "yes_no",
+          "ksads_ref": "p.10",
+          "tag": "suicide_acute",
+          "show_if_any": [
+            {"question_id": "C-2-1", "op": "==", "value": "yes"},
+            {"question_id": "C-2-2", "op": "==", "value": "yes"}
+          ]
+        },
+        {
+          "id": "C-3-1",
+          "text": "며칠 동안 평소보다 훨씬 들떠 있거나, 잠을 안 자도 멀쩡하거나, 갑자기 생각·행동이 빨라진 적이 있나요?",
+          "type": "yes_no",
+          "ksads_ref": "p.12",
+          "tag": "mania"
+        },
+        {
+          "id": "C-3-2",
+          "text": "그게 며칠 이상 계속됐나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "1_3", "label": "1–3일"},
+            {"value": "4_plus", "label": "4일 이상"},
+            {"value": "1_week_plus", "label": "1주 이상"}
+          ],
+          "show_if": {"question_id": "C-3-1", "op": "==", "value": "yes"}
+        },
+        {
+          "id": "C-4-1",
+          "text": "다른 사람들에게는 들리지 않는 소리가 들리거나, 보이지 않는 것이 보인 적이 있나요?",
+          "type": "yes_no",
+          "ksads_ref": "p.14",
+          "tag": "psychosis"
+        },
+        {
+          "id": "C-4-2",
+          "text": "한 번이었나요, 여러 번이었나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "once", "label": "한 번"},
+            {"value": "multiple", "label": "여러 번"}
+          ],
+          "show_if": {"question_id": "C-4-1", "op": "==", "value": "yes"}
+        },
+        {
+          "id": "C-4-3",
+          "text": "잠들기 직전이었나요?",
+          "type": "yes_no",
+          "show_if": {"question_id": "C-4-1", "op": "==", "value": "yes"},
+          "note": "입면기 환각 배제용"
+        },
+        {
+          "id": "C-5-1",
+          "text": "갑자기 가슴이 빠르게 뛰고 숨이 막히는 느낌이 든 적이 있나요?",
+          "type": "yes_no",
+          "ksads_ref": "p.16",
+          "tag": "panic"
+        },
+        {
+          "id": "C-5-2",
+          "text": "얼마나 자주 그러나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "almost_daily", "label": "거의 매일"},
+            {"value": "weekly", "label": "주 몇 번"},
+            {"value": "occasional", "label": "가끔"}
+          ],
+          "show_if": {"question_id": "C-5-1", "op": "==", "value": "yes"}
+        },
+        {
+          "id": "C-5-3",
+          "text": "또 그럴까봐 걱정되나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "no", "label": "안 돼요"},
+            {"value": "some", "label": "좀 돼요"},
+            {"value": "lots", "label": "많이 돼요"}
+          ],
+          "show_if": {"question_id": "C-5-1", "op": "==", "value": "yes"}
+        },
+        {
+          "id": "C-6-1",
+          "text": "사람들 앞에서 발표하거나 말하기가 너무 무서워서 피한 적 있나요?",
+          "type": "likert_0_3",
+          "ksads_ref": "p.20",
+          "tag": "social_phobia"
+        },
+        {
+          "id": "C-6-2",
+          "text": "그래서 실제로 안 한 적이 있나요? (발표 안 하기, 모임 빠지기 등)",
+          "type": "yes_no",
+          "show_if": {"question_id": "C-6-1", "op": ">=", "value": 2}
+        },
+        {
+          "id": "C-7-1",
+          "text": "작은 일에도 너무 자주, 너무 많이 걱정하게 되나요?",
+          "type": "likert_0_3",
+          "ksads_ref": "p.25",
+          "tag": "GAD"
+        },
+        {
+          "id": "C-7-2",
+          "text": "걱정을 멈추기가 어려운가요?",
+          "type": "likert_0_3",
+          "ksads_ref": "p.25",
+          "tag": "GAD"
+        },
+        {
+          "id": "C-8-1",
+          "text": "같은 생각이 자꾸 떠오르거나, 같은 행동(손 씻기·확인하기)을 반복해서 하게 되나요?",
+          "type": "likert_0_3",
+          "ksads_ref": "p.27",
+          "tag": "OCD"
+        },
+        {
+          "id": "C-8-2",
+          "text": "그것 때문에 학교나 일상이 방해받은 적 있나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "none", "label": "없음"},
+            {"value": "some", "label": "좀"},
+            {"value": "lots", "label": "많이"}
+          ],
+          "show_if": {"question_id": "C-8-1", "op": ">=", "value": 2}
+        },
+        {
+          "id": "C-9-1",
+          "text": "살찌는 것이 너무 무서워서, 그 생각이 일상에 영향을 주나요?",
+          "type": "likert_0_3",
+          "ksads_ref": "p.33",
+          "tag": "anorexia"
+        },
+        {
+          "id": "C-10",
+          "text": "지난 1주 동안, 살이 찌지 않게 하려고 다음 중 한 거 있나요? 한 거에 다 체크해 주세요. 한 거면 일주일에 며칠인가요?",
+          "type": "checklist_with_frequency",
+          "ksads_ref": "p.34",
+          "tag": "bulimia",
+          "frequency_unit": "days_per_week",
+          "frequency_max": 7,
+          "rows": [
+            {"id": "a", "label": "살빼는 약을 먹었다", "tier": 1},
+            {"id": "b", "label": "설사약을 먹었다", "tier": 1},
+            {"id": "c", "label": "이뇨제를 먹었다", "tier": 1},
+            {"id": "d", "label": "일부러 토했다", "tier": 1},
+            {"id": "e", "label": "운동을 평소보다 훨씬 많이 했다", "tier": 3},
+            {"id": "f", "label": "1주 이상 칼로리 없는 음료(물·차·블랙커피)만 마시고 안 먹었다", "tier": 2},
+            {"id": "g", "label": "여러 감량 방법을 자주 시도했다", "tier": 2}
+          ]
+        },
+        {
+          "id": "C-10-h",
+          "text": "운동을 못 한 날, 불안하거나 죄책감이 드나요? (driven exercise anchor)",
+          "type": "likert_0_3",
+          "show_if": {"question_id": "C-10", "op": "row_checked", "value": "e"}
+        },
+        {
+          "id": "C-11-1",
+          "text": "음식을 먹을 때, 멈추기 어렵거나 통제가 안 된다고 느낀 적이 있나요?",
+          "type": "likert_0_3",
+          "tag": "BED"
+        },
+        {
+          "id": "C-11-2",
+          "text": "짧은 시간에 평소보다 훨씬 많이 먹은 적이 있나요?",
+          "type": "yes_no",
+          "show_if": {"question_id": "C-11-1", "op": ">=", "value": 2}
+        },
+        {
+          "id": "C-11-3",
+          "text": "그 후 많이 힘들거나 속상했나요?",
+          "type": "yes_no",
+          "show_if": {"question_id": "C-11-2", "op": "==", "value": "yes"}
+        },
+        {
+          "id": "C-12-1",
+          "text": "과제나 놀이에 주의를 지속하기가 어려운가요?",
+          "type": "likert_0_3",
+          "ksads_ref": "p.36",
+          "tag": "ADHD"
+        },
+        {
+          "id": "C-12-2",
+          "text": "작은 자극에도 쉽게 산만해지나요?",
+          "type": "likert_0_3",
+          "ksads_ref": "p.36",
+          "tag": "ADHD"
+        },
+        {
+          "id": "C-12-3",
+          "text": "그것 때문에 학교 성적이나 생활에 어려움이 있나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "none", "label": "없음"},
+            {"value": "some", "label": "좀"},
+            {"value": "lots", "label": "많이"}
+          ],
+          "show_if_sum": {"question_ids": ["C-12-1", "C-12-2"], "op": ">=", "value": 4}
+        },
+        {
+          "id": "C-13-1",
+          "text": "담배를 피운 적이 있나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "none", "label": "없음"},
+            {"value": "tried", "label": "시도해봤음"},
+            {"value": "occasional", "label": "가끔"},
+            {"value": "regular", "label": "정기적"}
+          ],
+          "ksads_ref": "p.43"
+        },
+        {
+          "id": "C-13-2",
+          "text": "술을 마신 적이 있나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "none", "label": "없음"},
+            {"value": "tried", "label": "시도해봤음"},
+            {"value": "occasional", "label": "가끔"},
+            {"value": "regular", "label": "정기적"}
+          ],
+          "ksads_ref": "p.44"
+        },
+        {
+          "id": "C-13-3",
+          "text": "다른 약물을 사용한 적이 있나요?",
+          "type": "yes_no",
+          "ksads_ref": "p.46"
+        },
+        {
+          "id": "C-14-1",
+          "text": "혹시 큰 트라우마가 있었나요?",
+          "type": "yes_no",
+          "ksads_ref": "p.48",
+          "tag": "PTSD"
+        },
+        {
+          "id": "C-14-2",
+          "text": "무엇이었나요? 언제 있었나요?",
+          "type": "free_text",
+          "max_length": 100,
+          "show_if": {"question_id": "C-14-1", "op": "==", "value": "yes"}
+        }
+      ]
+    },
+    {
+      "id": "D",
+      "title": "Tier 3 — 식단·운동·수면·과거 시도력",
+      "questions": [
+        {
+          "id": "D-1-1",
+          "text": "평소 식사는 얼마나 규칙적인가요?",
+          "type": "scale_0_10",
+          "labels": {"0": "전혀 불규칙", "10": "매우 규칙적"}
+        },
+        {
+          "id": "D-1-2",
+          "text": "하루에 식사·간식을 보통 몇 번 먹나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "1", "label": "1"},
+            {"value": "2", "label": "2"},
+            {"value": "3", "label": "3"},
+            {"value": "4", "label": "4"},
+            {"value": "5_plus", "label": "5+"}
+          ]
+        },
+        {
+          "id": "D-1-3",
+          "text": "아침을 거의 매일 먹나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "yes", "label": "예"},
+            {"value": "sometimes", "label": "가끔"},
+            {"value": "no", "label": "아니오"}
+          ]
+        },
+        {
+          "id": "D-1-4",
+          "text": "가공식품(라면·과자·패스트푸드·탄산음료)을 일주일에 얼마나 자주 먹나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "rarely", "label": "거의 안 먹음"},
+            {"value": "1_2", "label": "1–2회"},
+            {"value": "3_5", "label": "3–5회"},
+            {"value": "almost_daily", "label": "거의 매일"}
+          ]
+        },
+        {
+          "id": "D-2-1",
+          "text": "평소 운동·신체활동은 얼마나 규칙적인가요?",
+          "type": "scale_0_10",
+          "labels": {"0": "전혀", "10": "매우"}
+        },
+        {
+          "id": "D-2-2",
+          "text": "가장 자주 하는 운동·활동은 무엇인가요?",
+          "type": "single_select",
+          "options": [
+            {"value": "walking", "label": "걷기"},
+            {"value": "running", "label": "달리기"},
+            {"value": "cycling", "label": "자전거"},
+            {"value": "ball_sports", "label": "구기"},
+            {"value": "gym", "label": "헬스"},
+            {"value": "dance", "label": "댄스"},
+            {"value": "none", "label": "없음"},
+            {"value": "other", "label": "기타"}
+          ]
+        },
+        {
+          "id": "D-3-1",
+          "text": "잠들기가 어려운가요?",
+          "type": "likert_0_3",
+          "tag": "ISI-K"
+        },
+        {
+          "id": "D-3-2",
+          "text": "자다가 자주 깨나요?",
+          "type": "likert_0_3",
+          "tag": "ISI-K"
+        },
+        {
+          "id": "D-3-3",
+          "text": "지금 본인의 수면에 얼마나 만족하나요?",
+          "type": "scale_0_10",
+          "labels": {"0": "매우 불만족", "10": "매우 만족"},
+          "tag": "ISI-K"
+        },
+        {
+          "id": "D-4-1",
+          "text": "예전에 살을 빼려고 시도해 본 적 있나요?",
+          "type": "single_select",
+          "options": [
+            {"value": "none", "label": "없음"},
+            {"value": "tried_failed", "label": "시도했지만 잘 안 됐다"},
+            {"value": "rebound", "label": "한동안 성공했지만 다시 늘었다(요요)"},
+            {"value": "maintained", "label": "성공해서 지금도 유지"}
+          ]
+        },
+        {
+          "id": "D-4-2",
+          "text": "가장 길었던 시도 기간은 얼마인가요?",
+          "type": "single_select",
+          "options": [
+            {"value": "lt_1w", "label": "1주 미만"},
+            {"value": "1_4w", "label": "1–4주"},
+            {"value": "1_3m", "label": "1–3개월"},
+            {"value": "3_6m", "label": "3–6개월"},
+            {"value": "6m_plus", "label": "6개월 이상"}
+          ],
+          "show_if": {"question_id": "D-4-1", "op": "in", "value": ["tried_failed", "rebound", "maintained"]}
+        },
+        {
+          "id": "D-4-3",
+          "text": "그때 최대 몇 kg까지 변했나요?",
+          "type": "numeric",
+          "unit": "kg",
+          "allow_unknown": true,
+          "unknown_label": "잘 기억 안 남",
+          "show_if": {"question_id": "D-4-1", "op": "in", "value": ["tried_failed", "rebound", "maintained"]}
+        },
+        {
+          "id": "D-4-4",
+          "text": "잘 된/안 된 가장 큰 이유는 무엇인가요?",
+          "type": "single_select",
+          "options": [
+            {"value": "will", "label": "의지"},
+            {"value": "environment", "label": "환경(가족·학교·시간)"},
+            {"value": "body", "label": "내 몸(체질·식욕·약 부작용)"},
+            {"value": "people", "label": "주변 사람 도움/부재"},
+            {"value": "unknown", "label": "잘 모름"}
+          ],
+          "show_if": {"question_id": "D-4-1", "op": "in", "value": ["tried_failed", "rebound", "maintained"]}
+        }
+      ]
+    },
+    {
+      "id": "E",
+      "title": "보조축 — Strengths / Weaknesses",
+      "questions": [
+        {
+          "id": "E-1-1",
+          "text": "친하게 지내는 친구가 몇 명 정도 있나요?",
+          "type": "numeric",
+          "unit": "명",
+          "integer": true,
+          "min": 0,
+          "max": 999
+        },
+        {
+          "id": "E-1-2",
+          "text": "가족 중에 본인을 응원해 주는 사람이 있나요?",
+          "type": "yes_no"
+        },
+        {
+          "id": "E-1-3",
+          "text": "누구인가요? (예: 엄마, 이모, 할머니 등)",
+          "type": "free_text",
+          "max_length": 50,
+          "show_if": {"question_id": "E-1-2", "op": "==", "value": "yes"}
+        },
+        {
+          "id": "E-1-4",
+          "text": "평소 산책을 하는 편인가요?",
+          "type": "single_select",
+          "options": [
+            {"value": "rarely", "label": "거의 없음"},
+            {"value": "sometimes", "label": "가끔"},
+            {"value": "often", "label": "자주"},
+            {"value": "daily", "label": "매일"}
+          ]
+        },
+        {
+          "id": "E-1-5",
+          "text": "이전에 무언가에서 성공한 경험이 있나요? (성적·운동·다이어트·관계 등)",
+          "type": "single_select",
+          "options": [
+            {"value": "yes", "label": "있음"},
+            {"value": "unknown", "label": "잘 모름"},
+            {"value": "no", "label": "없음"}
+          ],
+          "allow_other_free_text": true
+        },
+        {
+          "id": "E-2-1",
+          "text": "가족 안에서 마음 상하는 일이 자주 있나요?",
+          "type": "likert_0_3"
+        },
+        {
+          "id": "E-2-2",
+          "text": "외롭다고 느낄 때가 자주 있나요?",
+          "type": "likert_0_3",
+          "tag": "TILS"
+        },
+        {
+          "id": "E-2-3",
+          "text": "어릴 때 가정에서 힘든 일이 있었나요?",
+          "type": "yes_no",
+          "show_if": {"question_id": "C-14-1", "op": "==", "value": "no"}
+        }
+      ]
+    },
+    {
+      "id": "F",
+      "title": "개인화 분기",
+      "description": "대화 톤·모듈 우선순위 결정용. 2문항으로 끝.",
+      "questions": [
+        {
+          "id": "F-1",
+          "text": "Cheddar에서 가장 도움받고 싶은 건 무엇인가요? (1개)",
+          "type": "single_select",
+          "options": [
+            {"value": "meal_pattern", "label": "식사 패턴 안정"},
+            {"value": "binge", "label": "폭식 줄이기"},
+            {"value": "mood_food", "label": "기분과 식사의 관계"},
+            {"value": "sleep", "label": "잠 잘 자기"},
+            {"value": "exercise", "label": "운동 습관"},
+            {"value": "log_only", "label": "그냥 기록만"},
+            {"value": "unknown", "label": "잘 모름"}
+          ]
+        },
+        {
+          "id": "F-2",
+          "text": "최근 한 달, 본인의 주된 관심사는 무엇인가요? (1개)",
+          "type": "single_select",
+          "options": [
+            {"value": "academic_stress", "label": "학업 스트레스"},
+            {"value": "family_conflict", "label": "가족 갈등"},
+            {"value": "friend_loneliness", "label": "친구·외로움"},
+            {"value": "medication_side_effect", "label": "약 부작용"},
+            {"value": "body_appearance", "label": "신체 변화·외모"},
+            {"value": "nothing_special", "label": "특별한 일 없음"},
+            {"value": "unknown", "label": "잘 모름"}
+          ]
+        }
+      ]
+    }
+  ]
+}

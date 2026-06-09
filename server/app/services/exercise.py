@@ -43,17 +43,14 @@ MET_ESTIMATE_PROMPT = (
 
 
 def intensity_multiplier(intensity: int) -> float:
-    """주관적 강도(1-10) → MET 곱셈 계수 (계단식).
+    """주관적 강도(1-5) → MET 곱셈 계수.
 
-    1-3: 0.7 / 4-6: 1.0(표준) / 7-8: 1.2 / 9-10: 1.4
+    1: 0.7(아주 편함) / 2: 0.85(편함) / 3: 1.0(보통) / 4: 1.2(힘듦) / 5: 1.4(최대)
     """
-    if intensity <= 3:
-        return 0.7
-    if intensity <= 6:
-        return 1.0
-    if intensity <= 8:
-        return 1.2
-    return 1.4
+    multipliers = {1: 0.7, 2: 0.85, 3: 1.0, 4: 1.2, 5: 1.4}
+    # 범위 밖 값(예: 강도 체계가 1-10이던 시절의 옛 기록)은 가까운 쪽으로 보정.
+    clamped = max(1, min(5, int(intensity)))
+    return multipliers[clamped]
 
 
 def calc_calories_burned(

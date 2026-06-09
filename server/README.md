@@ -57,7 +57,17 @@ pip install -r requirements.txt
 
 ### 3) 환경변수
 
-`.env`는 이미 로컬 dev용으로 채워져 있습니다. 필요하면 `.env.example` 참고해 수정.
+> ⚠️ `.env`는 `.gitignore`에 들어 있어 **레포에 포함되지 않습니다.** 클론한
+> 경우 `.env.example`을 복사해 직접 만들어야 합니다:
+>
+> ```powershell
+> Copy-Item .env.example .env
+> ```
+>
+> 만든 뒤 **`SECRET_KEY`를 각자 긴 랜덤 문자열로 설정**하세요. JWT 토큰 서명/검증에
+> 쓰이는 각 백엔드 고유 키라 공유받을 필요는 없고, 임의로 정하면 됩니다. (기본값이
+> 있어 안 바꿔도 로컬에선 동작하지만 보안상 권장.)
+
 주요 항목:
 - `DATABASE_URL` — 로컬 Docker로 기본 설정 (운영 RDS URL은 주석 처리)
 - `KAKAO_REDIRECT_URI` — `http://localhost:3000/oauth/kakao/callback` (운영은 `https://cheddar-care.com/...`)

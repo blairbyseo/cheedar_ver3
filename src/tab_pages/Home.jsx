@@ -4,6 +4,12 @@ import {RankingIcon} from "../charticons/RankingIcon";
 import {BadgeIcon} from "../charticons/BadgeIcon";
 import {ChatIcon} from "../charticons/ChatIcon";
 import { usePoints } from "../usePoints";
+import { useTodayStatus } from "../useTodayStatus";
+
+// 헤더 멘트·끼니 현황 줄에서 쓰는 끼니 한글 표기.
+const MEAL_KR = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
+// 끼니별 시간대 시작 시각 — 현재 시각이 이보다 이르면 아직 '예정'.
+const MEAL_SLOT_START = { breakfast: 0, lunch: 11, dinner: 17 };
 
 function Home({setActiveTab}) {
   const days = ["월", "화", "수", "목", "금", "토", "일"];
@@ -33,6 +39,11 @@ function Home({setActiveTab}) {
   const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
   const day = dayNames[now.getDay()];
 
+  // 오늘 끼니별 기록 현황 — GET /api/meals/today/status.
+  //   { breakfast: "done"|"missing", lunch: …, dinner: …, snack: … }
+  const todayStatus = useTodayStatus();
+  const isMealDone = (type) => todayStatus?.[type] === "done";
+
   // 지금 시간대의 끼니 — 헤더 멘트가 가리킬 끼니.
   //   ~11시 아침 / 11~17시 점심 / 17시~ 저녁
   const currentMeal = hour < 11 ? "breakfast" : hour < 17 ? "lunch" : "dinner";
@@ -43,13 +54,13 @@ function Home({setActiveTab}) {
     breakfast: [
       "좋은 아침이에요~ 오늘도 힘차게 시작해봐요",
       "바빠도 아침은 꼭 챙겨드셔해요",
-      "상쾌한 아침이에요! 가볍게 한 끼 어때요?",
+      "상쾌한 아침이에요~ 가볍게 한 끼 어때요?",
       "아침 식사로 든든하게 하루를 깨워봐요~",
     ],
     lunch: [
       "점심 맛있게 드세요~",
       "든든한 점심으로 오후도 힘내봐요~",
-      "오전도 수고했어요! 점심 챙기는 거 잊지 마세요",
+      "오전도 수고했어요~ 점심 챙기는 거 잊지 마세요",
       "점심 한 끼로 에너지 채워봐요!",
     ],
     dinner: [
@@ -63,6 +74,14 @@ function Home({setActiveTab}) {
   // 지금 시간대의 인사말 후보 중 오늘 날짜로 하나 선택 (매일 조금씩 바뀜).
   const greetingPool = GREETINGS[currentMeal];
   const greeting = greetingPool[date % greetingPool.length];
+
+  // 끼니별 상태 라벨 — 기록했으면 '완료', 아직 그 시간대 전이면 '예정',
+  // 시간대가 지났는데 기록이 없으면 '미기록'.
+  const mealStateLabel = (type) => {
+    if (isMealDone(type)) return "완료";
+    if (hour < MEAL_SLOT_START[type]) return "예정";
+    return "미기록";
+  };
 
   let image = "/cheese/sleeping.svg"; // 디폴트 이미지
   let message = "오늘 식단을 기록해볼까요?"; // 기본 메시지

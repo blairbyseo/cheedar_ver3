@@ -10,7 +10,7 @@ import './Ranking.css'
 import './WeeklyReport.css'
 import './Exercise.css'
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Route, Routes } from 'react-router-dom';
 
 import Home from './tab_pages/Home';
@@ -22,6 +22,9 @@ import Ranking from './tab_pages/Ranking';
 import WeeklyReport from './tab_pages/WeeklyReport';
 import TabBar from './TabBar';
 
+import Survey from './survey/Survey';
+import { getNextSurvey } from './utils/survey';
+
 import { AuthProvider } from './auth/AuthContext';
 import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
@@ -31,6 +34,30 @@ import ProtectedRoute from './auth/ProtectedRoute';
 /* 로그인 이후 보여줄 메인 화면 — 탭 5개 + 하단 TabBar */
 function MainShell() {
   const [activeTab, setActiveTab] = useState("home");
+
+  // 설문 게이트: 로그인 후 첫 진입 시 띄워야 할 설문(온보딩/주기)이 있는지 확인.
+  // due 가 있으면 탭 화면 대신 설문을 전체화면으로 보여주고, 완료되면 홈으로 돌아간다.
+  // (비로그인/스크린샷 우회 상태에서는 /api/survey/next 가 401 → 그냥 무시)
+  const [surveyData, setSurveyData] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getNextSurvey();
+        if (!cancelled && data?.due && data?.schema_json) {
+          setSurveyData(data);
+        }
+      } catch {
+        // 띄울 설문 없음 또는 비로그인 — 무시하고 메인 화면 진행
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (surveyData) {
+    return <Survey data={surveyData} onDone={() => setSurveyData(null)} />;
+  }
 
   return (
     <div className="app">

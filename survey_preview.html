@@ -1,0 +1,477 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>설문 모바일 미리보기</title>
+<style>
+body { margin:0; background:#d9d2c2; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; padding:24px 12px 48px; }
+.wrap { display:flex; flex-wrap:wrap; gap:36px; justify-content:center; align-items:flex-start; }
+.col { text-align:center; }
+.col h3 { font-size:13px; color:#5b5340; margin:0 0 10px; font-weight:700; }
+.col p.cap { font-size:12px; color:#7a7058; margin:10px auto 0; max-width:390px; line-height:1.5; }
+/* iPhone 390x780 목업 — 내부 스크롤 컨테이너라 sticky 푸터가 실제로 하단 고정됨 */
+.phone { width:390px; height:780px; overflow-y:auto; border:11px solid #1b1b1b; border-radius:42px;
+  box-shadow:0 14px 40px rgba(0,0,0,.28); position:relative; background:#faf7ef; }
+.phone::-webkit-scrollbar { width:0; }
+.phone .survey-shell { min-height:100%; }
+/* 설문(Survey) 화면 스타일 — Cheddar 골드/크림 테마.
+ * 색 토큰은 다른 화면(App.css/Exercise.css)과 맞춤:
+ *   primary  #d1a916 / #F2C94C   배경 #FFFCF1   카드선 #E2DED7   글자 #333
+ */
+
+/* 바깥 셸: 앱의 .app 과 동일하게 전체 화면 + 크림 배경.
+ * (설문은 탭 화면(.app/.wholescreen) 대신 통째로 렌더되므로 배경을 직접 깐다) */
+.survey-shell {
+  min-height: 100vh;
+  background: #faf7ef;
+}
+
+/* 안쪽 콘텐츠 컬럼: 앱의 .wholescreen 과 동일한 430px 폭/패딩 */
+.survey-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  /* 하단: sticky 푸터(약 72px) 뒤로 내용이 가리지 않도록 여유 */
+  padding: 24px 20px 88px;
+  color: #333;
+  font-size: 15px;
+}
+
+/* ----- 헤더 / 진행률 ----- */
+.survey-head {
+  margin-bottom: 22px;
+}
+.survey-kicker {
+  margin: 0;
+  font-size: 12px;
+  color: #b08d12;
+  font-weight: 600;
+}
+.survey-section-title {
+  margin: 6px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #2d2a22;
+}
+.survey-section-desc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #888;
+  line-height: 1.5;
+}
+.survey-progress {
+  margin-top: 14px;
+  height: 6px;
+  width: 100%;
+  border-radius: 999px;
+  background: #f0e8cf;
+  overflow: hidden;
+}
+.survey-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #f2c94c, #d1a916);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+/* ----- 문항 리스트 ----- */
+.survey-questions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.survey-question {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.survey-question-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.survey-qid {
+  margin-top: 2px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #c4b88f;
+  flex-shrink: 0;
+}
+.survey-qtext {
+  margin: 0;
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2d2a22;
+  line-height: 1.45;
+}
+.survey-qnote {
+  margin: 0;
+  font-size: 12px;
+  color: #a59b7f;
+}
+
+/* ----- 공통 입력 ----- */
+.survey-input {
+  width: 100%;
+  border: 1px solid #e2ded7;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+  font-size: 15px;
+  color: #333;
+  outline: none;
+}
+.survey-input:focus {
+  border-color: #d1a916;
+  box-shadow: 0 0 0 3px rgba(242, 201, 76, 0.25);
+}
+.survey-input:disabled {
+  background: #f6f3ea;
+  color: #aaa;
+}
+.survey-input--num {
+  width: 120px;
+}
+.survey-input--time {
+  width: auto;
+}
+.survey-textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+.survey-field-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13px;
+  color: #777;
+}
+
+/* ----- 선택 버튼(single/yes-no) ----- */
+.survey-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.survey-yesno {
+  display: flex;
+  gap: 8px;
+}
+.survey-choice {
+  border: 1px solid #e2ded7;
+  border-radius: 10px;
+  background: #fff;
+  padding: 11px 14px;
+  font-size: 15px;
+  color: #444;
+  transition: all 0.15s ease;
+}
+.survey-choice--block {
+  width: 100%;
+  text-align: left;
+}
+.survey-choice--half {
+  flex: 1;
+  text-align: center;
+}
+.survey-choice:hover:not(:disabled) {
+  background: #fdf8e6;
+}
+.survey-choice.is-selected {
+  border-color: #d1a916;
+  background: #fff3c4;
+  color: #2d2a22;
+  font-weight: 600;
+}
+
+/* ----- 다중 선택(chips) ----- */
+.survey-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.survey-chip {
+  border: 1px solid #e2ded7;
+  border-radius: 999px;
+  background: #fff;
+  padding: 7px 14px;
+  font-size: 14px;
+  color: #444;
+  transition: all 0.15s ease;
+}
+.survey-chip:hover:not(:disabled) {
+  background: #fdf8e6;
+}
+.survey-chip.is-selected {
+  border-color: #d1a916;
+  background: #fff3c4;
+  color: #2d2a22;
+  font-weight: 600;
+}
+
+/* ----- Likert(0-3) ----- */
+.survey-likert {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.survey-likert-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid #e2ded7;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 4px;
+  transition: all 0.15s ease;
+}
+.survey-likert-btn:hover:not(:disabled) {
+  background: #fdf8e6;
+}
+.survey-likert-btn.is-selected {
+  border-color: #d1a916;
+  background: #fff3c4;
+}
+.survey-likert-num {
+  font-size: 17px;
+  font-weight: 700;
+  color: #2d2a22;
+}
+.survey-likert-label {
+  font-size: 11px;
+  color: #888;
+}
+
+/* ----- 슬라이더(0-10) ----- */
+.survey-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.survey-range {
+  width: 100%;
+  accent-color: #d1a916;
+}
+.survey-scale-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #888;
+}
+.survey-scale-value {
+  font-weight: 700;
+  color: #2d2a22;
+}
+
+/* ----- numeric + unit ----- */
+.survey-numeric {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.survey-unit {
+  font-size: 14px;
+  color: #888;
+}
+.survey-unknown-btn {
+  border: 1px solid #e2ded7;
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #777;
+}
+.survey-unknown-btn:hover:not(:disabled) {
+  background: #fdf8e6;
+}
+
+/* ----- BMI ----- */
+.survey-bmi {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.survey-bmi-row {
+  display: flex;
+  gap: 12px;
+}
+.survey-bmi-field {
+  flex: 1;
+}
+.survey-bmi-result {
+  font-size: 14px;
+  color: #777;
+}
+.survey-bmi-result strong {
+  color: #2d2a22;
+}
+
+/* ----- Composite ----- */
+.survey-composite {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.survey-composite-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.survey-composite-label {
+  width: 64px;
+  font-size: 14px;
+  color: #777;
+}
+
+/* ----- Checklist + frequency ----- */
+.survey-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.survey-checklist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e2ded7;
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 11px 12px;
+}
+.survey-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #d1a916;
+  flex-shrink: 0;
+}
+.survey-checklist-label {
+  flex: 1;
+  font-size: 14px;
+}
+.survey-checklist-freq {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: #888;
+}
+.survey-freq-input {
+  width: 52px;
+  text-align: center;
+  border: 1px solid #e2ded7;
+  border-radius: 8px;
+  background: #fff;
+  padding: 5px;
+  font-size: 14px;
+}
+.survey-freq-input:disabled {
+  background: #f6f3ea;
+}
+
+/* ----- 알 수 없는 타입 (개발 중 안전망) ----- */
+.survey-unknown-type {
+  border: 1px solid #f0c0c0;
+  background: #fdf0f0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #b04545;
+}
+
+/* ----- 에러 배너 ----- */
+.survey-error {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fdf0f0;
+  border: 1px solid #f0c0c0;
+  color: #b04545;
+  font-size: 13px;
+}
+
+/* ----- 푸터 (이전/다음) — 화면 하단 고정 -----
+ * 설문이 길어도 매번 끝까지 스크롤하지 않게 버튼을 viewport 하단에 sticky 고정.
+ * 위쪽은 크림 그라데이션으로 콘텐츠가 비치며 사라지게 처리. */
+.survey-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 24px -20px 0;  /* 좌우 패딩 상쇄해 가로 꽉 차게 */
+  padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(to top, #faf7ef 72%, rgba(250, 247, 239, 0));
+}
+.survey-btn {
+  border-radius: 12px;
+  padding: 12px 22px;
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+.survey-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.survey-btn--ghost {
+  background: #fff;
+  border-color: #e2ded7;
+  color: #777;
+}
+.survey-btn--ghost:hover:not(:disabled) {
+  background: #f6f3ea;
+}
+.survey-btn--primary {
+  background: linear-gradient(90deg, #f2c94c, #d1a916);
+  color: #fff;
+  flex: 1;
+  max-width: 200px;
+  box-shadow: 0 4px 12px rgba(209, 169, 22, 0.3);
+}
+.survey-btn--primary:hover:not(:disabled) {
+  filter: brightness(1.03);
+}
+
+/* ----- 완료 / 중앙 정렬 ----- */
+.survey-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  min-height: 100vh;
+  padding-bottom: 24px;
+}
+.survey-done-emoji {
+  font-size: 48px;
+}
+.survey-done-title {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2d2a22;
+}
+.survey-done-sub {
+  margin: 0;
+  font-size: 13px;
+  color: #888;
+}
+
+</style></head><body>
+<div class="wrap">
+  <div class="col"><h3>① 첫 화면 — 섹션 A (짧음)</h3><div class="phone"><div class="survey-shell"><div class="survey-page"><header class="survey-head"><p class="survey-kicker">시작 설문 · 1 / 6</p><h1 class="survey-section-title">기본 정보</h1><p class="survey-section-desc">가장 사적이지 않은 항목부터. 입력 거부감 없이 시작.</p><div class="survey-progress"><div class="survey-progress-bar" style="width:17%"></div></div></header><ol class="survey-questions"><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">A-1</span><p class="survey-qtext">나이가 어떻게 되나요?</p></div><div class="survey-numeric"><input class="survey-input survey-input--num" type="number"/><span class="survey-unit">세</span></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">A-2</span><p class="survey-qtext">성별이 어떻게 되나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">남</button><button class="survey-choice survey-choice--block">여</button><button class="survey-choice survey-choice--block">응답 안 함</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">A-3</span><p class="survey-qtext">지금 같이 사는 가족은 누구인가요? (해당하는 것 모두 체크해 주세요)</p></div><div class="survey-chips"><button class="survey-chip is-selected">엄마</button><button class="survey-chip">아빠</button><button class="survey-chip">형제자매</button><button class="survey-chip">조부모</button><button class="survey-chip">기타</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">A-4</span><p class="survey-qtext">학교를 다니고 있나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">다니는 중</button><button class="survey-choice survey-choice--block">휴학·자퇴</button><button class="survey-choice survey-choice--block">검정고시</button><button class="survey-choice survey-choice--block">기타</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">A-5</span><p class="survey-qtext">학원·과외는 주에 몇 시간 정도 하나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">0</button><button class="survey-choice survey-choice--block">1–5</button><button class="survey-choice survey-choice--block">6–10</button><button class="survey-choice survey-choice--block">11–20</button><button class="survey-choice survey-choice--block">20시간 이상</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">A-6</span><p class="survey-qtext">하루에 평균 몇 시간 정도 앉아 있나요? (학교·학원·공부·게임 다 포함)</p></div><div class="survey-numeric"><input class="survey-input survey-input--num" type="number"/><span class="survey-unit">시간</span></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">A-7</span><p class="survey-qtext">평소 몇 시쯤 자고 몇 시쯤 일어나나요?</p></div><div class="survey-composite"><label class="survey-composite-field"><span class="survey-composite-label">취침</span><input class="survey-input" type="time"/></label><label class="survey-composite-field"><span class="survey-composite-label">기상</span><input class="survey-input" type="time"/></label></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">A-8</span><p class="survey-qtext">운동(체육 수업 제외)을 일주일에 몇 번 하나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">0</button><button class="survey-choice survey-choice--block">1–2</button><button class="survey-choice survey-choice--block">3–4</button><button class="survey-choice survey-choice--block">5번 이상</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">A-9</span><p class="survey-qtext">학교에서 시험을 보면 보통 평균 몇 점쯤 나오나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">95+</button><button class="survey-choice survey-choice--block">85–94</button><button class="survey-choice survey-choice--block">75–84</button><button class="survey-choice survey-choice--block">65–74</button><button class="survey-choice survey-choice--block">65 미만</button><button class="survey-choice survey-choice--block">시험 안 봄</button></div><p class="survey-qnote">지능검사 대용 proxy</p></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">A-10</span><p class="survey-qtext">지금 본인의 건강 상태를 점수로 매긴다면 0–10점 중 몇 점인가요?</p></div><div class="survey-scale"><input class="survey-range" type="range" min="0" max="10" value="5"/><div class="survey-scale-labels"><span>0</span><span class="survey-scale-value">5</span><span>10</span></div></div><p class="survey-qnote">self-rated health (한국 소아청소년 비만 임상진료지침)</p></li></ol><footer class="survey-foot"><button class="survey-btn survey-btn--ghost" disabled>이전</button><button class="survey-btn survey-btn--primary">다음</button></footer></div></div></div>
+    <p class="cap">설문이 열리면 보이는 첫 화면. 폭 430px(폰에선 꽉 참), 상단 진행률 바, 하단 골드 버튼.</p></div>
+  <div class="col"><h3>② 긴 섹션 — 섹션 C (스크롤 ↓)</h3><div class="phone"><div class="survey-shell"><div class="survey-page"><header class="survey-head"><p class="survey-kicker">주기 설문 · 3 / 6</p><h1 class="survey-section-title">Tier 2 — 동반 정신병리</h1><p class="survey-section-desc">K-SADS-PL 선별면담 차용. 응답은 0–3 (없음/가끔/자주/거의매일).</p><div class="survey-progress"><div class="survey-progress-bar" style="width:50%"></div></div></header><ol class="survey-questions"><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-1-1</span><p class="survey-qtext">지난 2주 동안, 무엇을 해도 재미가 없거나 하고 싶지 않은 적이 얼마나 자주 있었나요?</p></div><div class="survey-likert"><button class="survey-likert-btn"><span class="survey-likert-num">0</span><span class="survey-likert-label">없음</span></button><button class="survey-likert-btn is-selected"><span class="survey-likert-num">1</span><span class="survey-likert-label">가끔</span></button><button class="survey-likert-btn"><span class="survey-likert-num">2</span><span class="survey-likert-label">자주</span></button><button class="survey-likert-btn"><span class="survey-likert-num">3</span><span class="survey-likert-label">거의 매일</span></button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-1-2</span><p class="survey-qtext">지난 2주 동안, 기분이 가라앉거나, 우울하거나, 희망이 없다고 느낀 적이 얼마나 자주 있었나요?</p></div><div class="survey-likert"><button class="survey-likert-btn"><span class="survey-likert-num">0</span><span class="survey-likert-label">없음</span></button><button class="survey-likert-btn is-selected"><span class="survey-likert-num">1</span><span class="survey-likert-label">가끔</span></button><button class="survey-likert-btn"><span class="survey-likert-num">2</span><span class="survey-likert-label">자주</span></button><button class="survey-likert-btn"><span class="survey-likert-num">3</span><span class="survey-likert-label">거의 매일</span></button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-2-1</span><p class="survey-qtext">지난 몇 주 동안, &#x27;차라리 죽었으면 좋겠다&#x27;는 생각이 든 적 있나요?</p></div><div class="survey-yesno"><button class="survey-choice survey-choice--half is-selected">예</button><button class="survey-choice survey-choice--half">아니오</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-2-2</span><p class="survey-qtext">지난 한 주 동안, 스스로를 다치게 하거나 죽고 싶다는 생각이 든 적 있나요?</p></div><div class="survey-yesno"><button class="survey-choice survey-choice--half is-selected">예</button><button class="survey-choice survey-choice--half">아니오</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-2-3</span><p class="survey-qtext">지금 이 순간에도 그런 생각이 드나요?</p></div><div class="survey-yesno"><button class="survey-choice survey-choice--half is-selected">예</button><button class="survey-choice survey-choice--half">아니오</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-3-1</span><p class="survey-qtext">며칠 동안 평소보다 훨씬 들떠 있거나, 잠을 안 자도 멀쩡하거나, 갑자기 생각·행동이 빨라진 적이 있나요?</p></div><div class="survey-yesno"><button class="survey-choice survey-choice--half is-selected">예</button><button class="survey-choice survey-choice--half">아니오</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-3-2</span><p class="survey-qtext">그게 며칠 이상 계속됐나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">1–3일</button><button class="survey-choice survey-choice--block">4일 이상</button><button class="survey-choice survey-choice--block">1주 이상</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-4-1</span><p class="survey-qtext">다른 사람들에게는 들리지 않는 소리가 들리거나, 보이지 않는 것이 보인 적이 있나요?</p></div><div class="survey-yesno"><button class="survey-choice survey-choice--half is-selected">예</button><button class="survey-choice survey-choice--half">아니오</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-4-2</span><p class="survey-qtext">한 번이었나요, 여러 번이었나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">한 번</button><button class="survey-choice survey-choice--block">여러 번</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-4-3</span><p class="survey-qtext">잠들기 직전이었나요?</p></div><div class="survey-yesno"><button class="survey-choice survey-choice--half is-selected">예</button><button class="survey-choice survey-choice--half">아니오</button></div><p class="survey-qnote">입면기 환각 배제용</p></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-5-1</span><p class="survey-qtext">갑자기 가슴이 빠르게 뛰고 숨이 막히는 느낌이 든 적이 있나요?</p></div><div class="survey-yesno"><button class="survey-choice survey-choice--half is-selected">예</button><button class="survey-choice survey-choice--half">아니오</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-5-2</span><p class="survey-qtext">얼마나 자주 그러나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">거의 매일</button><button class="survey-choice survey-choice--block">주 몇 번</button><button class="survey-choice survey-choice--block">가끔</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-5-3</span><p class="survey-qtext">또 그럴까봐 걱정되나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">안 돼요</button><button class="survey-choice survey-choice--block">좀 돼요</button><button class="survey-choice survey-choice--block">많이 돼요</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-6-1</span><p class="survey-qtext">사람들 앞에서 발표하거나 말하기가 너무 무서워서 피한 적 있나요?</p></div><div class="survey-likert"><button class="survey-likert-btn"><span class="survey-likert-num">0</span><span class="survey-likert-label">없음</span></button><button class="survey-likert-btn is-selected"><span class="survey-likert-num">1</span><span class="survey-likert-label">가끔</span></button><button class="survey-likert-btn"><span class="survey-likert-num">2</span><span class="survey-likert-label">자주</span></button><button class="survey-likert-btn"><span class="survey-likert-num">3</span><span class="survey-likert-label">거의 매일</span></button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-6-2</span><p class="survey-qtext">그래서 실제로 안 한 적이 있나요? (발표 안 하기, 모임 빠지기 등)</p></div><div class="survey-yesno"><button class="survey-choice survey-choice--half is-selected">예</button><button class="survey-choice survey-choice--half">아니오</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-7-1</span><p class="survey-qtext">작은 일에도 너무 자주, 너무 많이 걱정하게 되나요?</p></div><div class="survey-likert"><button class="survey-likert-btn"><span class="survey-likert-num">0</span><span class="survey-likert-label">없음</span></button><button class="survey-likert-btn is-selected"><span class="survey-likert-num">1</span><span class="survey-likert-label">가끔</span></button><button class="survey-likert-btn"><span class="survey-likert-num">2</span><span class="survey-likert-label">자주</span></button><button class="survey-likert-btn"><span class="survey-likert-num">3</span><span class="survey-likert-label">거의 매일</span></button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-7-2</span><p class="survey-qtext">걱정을 멈추기가 어려운가요?</p></div><div class="survey-likert"><button class="survey-likert-btn"><span class="survey-likert-num">0</span><span class="survey-likert-label">없음</span></button><button class="survey-likert-btn is-selected"><span class="survey-likert-num">1</span><span class="survey-likert-label">가끔</span></button><button class="survey-likert-btn"><span class="survey-likert-num">2</span><span class="survey-likert-label">자주</span></button><button class="survey-likert-btn"><span class="survey-likert-num">3</span><span class="survey-likert-label">거의 매일</span></button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-8-1</span><p class="survey-qtext">같은 생각이 자꾸 떠오르거나, 같은 행동(손 씻기·확인하기)을 반복해서 하게 되나요?</p></div><div class="survey-likert"><button class="survey-likert-btn"><span class="survey-likert-num">0</span><span class="survey-likert-label">없음</span></button><button class="survey-likert-btn is-selected"><span class="survey-likert-num">1</span><span class="survey-likert-label">가끔</span></button><button class="survey-likert-btn"><span class="survey-likert-num">2</span><span class="survey-likert-label">자주</span></button><button class="survey-likert-btn"><span class="survey-likert-num">3</span><span class="survey-likert-label">거의 매일</span></button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-8-2</span><p class="survey-qtext">그것 때문에 학교나 일상이 방해받은 적 있나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">없음</button><button class="survey-choice survey-choice--block">좀</button><button class="survey-choice survey-choice--block">많이</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-9-1</span><p class="survey-qtext">살찌는 것이 너무 무서워서, 그 생각이 일상에 영향을 주나요?</p></div><div class="survey-likert"><button class="survey-likert-btn"><span class="survey-likert-num">0</span><span class="survey-likert-label">없음</span></button><button class="survey-likert-btn is-selected"><span class="survey-likert-num">1</span><span class="survey-likert-label">가끔</span></button><button class="survey-likert-btn"><span class="survey-likert-num">2</span><span class="survey-likert-label">자주</span></button><button class="survey-likert-btn"><span class="survey-likert-num">3</span><span class="survey-likert-label">거의 매일</span></button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-10</span><p class="survey-qtext">지난 1주 동안, 살이 찌지 않게 하려고 다음 중 한 거 있나요? 한 거에 다 체크해 주세요. 한 거면 일주일에 며칠인가요?</p></div><ul class="survey-checklist"><li class="survey-checklist-row"><input class="survey-checkbox" type="checkbox" checked/><span class="survey-checklist-label">살빼는 약을 먹었다</span><label class="survey-checklist-freq"><span>주</span><input class="survey-freq-input" type="number" value="3"/><span>일</span></label></li><li class="survey-checklist-row"><input class="survey-checkbox" type="checkbox" /><span class="survey-checklist-label">설사약을 먹었다</span><label class="survey-checklist-freq"><span>주</span><input class="survey-freq-input" type="number" value="0"/><span>일</span></label></li><li class="survey-checklist-row"><input class="survey-checkbox" type="checkbox" /><span class="survey-checklist-label">이뇨제를 먹었다</span><label class="survey-checklist-freq"><span>주</span><input class="survey-freq-input" type="number" value="0"/><span>일</span></label></li><li class="survey-checklist-row"><input class="survey-checkbox" type="checkbox" /><span class="survey-checklist-label">일부러 토했다</span><label class="survey-checklist-freq"><span>주</span><input class="survey-freq-input" type="number" value="0"/><span>일</span></label></li><li class="survey-checklist-row"><input class="survey-checkbox" type="checkbox" /><span class="survey-checklist-label">운동을 평소보다 훨씬 많이 했다</span><label class="survey-checklist-freq"><span>주</span><input class="survey-freq-input" type="number" value="0"/><span>일</span></label></li><li class="survey-checklist-row"><input class="survey-checkbox" type="checkbox" /><span class="survey-checklist-label">1주 이상 칼로리 없는 음료(물·차·블랙커피)만 마시고 안 먹었다</span><label class="survey-checklist-freq"><span>주</span><input class="survey-freq-input" type="number" value="0"/><span>일</span></label></li><li class="survey-checklist-row"><input class="survey-checkbox" type="checkbox" /><span class="survey-checklist-label">여러 감량 방법을 자주 시도했다</span><label class="survey-checklist-freq"><span>주</span><input class="survey-freq-input" type="number" value="0"/><span>일</span></label></li></ul></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-10-h</span><p class="survey-qtext">운동을 못 한 날, 불안하거나 죄책감이 드나요? (driven exercise anchor)</p></div><div class="survey-likert"><button class="survey-likert-btn"><span class="survey-likert-num">0</span><span class="survey-likert-label">없음</span></button><button class="survey-likert-btn is-selected"><span class="survey-likert-num">1</span><span class="survey-likert-label">가끔</span></button><button class="survey-likert-btn"><span class="survey-likert-num">2</span><span class="survey-likert-label">자주</span></button><button class="survey-likert-btn"><span class="survey-likert-num">3</span><span class="survey-likert-label">거의 매일</span></button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-11-1</span><p class="survey-qtext">음식을 먹을 때, 멈추기 어렵거나 통제가 안 된다고 느낀 적이 있나요?</p></div><div class="survey-likert"><button class="survey-likert-btn"><span class="survey-likert-num">0</span><span class="survey-likert-label">없음</span></button><button class="survey-likert-btn is-selected"><span class="survey-likert-num">1</span><span class="survey-likert-label">가끔</span></button><button class="survey-likert-btn"><span class="survey-likert-num">2</span><span class="survey-likert-label">자주</span></button><button class="survey-likert-btn"><span class="survey-likert-num">3</span><span class="survey-likert-label">거의 매일</span></button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-11-2</span><p class="survey-qtext">짧은 시간에 평소보다 훨씬 많이 먹은 적이 있나요?</p></div><div class="survey-yesno"><button class="survey-choice survey-choice--half is-selected">예</button><button class="survey-choice survey-choice--half">아니오</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-11-3</span><p class="survey-qtext">그 후 많이 힘들거나 속상했나요?</p></div><div class="survey-yesno"><button class="survey-choice survey-choice--half is-selected">예</button><button class="survey-choice survey-choice--half">아니오</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-12-1</span><p class="survey-qtext">과제나 놀이에 주의를 지속하기가 어려운가요?</p></div><div class="survey-likert"><button class="survey-likert-btn"><span class="survey-likert-num">0</span><span class="survey-likert-label">없음</span></button><button class="survey-likert-btn is-selected"><span class="survey-likert-num">1</span><span class="survey-likert-label">가끔</span></button><button class="survey-likert-btn"><span class="survey-likert-num">2</span><span class="survey-likert-label">자주</span></button><button class="survey-likert-btn"><span class="survey-likert-num">3</span><span class="survey-likert-label">거의 매일</span></button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-12-2</span><p class="survey-qtext">작은 자극에도 쉽게 산만해지나요?</p></div><div class="survey-likert"><button class="survey-likert-btn"><span class="survey-likert-num">0</span><span class="survey-likert-label">없음</span></button><button class="survey-likert-btn is-selected"><span class="survey-likert-num">1</span><span class="survey-likert-label">가끔</span></button><button class="survey-likert-btn"><span class="survey-likert-num">2</span><span class="survey-likert-label">자주</span></button><button class="survey-likert-btn"><span class="survey-likert-num">3</span><span class="survey-likert-label">거의 매일</span></button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-12-3</span><p class="survey-qtext">그것 때문에 학교 성적이나 생활에 어려움이 있나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">없음</button><button class="survey-choice survey-choice--block">좀</button><button class="survey-choice survey-choice--block">많이</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-13-1</span><p class="survey-qtext">담배를 피운 적이 있나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">없음</button><button class="survey-choice survey-choice--block">시도해봤음</button><button class="survey-choice survey-choice--block">가끔</button><button class="survey-choice survey-choice--block">정기적</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-13-2</span><p class="survey-qtext">술을 마신 적이 있나요?</p></div><div class="survey-options"><button class="survey-choice survey-choice--block is-selected">없음</button><button class="survey-choice survey-choice--block">시도해봤음</button><button class="survey-choice survey-choice--block">가끔</button><button class="survey-choice survey-choice--block">정기적</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-13-3</span><p class="survey-qtext">다른 약물을 사용한 적이 있나요?</p></div><div class="survey-yesno"><button class="survey-choice survey-choice--half is-selected">예</button><button class="survey-choice survey-choice--half">아니오</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-14-1</span><p class="survey-qtext">혹시 큰 트라우마가 있었나요?</p></div><div class="survey-yesno"><button class="survey-choice survey-choice--half is-selected">예</button><button class="survey-choice survey-choice--half">아니오</button></div></li><li class="survey-question"><div class="survey-question-head"><span class="survey-qid">C-14-2</span><p class="survey-qtext">무엇이었나요? 언제 있었나요?</p></div><textarea class="survey-input survey-textarea" rows="3"></textarea></li></ol><footer class="survey-foot"><button class="survey-btn survey-btn--ghost" >이전</button><button class="survey-btn survey-btn--primary">다음</button></footer></div></div></div>
+    <p class="cap">문항이 많아 스크롤됩니다. <b>스크롤해 보세요</b> — 「이전 / 다음」 버튼이 화면 하단에 <b>고정</b>돼 따라옵니다.</p></div>
+</div>
+</body></html>
