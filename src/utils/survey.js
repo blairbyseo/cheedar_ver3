@@ -16,6 +16,7 @@
  *   current_section?: string | null,
  *   answers?: object,
  *   prefilled_answers?: object,
+ *   reward_points?: number,   // 완료 시 받는 포인트 — 진행 중 독려 안내에 사용
  * }>}
  */
 export async function getNextSurvey() {
@@ -49,7 +50,8 @@ export async function saveSurveyProgress(responseId, { answers, currentSection }
  * User.onboarded / last_survey_at 갱신 → SafetyEvent 적재 수행.
  *
  * @param {number} responseId
- * @returns {Promise<{ response_id, derived_flags, completed_at }>}
+ * @returns {Promise<{ response_id, derived_flags, completed_at, points_awarded }>}
+ *   points_awarded: 이번 제출로 새로 적립된 포인트(설문 완료 = 50).
  */
 export async function submitSurvey(responseId) {
   const res = await fetch(`/api/survey/${responseId}/submit`, {

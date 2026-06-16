@@ -4,6 +4,7 @@ import { useAuth } from "./auth/AuthContext";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import RewardClaims from "./pages/RewardClaims";
 import SafetyEvents from "./pages/SafetyEvents";
 import UserDetail from "./pages/UserDetail";
 import UserManagement from "./pages/UserManagement";
@@ -51,6 +52,14 @@ export default function App() {
         element={
           <RequireAdmin>
             <SafetyEvents />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/rewards"
+        element={
+          <RequireAdmin>
+            <RewardClaims />
           </RequireAdmin>
         }
       />

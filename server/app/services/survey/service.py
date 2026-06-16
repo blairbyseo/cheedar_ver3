@@ -214,10 +214,13 @@ def finalize_submission(
     _emit_safety_events(db, user, response, derived)
 
     # 설문 완료 보상 — 같은 트랜잭션 안에서 XP/CP 적립(응답 1건당 1회).
-    award_points_for_survey(db, user, response)
+    earned = award_points_for_survey(db, user, response)
 
     db.commit()
     db.refresh(response)
+    # 이번 제출로 새로 적립된 포인트 합계를 응답 객체에 임시로 실어 보낸다
+    # (컬럼이 아니라 전송용 임시 속성 — 라우터가 읽어 SurveySubmitResponse 로 내려준다).
+    response.points_awarded = sum(e["amount"] for e in earned)
     return response
 
 

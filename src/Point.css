@@ -1,10 +1,17 @@
 /*(2) 포인트 페이지 — 디자인 토큰은 App.css의 :root에서 공급 */
 
+/* 맨 아래 글씨가 고정 탭바(78px) 밑으로 들어가 가려지지 않도록 여유 확보.
+   .wholescreen 의 하단 패딩(70px)만으로는 탭바보다 짧아 일부가 가려졌었다. */
+.point-page {
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+}
+
 /*1. 총포인트*/
 .point-total-card {
-  padding: 20px 20px 5px 10px;
+  padding: 20px 18px 6px;
   margin-top: 20px;
-  margin-bottom: 14px;
+  /* (B) 아래 섹션이 첫 화면에 살짝 걸쳐 보이도록 간격을 살짝 넉넉히 */
+  margin-bottom: 20px;
 }
 
 .point-card p {
@@ -46,35 +53,6 @@
 
 
 /* 2. 적립내역 */
-.point-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.point-summary-card {
-  background: var(--card-white);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 14px 10px;
-  text-align: center;
-  box-shadow: var(--shadow-soft);
-}
-
-.point-summary-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-sub);
-  margin: 0 0 6px;
-}
-
-.point-summary-value {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-main);
-  letter-spacing: -0.2px;
-}
-
 .point-history {
   margin-top: 22px;
 }
@@ -260,65 +238,100 @@
   padding-left: 4px;
 }
 
-.point-rules-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.point-rules-card {
-  position: relative;
-  overflow: hidden;
-  /* 연한거 */   background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
-  border: 1px solid rgba(46, 42, 36, 0.04);
-  border-radius: 22px;
-  padding: 14px 16px 14px;
-  min-height: 88px;
+/* 토스풍 한 장 카드 — 규칙들을 한 줄씩 담는다 */
+.point-rules-listcard {
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 20px;
   box-shadow: var(--shadow-card);
+  padding: 6px 16px 8px;
+}
+
+/* 규칙 한 줄: 아이콘 배지 + 라벨/설명 + 우측 포인트 pill */
+.point-rule-row {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  align-items: center;
+  gap: 13px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
 }
 
-.point-rules-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 30px rgba(46, 42, 36, 0.10);
+.point-rule-row:last-of-type {
+  border-bottom: none;
 }
 
-/* 3-2. 적립기준 안의 원 */
-.point-rules-card::before {
-  content: "";
-  position: absolute;
-  right: -15px;
-  bottom: -18px;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: rgba(242, 201, 76, 0.24);
-  pointer-events: none;
+.point-rule-info {
+  flex: 1;
+  min-width: 0;
 }
 
-.point-rules-label {
-  position: relative;
-  z-index: 1;
-  font-size: 13px;
+.point-rule-name {
+  font-size: 14.5px;
   font-weight: 600;
-  color: var(--text-sub);
+  color: var(--text-main);
   line-height: 1.3;
   margin: 0;
 }
 
-.point-rules-value {
-  position: relative;
-  z-index: 1;
-  margin-top: auto;
-  font-size: 21px;
-  font-weight: 900;
+.point-rule-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.3;
+  margin: 2px 0 0;
+}
+
+.point-rule-pill {
+  flex: 0 0 auto;
+  background: var(--primary-soft);
   color: var(--primary-strong);
-  letter-spacing: -0.4px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+/* 펼쳤을 때 새로 등장하는 줄만 살짝 페이드 */
+.point-rule-row--extra {
+  animation: point-rules-expand 0.18s ease-out;
+}
+
+/* '더보기 / 접기' 버튼 — 카드 하단, 위쪽 구분선 */
+.point-more-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--line);
+  margin-top: 2px;
+  padding: 14px 0 8px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+
+.point-more-btn:hover {
+  color: var(--primary-strong);
+}
+
+/* 글자(⌄) 대신 CSS로 그린 셰브론 — 세로 중앙에 정확히 맞고 두께도 조절 가능 */
+.point-more-chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 2.5px solid currentColor;
+  border-bottom: 2.5px solid currentColor;
+  border-radius: 1px;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.2s ease;
+}
+
+.point-more-btn.open .point-more-chevron {
+  transform: translateY(1px) rotate(225deg);
 }
 
 /* 3-3. 적립 기준 옆 물음표와 안내멘트 */
@@ -333,6 +346,11 @@
 .point-rules-title-row .point-rules-title {
   margin: 0;
   padding-left: 0;
+}
+
+@keyframes point-rules-expand {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .point-rules-help-wrap {
@@ -453,6 +471,52 @@
 .point-history-modal-list {
   max-height: 360px;
   overflow-y: auto;
+}
+
+/* ───────── (A) 첫 진입 스크롤 힌트 — "아래로 내려보세요" ───────── */
+/* 창 전체가 스크롤되므로 fixed 로 화면 하단(탭바 위)에 고정한다.
+   살짝만 스크롤해도 JS 에서 제거되고, 통통 튀는 셰브론으로 시선을 끈다. */
+.point-scroll-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 84px;                 /* 탭바(약 70px) 바로 위 */
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  z-index: 50;
+  pointer-events: none;         /* 아래 콘텐츠 클릭을 막지 않게 */
+  animation: point-hint-bounce 1.4s ease-in-out infinite;
+}
+
+.point-scroll-hint-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sub);
+  background: rgba(255, 253, 248, 0.92);
+  padding: 3px 10px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-soft);
+}
+
+.point-scroll-hint-chevron {
+  width: 10px;
+  height: 10px;
+  border-right: 2.5px solid var(--text-sub);
+  border-bottom: 2.5px solid var(--text-sub);
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+
+@keyframes point-hint-bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(6px); }
+}
+
+/* 접근성: 모션 최소화 설정이면 튀지 않게 한다 */
+@media (prefers-reduced-motion: reduce) {
+  .point-scroll-hint { animation: none; }
 }
 
 

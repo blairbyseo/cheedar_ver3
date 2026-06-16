@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>레벨 시스템 가이드 — 현금(Lv.4)까지</title>
+<style>
+  :root{
+    --gold:#D1A916; --gold-soft:#FFF3C4; --gold-deep:#6b4e00;
+    --ink:#2E2A24; --sub:#7A746A; --muted:#A7A29A;
+    --line:rgba(46,42,36,.12); --card:#FFFDF8;
+    --ok:#1a7f37; --ok-soft:#E7F6EC;
+    --shadow:0 10px 30px rgba(46,42,36,.08);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;
+    color:var(--ink); background:#FAF7EF; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px; margin:0 auto; padding:40px 24px 80px;}
+  header.top{
+    background:linear-gradient(135deg,#FFEFB0 0%,#FFD874 55%,#F4C443 100%);
+    border:1.5px solid rgba(209,169,22,.45);
+    border-radius:24px; padding:32px 28px; box-shadow:var(--shadow);
+    margin-bottom:14px;
+  }
+  header.top .tag{font-size:13px;font-weight:800;color:var(--gold-deep);letter-spacing:.3px;}
+  header.top h1{margin:6px 0 4px;font-size:27px;font-weight:900;color:var(--gold-deep);}
+  header.top p{margin:0;font-size:14px;color:#7A5A00;font-weight:600;}
+  .meta{font-size:12.5px;color:var(--muted);margin:10px 0 34px;text-align:right;}
+
+  section{margin:0 0 34px;}
+  h2{font-size:20px;font-weight:800;margin:0 0 4px;display:flex;align-items:center;gap:10px;}
+  h2 .ico{font-size:23px;flex:none;}
+  .lead{color:var(--sub);font-size:14px;margin:0 0 16px;padding-left:33px;}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:18px;padding:20px 22px;box-shadow:var(--shadow);
+  }
+
+  /* 큰 한줄 답 */
+  .answer{
+    background:#fff; border:2px solid var(--gold); border-radius:18px;
+    padding:20px 22px; box-shadow:var(--shadow); font-size:16px; font-weight:700;
+  }
+  .answer b{color:var(--gold-deep); background:var(--gold-soft); padding:1px 6px; border-radius:6px;}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  th{font-size:12px;color:var(--sub);font-weight:700;letter-spacing:.3px;}
+  .xp{font-weight:900;color:var(--gold);white-space:nowrap;}
+  .lvl{font-weight:900;}
+  tr.cash{background:var(--gold-soft);}
+  tr.cash td{border-bottom-color:rgba(209,169,22,.35);}
+  .tag-cash{display:inline-block;background:var(--gold);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:6px;}
+  .muted{color:var(--muted);font-size:12.5px;}
+
+  ul.plan{margin:6px 0 0;padding-left:0;list-style:none;}
+  ul.plan li{position:relative;padding:8px 0 8px 30px;font-size:14px;border-bottom:1px dashed var(--line);}
+  ul.plan li:last-child{border-bottom:none;}
+  ul.plan li::before{content:"✓";position:absolute;left:2px;top:8px;color:var(--gold);font-weight:900;}
+  ul.plan b{color:var(--gold-deep);}
+  ul.plan .p{float:right;font-weight:900;color:var(--gold);}
+
+  .why{background:var(--gold-soft);border-radius:12px;padding:12px 15px;font-size:13px;color:#5e4a08;margin:14px 0 0;}
+  .why b{color:var(--gold-deep);}
+  .total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:2px solid var(--line);font-weight:900;}
+  .total .sum{color:var(--gold-deep);font-size:18px;}
+  code{background:#2E2A24;color:#FFD874;padding:1px 6px;border-radius:5px;font-size:12.5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="tag">CHEDDAR · 레벨 시스템</div>
+    <h1>레벨 가이드 — 현금 보상(Lv.4)까지 얼마나?</h1>
+    <p>레벨은 누적 경험치(XP)로만 오른다. XP는 한 번 쌓이면 줄지 않아 레벨은 떨어지지 않는다.</p>
+  </header>
+  <div class="meta">작성일 2026-06-15 · 곡선 LEVEL_BASE=50 / LEVEL_INC=150 기준</div>
+
+  <!-- 왜 벌써 Lv.2 -->
+  <section>
+    <h2><span class="ico">❓</span>“내가 벌써 Lv.2라고?”</h2>
+    <div class="answer">
+      네, 맞아요. Lv.2 기준이 <b>딱 50 XP</b>인데, 가입 직후 <b>설문 완료 한 번이 +50 XP</b>예요.<br>
+      → 설문만 끝내도 바로 Lv.2. 일부러 만든 ‘초반 빠른 한 방’이에요. 🎉
+    </div>
+  </section>
+
+  <!-- 레벨 기준표 -->
+  <section>
+    <h2><span class="ico">📊</span>레벨별 기준 (누적 XP)</h2>
+    <p class="lead">‘직전 레벨에서 추가로 필요한 XP’가 한 칸 오를 때마다 150씩 무거워진다.</p>
+    <div class="card">
+      <table>
+        <tr><th>레벨</th><th>도달 누적 XP</th><th>직전 레벨에서 +</th><th>대략 기간</th></tr>
+        <tr><td class="lvl">Lv.1</td><td class="xp">0</td><td>—</td><td class="muted">가입</td></tr>
+        <tr><td class="lvl">Lv.2</td><td class="xp">50</td><td>+50</td><td class="muted">가입 당일 (설문 1개)</td></tr>
+        <tr><td class="lvl">Lv.3</td><td class="xp">250</td><td>+200</td><td class="muted">3~4일</td></tr>
+        <tr class="cash">
+          <td class="lvl">Lv.4 <span class="tag-cash">💰 현금</span></td>
+          <td class="xp">600</td><td>+350</td><td class="muted">약 1.5~2주</td>
+        </tr>
+        <tr><td class="lvl">Lv.5</td><td class="xp">1,100</td><td>+500</td><td class="muted">약 3주 (빡세게 갈 때 후보 기준)</td></tr>
+      </table>
+      <p class="muted" style="margin-top:10px;">계산식: <code>도달 XP = (L-1)×50 + 150×(L-1)×(L-2)/2</code></p>
+    </div>
+  </section>
+
+  <!-- 적립 점수표 -->
+  <section>
+    <h2><span class="ico">🍽️</span>무엇을 하면 XP가 얼마?</h2>
+    <p class="lead">식단·운동·설문을 기록할 때마다 XP와 포인트(CP)가 같은 값으로 함께 쌓인다.</p>
+    <div class="card">
+      <table>
+        <tr><th>행동</th><th>XP</th><th>조건</th></tr>
+        <tr><td>식단 1회 기록</td><td class="xp">+10</td><td class="muted">식단 1건마다</td></tr>
+        <tr><td>하루 3끼 완료</td><td class="xp">+20</td><td class="muted">아침·점심·저녁 다 기록한 날, 하루 1회</td></tr>
+        <tr><td>주 5일 기록</td><td class="xp">+100</td><td class="muted">한 주에 서로 다른 5일 기록 시 1회</td></tr>
+        <tr><td>주 7일 기록 보너스</td><td class="xp">+50</td><td class="muted">한 주 7일 다 채우면 1회</td></tr>
+        <tr><td>운동 1회 기록</td><td class="xp">+15</td><td class="muted">운동한 날 하루 1회</td></tr>
+        <tr><td>주 3일 운동 보너스</td><td class="xp">+80</td><td class="muted">한 주에 서로 다른 3일 운동 시 1회</td></tr>
+        <tr><td>설문 완료</td><td class="xp">+50</td><td class="muted">설문 1건 제출마다</td></tr>
+      </table>
+      <div class="why">
+        <b>‘하루 풀 기록’ = 65 XP</b> (3끼 30 + 하루3끼 보너스 20 + 운동 15).<br>
+        <b>‘완벽한 한 주’ = 685 XP</b> (풀 기록 7일 455 + 주5일 100 + 주7일 50 + 운동주3일 80).
+      </div>
+    </div>
+  </section>
+
+  <!-- Lv.4까지 -->
+  <section>
+    <h2><span class="ico">🎯</span>현금(Lv.4 = 600 XP)까지 필요한 노력</h2>
+    <p class="lead">두 가지 길 — 빡세게 몰면 빨리, 느슨하게 가도 2주면 닿는다.</p>
+
+    <div class="card">
+      <h3 style="margin:0 0 4px;">🐢 보통 페이스 — 약 2주 (현실적인 길)</h3>
+      <ul class="plan">
+        <li><b>설문</b> 완료 1회 <span class="p">+50</span></li>
+        <li><b>식단</b> 2주간 하루 2끼 (약 28건 × 10) <span class="p">+280</span></li>
+        <li><b>주 5일 기록</b> 보너스 × 2주 <span class="p">+200</span></li>
+        <li><b>운동</b> 약 5회 (15 × 5) <span class="p">+75</span></li>
+      </ul>
+      <div class="total"><span>합계</span><span class="sum">≈ 605 XP → Lv.4 달성 ✅</span></div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h3 style="margin:0 0 4px;">🐇 빠른 길 — 약 6일 (매일 풀로 기록 시)</h3>
+      <ul class="plan">
+        <li><b>하루 풀 기록</b>(3끼+운동) 65 XP × 6일 <span class="p">+390</span></li>
+        <li><b>설문</b> 1회 <span class="p">+50</span></li>
+        <li><b>주 5일</b> + <b>주 3일 운동</b> 보너스 <span class="p">+180</span></li>
+      </ul>
+      <div class="total"><span>합계</span><span class="sum">≈ 620 XP → Lv.4 달성 ✅</span></div>
+    </div>
+
+    <div class="why" style="margin-top:14px;">
+      정리하면 — <b>현금까지는 600 XP.</b> 설문(50)으로 시작 한 방을 깔고, <b>매일 식단을 꾸준히
+      찍고 주간 보너스(주5일·운동)를 챙기는 게 핵심</b>이에요. 완벽히 하면 한 주, 느슨해도 2주면 닿아요.
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

@@ -18,6 +18,7 @@ class SurveyNextResponse(BaseModel):
     current_section: str | None = None
     answers: dict = {}
     prefilled_answers: dict = {}
+    reward_points: int = 0  # 설문 완료 시 받는 포인트 — 진행 중 독려 안내에 사용
 
 
 class SurveyProgressRequest(BaseModel):
@@ -42,3 +43,4 @@ class SurveySubmitResponse(BaseModel):
     response_id: int
     derived_flags: dict
     completed_at: datetime
+    points_awarded: int = 0  # 이번 제출로 새로 적립된 포인트(설문 완료 = 50)

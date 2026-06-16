@@ -5,6 +5,7 @@ import {BadgeIcon} from "../charticons/BadgeIcon";
 import {ChatIcon} from "../charticons/ChatIcon";
 import { usePoints } from "../usePoints";
 import { useTodayStatus } from "../useTodayStatus";
+import { useFinalReward } from "../useFinalReward";
 
 // 헤더 멘트·끼니 현황 줄에서 쓰는 끼니 한글 표기.
 const MEAL_KR = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
@@ -44,6 +45,28 @@ function Home({setActiveTab}) {
   const todayStatus = useTodayStatus();
   const isMealDone = (type) => todayStatus?.[type] === "done";
 
+  // 현금 보상 챌린지 — 포인트 탭과 같은 데이터(GET /api/rewards/final-level)를
+  // 재사용해 홈 하단에 '속보 자막' 형태로 노출한다. 지급완료(paid)면 숨긴다.
+  const reward = useFinalReward();
+  const rw = reward.status;                 // null 이면 아직 로딩 전
+  const showTicker = rw && rw.claim?.status !== "paid";
+  // 챌린지 진행 상태에 따라 흐를 문구를 만든다.
+  const tickerMessage = (() => {
+    if (!rw) return "";
+    const amount = rw.reward_amount.toLocaleString();
+    const levelsLeft = Math.max(0, rw.final_level - rw.current_level);
+    if (rw.claim?.status === "pending") {
+      return `⏳ 현금 보상 신청 완료 — 관리자 확인 중이에요 · 조금만 기다려주세요`;
+    }
+    if (rw.claim?.status === "rejected") {
+      return `현금 보상 신청이 반려되었어요 · 자세히 확인해보세요`;
+    }
+    if (rw.eligible) {
+      return `🎉 축하해요! Lv.${rw.final_level} 달성 · 지금 ${amount}원 현금 보상을 신청할 수 있어요!`;
+    }
+    return `🏆 현금 보상 챌린지 · Lv.${rw.final_level} 달성하면 ${amount}원 · 앞으로 ${levelsLeft}레벨 남았어요!`;
+  })();
+
   // 지금 시간대의 끼니 — 헤더 멘트가 가리킬 끼니.
   //   ~11시 아침 / 11~17시 점심 / 17시~ 저녁
   const currentMeal = hour < 11 ? "breakfast" : hour < 17 ? "lunch" : "dinner";
@@ -52,15 +75,15 @@ function Home({setActiveTab}) {
   // 끼니별로 인사말 후보를 두고, 날짜로 골라 매일 문구가 살짝 달라지게 한다.
   const GREETINGS = {
     breakfast: [
-      "좋은 아침이에요~ 오늘도 힘차게 시작해봐요",
+      "좋은 아침이에요~\n오늘도 힘차게 시작해봐요!",
       "바빠도 아침은 꼭 챙겨드셔해요",
-      "상쾌한 아침이에요~ 가볍게 한 끼 어때요?",
+      "상쾌한 아침이에요~\n가볍게 한 끼 어때요?",
       "아침 식사로 든든하게 하루를 깨워봐요~",
     ],
     lunch: [
       "점심 맛있게 드세요~",
       "든든한 점심으로 오후도 힘내봐요~",
-      "오전도 수고했어요~ 점심 챙기는 거 잊지 마세요",
+      "오전도 수고했어요~\n 점심 챙기는 거 잊지 마세요",
       "점심 한 끼로 에너지 채워봐요!",
     ],
     dinner: [
@@ -197,6 +220,35 @@ function Home({setActiveTab}) {
     >
       <h3>주간 피드백 리포트</h3>
     </section>
+
+    {/* 홈 하단 현금 보상 챌린지 — 뉴스 속보 자막처럼 흐르는 이벤트 티커.
+        탭하면 포인트 탭으로 이동. 지급완료(paid)면 노출하지 않는다. */}
+    {showTicker && (
+      <section
+        className="home-ticker"
+        role="button"
+        tabIndex={0}
+        aria-label="현금 보상 챌린지 보러 가기"
+        onClick={() => setActiveTab("point")}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") setActiveTab("point");
+        }}
+      >
+        <span className="home-ticker-badge">
+          <span className="home-ticker-dot" aria-hidden="true" />
+          이벤트
+        </span>
+        <div className="home-ticker-viewport">
+          <div className="home-ticker-track">
+            <span className="home-ticker-text">{tickerMessage}</span>
+            <span className="home-ticker-text" aria-hidden="true">
+              {tickerMessage}
+            </span>
+          </div>
+        </div>
+        <span className="home-ticker-go" aria-hidden="true">›</span>
+      </section>
+    )}
     </div>
   )
 }

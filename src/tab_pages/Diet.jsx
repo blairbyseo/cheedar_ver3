@@ -370,7 +370,16 @@ function Diet() {
             </div>
             <div className="meal-photo-actions">
               <label className="meal-upload-relabel">
-                다른 사진 가져오기
+                갤러리
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  hidden
+                />
+              </label>
+              <label className="meal-upload-relabel">
+                재촬영
                 <input
                   type="file"
                   accept="image/*"
@@ -394,16 +403,27 @@ function Diet() {
             <p className="meal-upload-title">식단 사진을 올려주세요</p>
             <p className="meal-upload-sub">사진을 업로드하면 AI가 자동 분석합니다</p>
 
-            <label className="meal-upload-button">
-              사진 업로드
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleImageUpload}
-                hidden
-              />
-            </label>
+            <div className="meal-upload-options">
+              <label className="meal-upload-button">
+                갤러리에서 선택
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  hidden
+                />
+              </label>
+              <label className="meal-upload-button">
+                카메라로 촬영
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleImageUpload}
+                  hidden
+                />
+              </label>
+            </div>
           </div>
         )}
       </section>

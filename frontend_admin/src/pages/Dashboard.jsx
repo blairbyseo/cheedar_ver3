@@ -1,14 +1,15 @@
-import { AlertTriangle, Coins, MessageSquare, UtensilsCrossed, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertTriangle, MessageSquare, ShieldAlert, UtensilsCrossed, Users } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { api } from "../api/api";
+import AnalyticsCharts from "../components/AnalyticsCharts";
 
 // 대시보드 요약 카드 정의 — 키는 백엔드 DashboardStats 의 필드명과 맞춘다.
+// (위험 대화 감지 카드는 클릭 동작이 있어 별도로 렌더링한다 — CARDS 에는 없음.)
 const CARDS = [
-  { key: "total_users", label: "전체 회원", icon: Users, suffix: "명", color: "#f59e0b" },
+  { key: "total_users", label: "전체 회원", icon: Users, suffix: "명", color: "#3182f6" },
   { key: "today_meals", label: "오늘 기록된 식단", icon: UtensilsCrossed, suffix: "건", color: "#10b981" },
-  { key: "total_points_awarded", label: "누적 적립 포인트", icon: Coins, suffix: "P", color: "#6366f1" },
   { key: "total_chat_messages", label: "누적 채팅 메시지", icon: MessageSquare, suffix: "개", color: "#ec4899" },
 ];
 
@@ -47,19 +48,37 @@ export default function Dashboard() {
       </button>
 
       <div className="card-grid">
-        {CARDS.map(({ key, label, icon: Icon, suffix, color }) => (
-          <div className="stat-card" key={key}>
-            <div className="stat-icon" style={{ background: `${color}1a`, color }}>
-              <Icon size={22} />
+        {CARDS.map(({ key, label, icon: Icon, suffix, color }, i) => (
+          <Fragment key={key}>
+            <div className="stat-card">
+              <div className="stat-body">
+                <span className="stat-label">{label}</span>
+                <span className="stat-value">
+                  {stats ? stats[key].toLocaleString() : "—"}
+                  <span className="stat-suffix">{suffix}</span>
+                </span>
+              </div>
+              <div className="stat-icon" style={{ background: `${color}1a`, color }}>
+                <Icon size={22} />
+              </div>
             </div>
-            <div className="stat-body">
-              <span className="stat-label">{label}</span>
-              <span className="stat-value">
-                {stats ? stats[key].toLocaleString() : "—"}
-                <span className="stat-suffix">{suffix}</span>
-              </span>
-            </div>
-          </div>
+
+            {/* 전체 회원 카드 다음에 '위험 대화 감지' 카드 — 클릭 시 위험 신호로 이동 */}
+            {i === 0 && (
+              <button className="stat-card clickable" onClick={() => navigate("/safety")}>
+                <div className="stat-body">
+                  <span className="stat-label">위험 대화 감지</span>
+                  <span className="stat-value">
+                    {stats ? unresolved.toLocaleString() : "—"}
+                    <span className="stat-suffix">건</span>
+                  </span>
+                </div>
+                <div className="stat-icon" style={{ background: "#ef44441a", color: "#ef4444" }}>
+                  <ShieldAlert size={22} />
+                </div>
+              </button>
+            )}
+          </Fragment>
         ))}
       </div>
 
@@ -68,6 +87,8 @@ export default function Dashboard() {
           현재 관리자 {stats.admin_count}명이 등록돼 있어요.
         </p>
       )}
+
+      <AnalyticsCharts />
     </div>
   );
 }

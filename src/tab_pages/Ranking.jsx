@@ -7,6 +7,30 @@ import { useEffect, useState } from "react";
 // 상위 3명 메달 — 1·2·3위 순서.
 const MEDALS = ["🥇", "🥈", "🥉"];
 
+// 아바타 배경색 — user_id를 해시해 일관된 색을 입힌다(생동감 + 식별성).
+const AVATAR_COLORS = [
+  "linear-gradient(135deg, #FFB75E 0%, #ED8F03 100%)",
+  "linear-gradient(135deg, #43C6AC 0%, #19867E 100%)",
+  "linear-gradient(135deg, #6A8DFF 0%, #3F5CD6 100%)",
+  "linear-gradient(135deg, #FF8FB1 0%, #E2548A 100%)",
+  "linear-gradient(135deg, #B06AFF 0%, #7B3FD6 100%)",
+  "linear-gradient(135deg, #5BD2FF 0%, #1E9FD6 100%)",
+];
+
+function avatarStyle(userId) {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i += 1) {
+    hash = (hash * 31 + userId.charCodeAt(i)) >>> 0;
+  }
+  return { background: AVATAR_COLORS[hash % AVATAR_COLORS.length] };
+}
+
+// 아바타에 표시할 머리글자 (한글/영문 첫 글자, 없으면 ?)
+function initial(userId) {
+  const ch = (userId || "").trim().charAt(0);
+  return ch ? ch.toUpperCase() : "?";
+}
+
 function Ranking({ onBack }) {
   const [data, setData] = useState(null);        // { me, top }
   const [status, setStatus] = useState("loading"); // loading | ok | error
@@ -78,8 +102,28 @@ function Ranking({ onBack }) {
                 }
               >
                 <div className="podium-info">
-                  <span className="podium-medal" aria-hidden="true">
-                    {MEDALS[idx]}
+                  {/* 1위 머리 위 왕관 — 둥실 떠오르는 애니메이션 */}
+                  {entry.rank === 1 && (
+                    <span className="podium-crown" aria-hidden="true">👑</span>
+                  )}
+                  {/* 아바타 — 프로필 사진 있으면 사진, 없으면 머리글자 + 색상 */}
+                  <span className="podium-avatar-wrap">
+                    {entry.profile_image_path ? (
+                      <span className="podium-avatar podium-avatar--photo">
+                        <img
+                          className="podium-avatar-img"
+                          src={entry.profile_image_path}
+                          alt={`${entry.user_id} 프로필 사진`}
+                        />
+                      </span>
+                    ) : (
+                      <span className="podium-avatar" style={avatarStyle(entry.user_id)}>
+                        {initial(entry.user_id)}
+                      </span>
+                    )}
+                    <span className="podium-medal" aria-hidden="true">
+                      {MEDALS[idx]}
+                    </span>
                   </span>
                   <span className="podium-user" title={entry.user_id}>
                     {entry.user_id}
@@ -91,6 +135,7 @@ function Ranking({ onBack }) {
                 </div>
                 {/* 시상대 막대 — 1위가 가장 높고 가운데, 2위·3위 순으로 낮아짐 */}
                 <div className="podium-bar">
+                  <span className="podium-bar-shine" aria-hidden="true" />
                   <span className="podium-bar-rank">{entry.rank}</span>
                 </div>
               </div>

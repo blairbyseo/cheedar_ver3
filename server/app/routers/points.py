@@ -94,7 +94,7 @@ def ranking(
     동점일 때는 먼저 가입한(=id 가 작은) 환자가 위로 간다.
     """
     rows = db.execute(
-        select(User.id, User.user_id, User.xp)
+        select(User.id, User.user_id, User.xp, User.profile_image_path)
         .order_by(User.xp.desc(), User.id.asc())
         .limit(RANKING_LIMIT)
     ).all()
@@ -106,6 +106,7 @@ def ranking(
             xp=row.xp,
             level=level_for_xp(row.xp)[0],
             is_me=(row.id == current_user.id),
+            profile_image_path=row.profile_image_path,
         )
         for i, row in enumerate(rows)
     ]
@@ -124,6 +125,7 @@ def ranking(
             xp=current_user.xp,
             level=level_for_xp(current_user.xp)[0],
             is_me=True,
+            profile_image_path=current_user.profile_image_path,
         )
 
     return RankingResponse(me=me, top=top)

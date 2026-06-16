@@ -126,6 +126,14 @@
   transform: translateY(-1px);
 }
 
+/* 갤러리 / 카메라 두 옵션 나란히 배치 */
+.meal-upload-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
 /* 미리보기 wrapper — X 삭제 버튼 위치 잡기용 */
 .meal-preview-wrap {
   position: relative;
@@ -318,7 +326,7 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 11px 14px;
-  font-size: 13px;
+  font-size: 16px; /* iOS Safari가 16px 미만 입력칸에서 자동 줌하는 것 방지 */
   color: var(--text-main);
   outline: none;
   font-family: inherit;

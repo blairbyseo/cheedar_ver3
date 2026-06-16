@@ -10,12 +10,12 @@ import './Ranking.css'
 import './WeeklyReport.css'
 import './Exercise.css'
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Route, Routes } from 'react-router-dom';
 
 import Home from './tab_pages/Home';
 import Diet from './tab_pages/Diet';
-import Chat from './tab_pages/Chat';
+import Chat, { WELCOME_MESSAGE } from './tab_pages/Chat';
 import Point from './tab_pages/Point';
 import Settings from './tab_pages/Settings';
 import Ranking from './tab_pages/Ranking';
@@ -26,6 +26,7 @@ import Survey from './survey/Survey';
 import { getNextSurvey } from './utils/survey';
 
 import { AuthProvider } from './auth/AuthContext';
+import { useTabTelemetry } from './useTabTelemetry';
 import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
 import OAuthKakaoCallback from './auth/OAuthKakaoCallback';
@@ -34,6 +35,38 @@ import ProtectedRoute from './auth/ProtectedRoute';
 /* 로그인 이후 보여줄 메인 화면 — 탭 5개 + 하단 TabBar */
 function MainShell() {
   const [activeTab, setActiveTab] = useState("home");
+
+  // 탭 전환을 페이지 이동으로 계측 — 관리자 분석(페이지 소요시간/동선)용 샘플 적재.
+  // (hook 규칙상 surveyData 조기 return 보다 위에서 호출해야 한다.)
+  useTabTelemetry(activeTab);
+
+  // ── 채팅 상태를 여기(부모)로 끌어올림 ──────────────────────────────
+  // MainShell 은 탭을 바꿔도 언마운트되지 않으므로, 채팅 탭을 떠났다 돌아와도
+  // 인삿말·로딩 표시·진행 중인 답변이 그대로 유지된다.
+  const [chatMessages, setChatMessages] = useState([WELCOME_MESSAGE]);
+  const [chatIsSending, setChatIsSending] = useState(false);
+  const [chatErrorText, setChatErrorText] = useState("");
+  const [chatDraft, setChatDraft] = useState("");
+
+  // 기존 대화 이력은 앱 진입 시 딱 한 번만 불러온다. (Chat 재마운트마다 불러오면 덮어씀)
+  const chatInitRef = useRef(false);
+  useEffect(() => {
+    if (chatInitRef.current) return;
+    chatInitRef.current = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/chat/messages?limit=50", {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error(`history ${res.status}`);
+        const history = await res.json();
+        if (history.length > 0) setChatMessages(history);
+      } catch (err) {
+        console.error("[Chat] init failed:", err);
+        setChatErrorText("서버 연결에 실패했어요. 백엔드가 켜져 있는지 확인해주세요.");
+      }
+    })();
+  }, []);
 
   // 설문 게이트: 로그인 후 첫 진입 시 띄워야 할 설문(온보딩/주기)이 있는지 확인.
   // due 가 있으면 탭 화면 대신 설문을 전체화면으로 보여주고, 완료되면 홈으로 돌아간다.
@@ -64,7 +97,18 @@ function MainShell() {
       <div className="wholescreen">
         {activeTab === "home"     && <Home setActiveTab={setActiveTab} />}
         {activeTab === "diet"     && <Diet />}
-        {activeTab === "chat"     && <Chat />}
+        {activeTab === "chat"     && (
+          <Chat
+            messages={chatMessages}
+            setMessages={setChatMessages}
+            isSending={chatIsSending}
+            setIsSending={setChatIsSending}
+            errorText={chatErrorText}
+            setErrorText={setChatErrorText}
+            draft={chatDraft}
+            setDraft={setChatDraft}
+          />
+        )}
         {activeTab === "point"    && <Point />}
         {activeTab === "settings" && <Settings />}
         {/* 랭킹 — 홈의 "랭킹" 카드에서 진입. 탭바에는 없고 자체 뒤로가기 사용 */}
@@ -87,8 +131,10 @@ function App() {
         <Route
           path="/*"
           element={
-            /* TEMP-PREVIEW-BYPASS: 스크린샷 확인용 인증 우회 — 되돌릴 것 */
-            <MainShell />
+            /* 로그인한 사용자만 메인 앱 사용 가능. 비로그인 시 /login 으로 이동. */
+            <ProtectedRoute>
+              <MainShell />
+            </ProtectedRoute>
           }
         />
       </Routes>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>현금 보상 지급 기준 (레벨 기준)</title>
+<style>
+  :root{
+    --gold:#D1A916; --gold-soft:#FFF3C4; --gold-deep:#6b4e00;
+    --ink:#2E2A24; --sub:#7A746A; --muted:#A7A29A;
+    --line:rgba(46,42,36,.12); --card:#FFFDF8;
+    --ok:#1a7f37; --ok-soft:#E7F6EC; --bad:#b42318; --bad-soft:#FBEAE8;
+    --shadow:0 10px 30px rgba(46,42,36,.08);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;
+    color:var(--ink); background:#FAF7EF; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px; margin:0 auto; padding:40px 24px 80px;}
+  header.top{
+    background:linear-gradient(135deg,#FFEFB0 0%,#FFD874 55%,#F4C443 100%);
+    border:1.5px solid rgba(209,169,22,.45);
+    border-radius:24px; padding:32px 28px; box-shadow:var(--shadow);
+    margin-bottom:14px;
+  }
+  header.top .tag{font-size:13px;font-weight:800;color:var(--gold-deep);letter-spacing:.3px;}
+  header.top h1{margin:6px 0 4px;font-size:28px;font-weight:900;color:var(--gold-deep);}
+  header.top p{margin:0;font-size:14px;color:#7A5A00;font-weight:600;}
+  .meta{font-size:12.5px;color:var(--muted);margin:10px 0 36px;text-align:right;}
+
+  section{margin:0 0 34px;}
+  h2{font-size:21px;font-weight:800;margin:0 0 4px;display:flex;align-items:center;gap:10px;}
+  h2 .ico{font-size:24px;flex:none;}
+  .lead{color:var(--sub);font-size:14px;margin:0 0 16px;padding-left:34px;}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:18px;padding:20px 22px;box-shadow:var(--shadow);
+  }
+  .card h3{margin:0 0 12px;font-size:16px;font-weight:800;}
+
+  .def{
+    background:#fff; border:2px solid var(--gold);
+    border-radius:18px; padding:22px 24px; box-shadow:var(--shadow);
+    font-size:18px; font-weight:800; color:var(--ink); line-height:1.7;
+  }
+  .def b{color:var(--gold-deep); background:var(--gold-soft); padding:1px 7px; border-radius:7px;}
+  .def .amount{color:var(--gold-deep); font-size:22px;}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{font-size:12px;color:var(--sub);font-weight:700;letter-spacing:.3px;}
+  td.k{font-weight:800;white-space:nowrap;width:160px;}
+  .pt{font-weight:900;color:var(--gold);white-space:nowrap;}
+  .hl{background:var(--gold-soft);}
+
+  .why{background:var(--gold-soft);border-radius:12px;padding:12px 15px;font-size:13px;color:#5e4a08;margin:14px 0 0;}
+  .why b{color:var(--gold-deep);}
+
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 0;font-size:13.5px;font-weight:700;}
+  .flow .step{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;}
+  .flow .arr{color:var(--gold);font-weight:900;}
+
+  .warn{background:var(--bad-soft);border:1px solid rgba(180,35,24,.25);border-radius:14px;padding:16px 18px;}
+  .warn h3{color:var(--bad);margin:0 0 8px;}
+  .warn p{margin:0;font-size:13.5px;}
+  .note{font-size:12.5px;color:var(--muted);margin:8px 0 0;}
+  code{background:#2E2A24;color:#FFD874;padding:1px 6px;border-radius:5px;font-size:12.5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="tag">CHEDDAR · 현금 보상 정책</div>
+    <h1>현금 보상 — 지급 기준 정의서 (레벨 기준)</h1>
+    <p>2주쯤 꾸준히 기록하면 도달하는 레벨에 닿으면 현금을 준다.</p>
+  </header>
+  <div class="meta">작성일 2026-06-15 · v2 (레벨 기준 확정) · 이전 '자격일 방식' 초안은 폐기</div>
+
+  <!-- 한 줄 정의 -->
+  <section>
+    <h2><span class="ico">🎯</span>핵심 정의 (한 줄)</h2>
+    <div class="def">
+      현재 레벨이 <b>Lv.4</b> 이상이 되면<br>
+      <span class="amount">💰 20,000원</span> 현금 보상을 신청할 수 있다. (1인 1회)
+    </div>
+    <div class="why">
+      <b>왜 Lv.4?</b> 레벨은 XP(누적 경험치)로만 오르고, <b>Lv.4 도달에 600 XP</b>가 든다.
+      식단·운동을 <b>2주쯤 꾸준히 기록하면 쌓이는 양</b>이라, "2주를 버틴 사람"에게 상이 가도록 맞췄다.
+      더 빡세게 가려면 <code>final_level = 5</code>(1,100 XP)로 한 칸 올리면 된다.
+    </div>
+  </section>
+
+  <!-- 정확한 정의 -->
+  <section>
+    <h2><span class="ico">📐</span>용어 — 정확한 정의</h2>
+    <div class="card">
+      <table>
+        <tr><td class="k">레벨</td><td>누적 경험치(XP)로 계산. XP는 한 번 오르면 줄지 않는다. 곡선은 <code>services/points.py</code>의 <code>LEVEL_BASE=50 / LEVEL_INC=150</code>.</td></tr>
+        <tr><td class="k">목표 레벨</td><td><b>Lv.4</b> (<code>config.py: final_level</code>). 이 레벨 이상이면 자격.</td></tr>
+        <tr class="hl"><td class="k">자격 조건</td><td><b>현재 레벨 ≥ 4</b> — 그 외 다른 조건 없음. (<code>services/rewards.py: is_eligible</code>)</td></tr>
+        <tr><td class="k">보상 금액</td><td><b>20,000원</b> (<code>config.py: final_level_reward_amount</code>). 1인 1회.</td></tr>
+        <tr><td class="k">지급</td><td>자격자가 앱에서 '신청' → 관리자가 확인 후 <b>수동 송금</b>. CP(소비 포인트)와 무관한 별도 1회성 상금.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- 레벨별 XP / 대략 기간 -->
+  <section>
+    <h2><span class="ico">📊</span>레벨별 누적 XP (도달 비용)</h2>
+    <p class="lead">곡선 50/150 기준. 현금 자격선은 Lv.4.</p>
+    <div class="card">
+      <table>
+        <tr><th>레벨</th><th>도달 누적 XP</th><th>대략</th></tr>
+        <tr><td>Lv.2</td><td class="pt">50 XP</td><td class="note">시작 직후</td></tr>
+        <tr><td>Lv.3</td><td class="pt">250 XP</td><td class="note">며칠</td></tr>
+        <tr class="hl"><td><b>Lv.4 — 현금 자격</b></td><td class="pt">600 XP</td><td class="note">2주쯤 꾸준히</td></tr>
+        <tr><td>Lv.5</td><td class="pt">1,100 XP</td><td class="note">(빡세게 갈 때 후보)</td></tr>
+      </table>
+      <p class="note">참고 적립량(식단/운동/설문 7종): 식단 1회 +10, 하루 3끼 +20, 주 5일 +100, 운동 1회 +15, 설문 +50 등.</p>
+    </div>
+  </section>
+
+  <!-- 지급 흐름 -->
+  <section>
+    <h2><span class="ico">💸</span>지급 흐름</h2>
+    <div class="card">
+      <div class="flow">
+        <span class="step">Lv.4 도달</span><span class="arr">→</span>
+        <span class="step">앱에서 '20,000원 받기' 신청</span><span class="arr">→</span>
+        <span class="step">관리자 목록에 pending</span><span class="arr">→</span>
+        <span class="step">관리자 실제 송금 후 '지급완료'</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 한계 -->
+  <section>
+    <h2><span class="ico">⚠️</span>알아둘 한계 (단순함을 택한 대가)</h2>
+    <div class="warn">
+      <h3>백필로 빠르게 레벨업 가능</h3>
+      <p>
+        식단은 <b>과거 날짜로도 입력</b>할 수 있어서(<code>eaten_on</code> 선택 가능), 하루에 여러 날치를
+        몰아 기록하면 XP가 한 번에 올라 <b>레벨도 빨리 오를 수 있다.</b> 즉 레벨 기준만으로는
+        "정말 2주 동안 매일 들어왔는가"까지는 보장하지 못한다.
+      </p>
+      <p class="note">
+        ※ '진짜 매일 사용'을 보장하려면 자격을 '레벨'이 아니라 '실제 저장한 날 수'로 바꾸는
+        방식(자격일 기준)이 필요하다 — 이번엔 단순함을 우선해 레벨 기준으로 확정. 나중에 강화하고
+        싶으면 그때 전환할 수 있다.
+      </p>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

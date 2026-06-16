@@ -34,9 +34,9 @@ export default function Login() {
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
         <div className="login-brand">
-          <h1>Cheddar 관리자모드</h1>
+          <h1><span className="brand-mark">Cheddar</span> Admin</h1>
         </div>
-        <p className="login-sub">관리자 계정으로 로그인하세요</p>
+        <p className="login-sub">관리자 대시보드 · 계정으로 로그인하세요</p>
 
         <input
           className="login-input"

@@ -4,6 +4,7 @@ from app.models.meal import Meal, MealType
 from app.models.points import PointHistory
 from app.models.reward import KIND_FINAL_LEVEL, RewardClaim, RewardClaimStatus
 from app.models.safety import RiskLevel, SafetyEvent
+from app.models.telemetry import PageTimeLog, UserFlowLog
 from app.models.survey import (
     SurveyKind,
     SurveyResponse,
@@ -25,6 +26,8 @@ __all__ = [
     "ExerciseLog",
     "SafetyEvent",
     "RiskLevel",
+    "PageTimeLog",
+    "UserFlowLog",
     "SurveySchema",
     "SurveyResponse",
     "SurveyKind",

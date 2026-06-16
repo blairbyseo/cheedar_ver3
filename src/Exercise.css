@@ -129,7 +129,7 @@
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  font-size: 15px;
+  font-size: 16px; /* iOS Safari가 16px 미만 입력칸에서 자동 줌하는 것 방지 */
   color: var(--text-main);
   background: #fff;
   outline: none;

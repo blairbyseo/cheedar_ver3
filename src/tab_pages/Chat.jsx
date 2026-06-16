@@ -1,23 +1,31 @@
 /*5-2. Chat.jsx: App.jsx 파일에 걸림 */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { RotateCcw } from "lucide-react";
 import { usePoints } from "../usePoints";
 
 // 첫 진입 안내 메시지 (DB에 저장되진 않고 화면에만 보이는 인삿말)
-const WELCOME_MESSAGE = {
+// 채팅 상태는 부모(MainShell)로 끌어올렸으므로, 초기값으로 쓰기 위해 export 한다.
+export const WELCOME_MESSAGE = {
   role: "ai",
   text: "안녕하세요! 체다에게 궁금한 점을 물어봐주세요.",
 };
 
-function Chat() {
-  const [draft, setDraft] = useState("");
-  const [messages, setMessages] = useState([WELCOME_MESSAGE]);
-  const [isSending, setIsSending] = useState(false);
-  const [errorText, setErrorText] = useState("");
+// 채팅 상태(messages/isSending/errorText/draft)는 더 이상 이 컴포넌트가 소유하지 않고
+// 부모로부터 props 로 받는다. 탭을 옮겨 Chat 이 언마운트돼도 부모가 상태를 계속 보관하므로
+// 다시 돌아왔을 때 인삿말·로딩 표시·진행 중인 답변이 그대로 유지된다.
+function Chat({
+  messages,
+  setMessages,
+  isSending,
+  setIsSending,
+  errorText,
+  setErrorText,
+  draft,
+  setDraft,
+}) {
   // 헤더 우상단 포인트 — 현재 로그인한 환자의 CP
   const point = usePoints()?.cp ?? 0;
 
-  const didInitRef = useRef(false);
   const bottomRef = useRef(null);
   const initialScrollPendingRef = useRef(true);
 
@@ -34,28 +42,8 @@ function Chat() {
     if (isInitial) initialScrollPendingRef.current = false;
   }, [messages, isSending]);
 
-  // 첫 진입: 기존 대화 이력 불러오기. 인증은 ProtectedRoute 단계에서 이미 통과한 상태.
-  useEffect(() => {
-    if (didInitRef.current) return;
-    didInitRef.current = true;
-
-    async function init() {
-      try {
-        const res = await fetch("/api/chat/messages?limit=50", {
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error(`history ${res.status}`);
-        const history = await res.json();
-        if (history.length > 0) {
-          setMessages(history);
-        }
-      } catch (err) {
-        console.error("[Chat] init failed:", err);
-        setErrorText("서버 연결에 실패했어요. 백엔드가 켜져 있는지 확인해주세요.");
-      }
-    }
-    init();
-  }, []);
+  // 기존 대화 이력 불러오기는 부모(MainShell)에서 앱 진입 시 1회만 수행한다.
+  // (Chat 은 탭을 옮길 때마다 재마운트되므로 여기서 불러오면 매번 덮어쓰게 됨)
 
   async function handleReset() {
     if (isSending) return;

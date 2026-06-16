@@ -49,6 +49,7 @@ class RankingEntry(BaseModel):
     xp: int            # 누적 경험치 — 랭킹 정렬 기준이자 화면 표시값
     level: int         # xp 로 계산된 레벨
     is_me: bool = False
+    profile_image_path: str | None = None  # 프로필 사진 경로(없으면 None → 프론트가 색 아바타로 대체)
 
 
 class RankingResponse(BaseModel):

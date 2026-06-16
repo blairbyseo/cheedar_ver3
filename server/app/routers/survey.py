@@ -20,6 +20,7 @@ from app.schemas.survey import (
     SurveyProgressResponse,
     SurveySubmitResponse,
 )
+from app.services.points import SURVEY_REWARD_POINTS
 from app.services.survey.service import (
     build_prefilled_answers,
     compute_survey_due,
@@ -81,6 +82,7 @@ def get_next_survey(
         current_section=response.current_section,
         answers=response.answers or {},
         prefilled_answers=prefilled,
+        reward_points=SURVEY_REWARD_POINTS,
     )
 
 
@@ -124,4 +126,5 @@ def submit_survey(
         response_id=response.id,
         derived_flags=response.derived_flags or {},
         completed_at=response.completed_at,
+        points_awarded=getattr(response, "points_awarded", 0),
     )

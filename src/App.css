@@ -41,7 +41,9 @@ body {
   max-width: 430px;
   min-height: calc(100vh - 72px);
   margin: 0 auto;
-  padding: 24px 20px 70px;
+  /* 하단 패딩은 고정 탭바(.tabs 높이 78px)보다 커야 마지막 콘텐츠가 가려지지 않음.
+     78px + 여유 + 노치(safe-area) 만큼 확보한다. */
+  padding: 24px 20px calc(78px + 24px + env(safe-area-inset-bottom));
   box-sizing: border-box;
   }
 
@@ -114,8 +116,13 @@ html {
 
   backdrop-filter: blur(16px); /*탭바 배경에 블러 효과 적용*/
 
-  height: 78px;
-  background: white; 
+  /* 전체 높이 = 버튼영역 78px + 노치 안전영역.
+     box-sizing:border-box 라서 padding-bottom(안전영역)이 이 높이 '안'에 포함된다.
+     → 버튼이 차지하는 영역은 항상 78px로 고정되고, safe-area가 스크롤 중 변해도
+       버튼/아이콘 크기는 안 흔들린다(변화는 맨 아래 쿠션에서만 흡수). */
+  box-sizing: border-box;
+  height: calc(78px + env(safe-area-inset-bottom));
+  background: white;
   border-radius: 0px 0px 0 0; /*탭바의 윗부분만 둥글게*/
   border-top: 1px solid var(--line); /*탭바 위쪽에 연한 회색 선*/
   box-shadow: 0 -8px 24px rgba(46, 42, 36, 0.04); /*탭바 위쪽에 연한 그림자*/
@@ -296,6 +303,8 @@ html {
   color: var(--text-sub);
   line-height: 1.4;
   font-weight: 600;
+  /* 문자열 안의 \n 을 실제 줄바꿈으로 표시 (GREETINGS 에서 줄 나눌 위치 조절용) */
+  white-space: pre-line;
 }
 
 
@@ -589,6 +598,118 @@ background: rgba(242, 201, 76, 0.24);
   /* 연한거 */   background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
 }
 
+/* ── 홈 하단 현금 보상 챌린지 이벤트 티커 ─────────────────────────────
+   왼쪽 '이벤트' 뱃지는 고정, 오른쪽 문구가 자막처럼 좌로 흐른다.
+   주변 카드들과 어우러지도록 크림/연골드 톤으로 차분하게 둔다.
+   문구를 두 번 복제해 -50% 이동으로 끊김 없이 무한 루프시킨다. */
+.home-ticker {
+  display: flex;
+  align-items: center;
+  margin-top: 14px;
+  padding: 10px 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--card-white);
+  border: 1px solid rgba(209, 169, 22, 0.22);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
+}
+
+.home-ticker:active {
+  transform: scale(0.99);
+}
+
+.home-ticker:focus-visible {
+  outline: 2px solid var(--primary-strong);
+  outline-offset: 2px;
+}
+
+/* 좌측 고정 '이벤트' 뱃지 — 토스풍 둥근 솔리드 앰버 알약(앱 포인트 뱃지와 같은 톤) */
+.home-ticker-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 12px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: #FFB800;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  box-shadow: 0 2px 6px rgba(255, 184, 0, 0.32);
+}
+
+.home-ticker-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  animation: ticker-blink 1.5s ease-in-out infinite;
+}
+
+@keyframes ticker-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* 자막이 흐르는 영역 — 좌우 끝을 살짝 페이드(mask) 처리 */
+.home-ticker-viewport {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  margin-left: 10px;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+}
+
+.home-ticker-track {
+  display: flex;
+  flex: 0 0 auto;
+  width: max-content;
+  animation: ticker-scroll 17s linear infinite;
+}
+
+/* 누르고 있거나 포커스 시 잠깐 멈춰 읽기 쉽게 */
+.home-ticker:active .home-ticker-track,
+.home-ticker:focus-visible .home-ticker-track {
+  animation-play-state: paused;
+}
+
+.home-ticker-text {
+  flex: 0 0 auto;
+  padding: 0 24px 0 0;
+  margin-right: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* 우측 이동 화살표 */
+.home-ticker-go {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 0 10px 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* 자막 애니메이션은 모션 최소화 설정과 무관하게 항상 흐르도록 유지한다.
+   (예전엔 prefers-reduced-motion: reduce 일 때 멈췄지만, 의도적으로 항상 켬) */
+
 /* 메뉴의 동그라미 원 색상
 .menu-rank::before {
   background: rgba(94, 159, 138, 0.18);
@@ -710,100 +831,229 @@ background: rgba(242, 201, 76, 0.24);
   }
 }
 
-/* ── 현금 보상 챌린지 (Point 탭) ──────────────────────────────
-   적립 기준 위에 강조 배너로 띄운다. 진행 게이지는 .progress-bar/
-   .progress-fill 를 그대로 재사용한다. */
-.reward-challenge {
-  margin-top: 18px;
-  padding: 18px 20px;
+/* ── 현금 보상 챌린지 (Point 탭) — 토스풍 클린 카드 ────────────────
+   번쩍이는 노랑 배너 대신, 흰 카드 + 큰 숫자 + 진행률(%) 강조로
+   위계를 또렷하게. 시선은 카드 전체가 아니라 '진행 미터'와 'CTA'에만
+   끌리도록 절제한다. 색 토큰은 :root(브랜드 골드)를 그대로 쓴다. */
+.reward-card {
+  position: relative;
+  overflow: hidden;
+  /* 이 페이지는 섹션마다 자기 margin 으로 간격을 잡는다(컨테이너 gap 없음). */
+  margin: 16px 0 18px;
+  padding: 20px;
   border-radius: var(--radius-card);
-  background: linear-gradient(135deg, #FFF7D6 0%, #FFE9A8 100%);
-  border: 1px solid rgba(209, 169, 22, 0.28);
+  background: var(--card-white);
+  border: 1px solid var(--line);
   box-shadow: var(--shadow-card);
-  color: var(--text-main);
 }
 
-.reward-challenge-head {
+/* 상단: 좌측 태그 알약 + 우측 목표 레벨 */
+.reward-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.reward-challenge-badge {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.reward-challenge-amount {
-  font-size: 22px;
-  font-weight: 800;
+.reward-card-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--primary-soft);
   color: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
 }
 
-.reward-challenge-desc {
-  margin: 6px 0 14px;
+.reward-card-goal {
   font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.reward-card-caption {
+  margin: 16px 0 2px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-sub);
 }
 
-.reward-progress-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  font-weight: 600;
+/* 받을 금액 — 화면에서 가장 큰 숫자(시선 1순위) */
+.reward-card-amount {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  color: var(--text-main);
 }
 
-.reward-progress-goal {
+.reward-card-amount span {
+  font-size: 18px;
+  font-weight: 800;
+  margin-left: 3px;
+}
+
+/* 진행 미터 — 퍼센트 강조 + 골드 게이지 */
+.reward-meter {
+  margin-top: 18px;
+}
+
+.reward-meter-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+
+.reward-meter-pct {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.6px;
   color: var(--primary-strong);
 }
 
-.reward-remaining {
-  margin: 12px 0 0;
+.reward-meter-level {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+.reward-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: #EFEDE6;
+  overflow: hidden;
+}
+
+.reward-track-fill {
+  position: relative;
+  height: 100%;
+  min-width: 14px;          /* 0%여도 둥근 끝이 보이도록 */
+  border-radius: 999px;
+  background: linear-gradient(90deg, #FFD874 0%, #F2C94C 55%, #D1A916 100%);
+  /* 진행률이 바뀔 때 부드럽게 차오른다 */
+  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+
+/* 게이지 안에서만 은은히 도는 광택 — 카드 전체가 아니라 진행바에만. */
+.reward-track-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(255, 255, 255, 0.55) 50%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  transform: translateX(-100%);
+  animation: reward-shimmer 2.4s ease-in-out infinite;
+}
+
+@keyframes reward-shimmer {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(180%); }
+  100% { transform: translateX(180%); }
+}
+
+/* 가는 폰트·좁은 자간으로 카피처럼 차분하게 — 동기부여 문구 톤. */
+.reward-cheer {
+  margin: 11px 0 0;
   text-align: center;
   font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.1px;
   color: var(--text-sub);
 }
 
-.reward-claim-btn {
+/* CTA — 토스풍 굵은 단색 버튼(시선 2순위) */
+.reward-cta {
   width: 100%;
-  margin-top: 14px;
-  padding: 13px;
+  margin-top: 18px;
+  padding: 15px;
   border: none;
   border-radius: 14px;
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  cursor: pointer;
   background: var(--primary-strong);
   color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease;
 }
 
-.reward-claim-btn:disabled {
-  opacity: 0.6;
+.reward-cta:active {
+  transform: scale(0.98);
+  filter: brightness(0.96);
+}
+
+.reward-cta:disabled {
   cursor: default;
 }
 
-.reward-status {
-  margin-top: 14px;
-  padding: 11px;
-  border-radius: 12px;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.6);
+/* 아직 자격 미달 — 눌리지 않는 고스트 톤 */
+.reward-cta--ghost {
+  background: #F4F2EC;
+  color: var(--text-sub);
 }
 
-.reward-status-paid {
+/* 자격 충족 — 받기 버튼이 두근거리며 어필 */
+.reward-cta--pulse {
+  animation: reward-pulse 1.7s ease-in-out infinite;
+}
+
+@keyframes reward-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(209, 169, 22, 0.45); }
+  50%      { box-shadow: 0 0 0 10px rgba(209, 169, 22, 0); }
+}
+
+/* 신청 후 상태 안내 — 상태별 색만 다르게 */
+.reward-result {
+  margin-top: 16px;
+  padding: 13px;
+  border-radius: 14px;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  background: #F7F5EF;
+  color: var(--text-sub);
+}
+
+.reward-result-pending {
+  background: var(--primary-soft);
+  color: #8a6d00;
+}
+
+.reward-result-paid {
+  background: #E7F6EC;
   color: #1a7f37;
 }
 
-.reward-status-rejected {
+.reward-result-rejected {
+  background: #FCEDEC;
   color: #b42318;
 }
 
-.reward-claim-error {
-  margin: 8px 0 0;
+.reward-card-error {
+  margin: 10px 0 0;
   text-align: center;
-  font-size: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
   color: #b42318;
+}
+
+/* 모션 최소화 선호 사용자에겐 광택/펄스 애니메이션을 끈다. */
+@media (prefers-reduced-motion: reduce) {
+  .reward-track-fill::after,
+  .reward-cta--pulse {
+    animation: none;
+  }
 }
 

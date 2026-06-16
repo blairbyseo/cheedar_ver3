@@ -21,8 +21,13 @@ from sqlalchemy.orm import Session
 
 from app.models.exercise import ExerciseLog
 
-# 평균 계산 시 오늘 제외하고 며칠을 볼지 (식단과 동일).
+# 평균(추세) 계산 시 오늘 제외하고 며칠을 볼지 (식단과 동일).
 _BASELINE_DAYS = 7
+
+# 날짜별 상세를 보여줄 범위 (diet_context 와 동일 사유). 기록이 띄엄띄엄일 수
+# 있어 7일이 아니라 _DETAIL_DAYS 까지 보고, 최신순 최대 _MAX_DETAIL_DAYS 일.
+_DETAIL_DAYS = 30
+_MAX_DETAIL_DAYS = 20
 
 # 주관적 강도(1-5) → 한국어 라벨. exercise.py 의 intensity_multiplier 와 동기화.
 _INTENSITY_KO = {
@@ -54,6 +59,14 @@ def _parse_items(raw: str | None) -> list[dict]:
     except (json.JSONDecodeError, TypeError):
         return []
     return [it for it in parsed if isinstance(it, dict)]
+
+
+def _relative_day_label(d: DateType, today: DateType) -> str:
+    """날짜 → '어제' / 'N일 전' 라벨 (diet_context 와 동일)."""
+    diff = (today - d).days
+    if diff == 1:
+        return "어제"
+    return f"{diff}일 전"
 
 
 def _fmt_item(item: dict) -> str:
@@ -103,27 +116,31 @@ def build_exercise_context(
         )
     ).scalar_one_or_none()
 
-    # --- 최근 7일(오늘 제외) ------------------------------------------
-    baseline_start = today - timedelta(days=_BASELINE_DAYS)
-    baseline_rows = list(
+    # --- 과거 기록 (오늘 제외, 최근 _DETAIL_DAYS 일) -------------------
+    # 한 번에 넓게(30일) 떠와서 7일 평균과 날짜별 상세를 둘 다 여기서 뽑는다.
+    history_start = today - timedelta(days=_DETAIL_DAYS)
+    history_rows = list(
         db.execute(
             select(ExerciseLog).where(
                 ExerciseLog.user_id == user_id,
-                ExerciseLog.done_on >= baseline_start,
+                ExerciseLog.done_on >= history_start,
                 ExerciseLog.done_on < today,
             )
         ).scalars()
     )
-    # 실제로 운동한 날(쉬는 날/0kcal 제외)만 평균에 넣는다.
+    # 7일 평균은 최근 7일 부분집합으로만, 실제로 운동한 날(쉬는 날/0kcal 제외)만.
+    baseline_start = today - timedelta(days=_BASELINE_DAYS)
     workout_kcals = [
         float(r.calories_burned)
-        for r in baseline_rows
-        if not r.is_skipped and (r.calories_burned or 0) > 0
+        for r in history_rows
+        if r.done_on >= baseline_start
+        and not r.is_skipped
+        and (r.calories_burned or 0) > 0
     ]
     workout_days = len(workout_kcals)
     baseline_avg = sum(workout_kcals) / workout_days if workout_days else None
 
-    if today_row is None and not baseline_rows:
+    if today_row is None and not history_rows:
         return ""
 
     # --- 텍스트 조립 --------------------------------------------------
@@ -152,9 +169,32 @@ def build_exercise_context(
     else:
         lines.append(f"- 최근 {_BASELINE_DAYS}일(오늘 제외) 운동 기록 없음")
 
+    # --- 날짜별 상세 (최근 _DETAIL_DAYS 일, 최신순 최대 _MAX_DETAIL_DAYS 일) --
+    # 평균값만으로는 "지난주에 무슨 운동 했지?" 에 답할 수 없으므로 날짜별
+    # 목록을 함께 넣어 AI 가 특정 날짜 운동도 답할 수 있게 한다. 기록이 띄엄띄엄일
+    # 수 있어 7일이 아닌 _DETAIL_DAYS(기본 30일)까지 본다.
+    if history_rows:
+        recent_rows = sorted(history_rows, key=lambda x: x.done_on, reverse=True)[
+            :_MAX_DETAIL_DAYS
+        ]
+        lines.append(f"- 최근 운동 기록(최신순, 최대 {_MAX_DETAIL_DAYS}일):")
+        for r in recent_rows:
+            label = _relative_day_label(r.done_on, today)
+            if r.is_skipped:
+                lines.append(f"  · {r.done_on.isoformat()} ({label}): 운동 안 함")
+                continue
+            items = _parse_items(r.items)
+            detail = "; ".join(_fmt_item(it) for it in items) if items else "(운동 항목 미기록)"
+            line = f"  · {r.done_on.isoformat()} ({label}): {detail}"
+            if r.calories_burned is not None:
+                line += f" — 합계 약 {int(round(float(r.calories_burned)))} kcal 소모"
+            lines.append(line)
+
     lines.append(
         "위 정보는 환자가 직접 기록한 데이터입니다. 환자가 운동·활동량에 대해 "
-        "물으면 이 데이터를 자연스럽게 참고해 답하세요. 데이터에 없는 운동이나 "
-        "소모 칼로리는 추측하지 말고 '아직 기록되지 않았어요'라고 안내하세요."
+        "물으면 이 데이터를 자연스럽게 참고해 답하세요. '어제'나 '지난주' 같은 "
+        "특정 날짜의 운동도 위 '날짜별 운동' 목록에서 찾아 답할 수 있습니다. "
+        "다만 목록에 없는 날짜의 운동이나 소모 칼로리는 추측하지 말고 '아직 "
+        "기록되지 않았어요'라고 안내하세요."
     )
     return "\n".join(lines)

@@ -40,7 +40,6 @@ class PointHistory(Base):
     #   meal-check  → "meal:{meal_id}"      (식단 1건당 1회)
     #   three-meals → "day:{YYYY-MM-DD}"    (하루 1회)
     #   weekly-goal → "week:{YYYY-Www}"     (한 주 1회)
-    #   full-week   → "week:{YYYY-Www}"     (한 주 1회)
     dedup_key: Mapped[str] = mapped_column(String(40))
 
     created_at: Mapped[datetime] = mapped_column(

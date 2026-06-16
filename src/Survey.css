@@ -26,6 +26,55 @@
 .survey-head {
   margin-bottom: 22px;
 }
+
+/* 헤더 최상단 줄: 왼쪽 포인트 배너 + 오른쪽 '나중에 하기' */
+.survey-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.survey-quit {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  padding: 4px 6px;
+  font-size: 13px;
+  color: #999;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.survey-quit:hover:not(:disabled) {
+  color: #666;
+}
+.survey-quit:disabled {
+  opacity: 0.5;
+}
+
+/* 진행 중 상시 노출되는 포인트 독려 배너 — 헤더 맨 위, 은은한 금색 알약 */
+.survey-reward-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fff3c4, #ffe89a);
+  border: 1px solid #f0d678;
+  box-shadow: 0 2px 8px rgba(209, 169, 22, 0.18);
+}
+.survey-reward-hint-emoji {
+  font-size: 15px;
+}
+.survey-reward-hint-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8a6d0a;
+}
+.survey-reward-hint-text strong {
+  color: #b0850a;
+  font-weight: 800;
+}
 .survey-kicker {
   margin: 0;
   font-size: 12px;
@@ -106,7 +155,7 @@
   border-radius: 10px;
   background: #fff;
   padding: 10px 12px;
-  font-size: 15px;
+  font-size: 16px; /* iOS Safari가 16px 미만 입력칸에서 자동 줌하는 것 방지 */
   color: #333;
   outline: none;
 }
@@ -381,6 +430,75 @@
   font-size: 13px;
 }
 
+/* ----- 미응답 표시 ----- */
+/* 미응답 문항: 은은한 금색 좌측 강조 (음수 마진으로 다른 문항과 정렬 유지) */
+.survey-question.is-unanswered {
+  border-left: 3px solid #f2c94c;
+  margin-left: -15px;
+  padding-left: 12px;
+}
+.survey-required-note {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b08d12;
+}
+/* '아직 답하지 않은 문항 N개' 안내 — 푸터 바로 위 */
+.survey-incomplete {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fdf8e6;
+  border: 1px solid #f0d678;
+  color: #8a6d0a;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ----- '나중에 하기' 확인 모달 ----- */
+.survey-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(45, 42, 34, 0.45);
+}
+.survey-modal {
+  width: 100%;
+  max-width: 320px;
+  box-sizing: border-box;
+  border-radius: 16px;
+  background: #fff;
+  padding: 22px 20px 18px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+.survey-modal-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #2d2a22;
+}
+.survey-modal-desc {
+  margin: 10px 0 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #777;
+}
+.survey-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+.survey-modal-actions .survey-btn {
+  flex: 1;
+  max-width: none;
+  padding: 11px 0;
+  text-align: center;
+}
+
 /* ----- 푸터 (이전/다음) — 화면 하단 고정 -----
  * 설문이 길어도 매번 끝까지 스크롤하지 않게 버튼을 viewport 하단에 sticky 고정.
  * 위쪽은 크림 그라데이션으로 콘텐츠가 비치며 사라지게 처리. */
@@ -451,4 +569,73 @@
   margin: 0;
   font-size: 13px;
   color: #888;
+}
+
+/* ----- 포인트 획득 효과 ----- */
+.survey-reward {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+/* 금색 알약형 배지 — 튀어오르며 등장 */
+.survey-reward-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 12px 24px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f2c94c, #d1a916);
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(209, 169, 22, 0.45);
+  animation: survey-reward-pop 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+.survey-reward-amount {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+.survey-reward-unit {
+  font-size: 15px;
+  font-weight: 700;
+}
+.survey-reward-text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #b08d12;
+  animation: survey-reward-fade 0.5s ease 0.35s both;
+}
+/* 배지 위에서 떠오르며 사라지는 반짝임 */
+.survey-reward-sparkle {
+  position: absolute;
+  top: -18px;
+  font-size: 26px;
+  animation: survey-reward-sparkle 1.1s ease-out 0.2s both;
+}
+
+@keyframes survey-reward-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes survey-reward-fade {
+  from { transform: translateY(6px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes survey-reward-sparkle {
+  0% { transform: translateY(6px) scale(0.6); opacity: 0; }
+  40% { opacity: 1; }
+  100% { transform: translateY(-22px) scale(1.1); opacity: 0; }
+}
+/* 모션 최소화 선호 시 애니메이션 끄기 */
+@media (prefers-reduced-motion: reduce) {
+  .survey-reward-badge,
+  .survey-reward-text,
+  .survey-reward-sparkle {
+    animation: none;
+  }
 }

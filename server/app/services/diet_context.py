@@ -20,8 +20,15 @@ from sqlalchemy.orm import Session
 
 from app.models.meal import Meal, MealType
 
-# 평균 계산 시 오늘 제외하고 며칠을 볼지.
+# 평균(추세) 계산 시 오늘 제외하고 며칠을 볼지.
 _BASELINE_DAYS = 7
+
+# 날짜별 상세를 보여줄 범위. 평균은 최근 7일이지만, "저번주에 뭐 먹었지?"
+# 같은 회상 질문에 답하려면 더 넓게 봐야 한다(기록이 띄엄띄엄일 수 있음).
+# _DETAIL_DAYS 안에서 기록이 있는 날을 최신순으로 최대 _MAX_DETAIL_DAYS 일만
+# 나열한다(프롬프트 토큰이 무한정 늘지 않게).
+_DETAIL_DAYS = 30
+_MAX_DETAIL_DAYS = 20
 
 # 오늘 총 kcal 이 최근 7일 평균에서 얼마나 벗어났는지 라벨링하는 임계값.
 # (레퍼런스 Cheddar_Team_26/user_context.py 의 kcal_vs_7day_avg 와 동일 기준.)
@@ -114,6 +121,14 @@ def _fmt_macros(meal: Meal) -> str:
     return ", ".join(parts)
 
 
+def _relative_day_label(d: DateType, today: DateType) -> str:
+    """날짜 → '어제' / 'N일 전' 라벨. 날짜별 식단을 사람이 읽기 쉽게."""
+    diff = (today - d).days
+    if diff == 1:
+        return "어제"
+    return f"{diff}일 전"
+
+
 def build_diet_context(
     db: Session,
     user_id: int,
@@ -146,17 +161,21 @@ def build_diet_context(
     today_by_type: dict[MealType, Meal] = {m.meal_type: m for m in today_rows}
     today_total_kcal = sum((m.calories or 0) for m in today_rows)
 
-    # --- 최근 7일(오늘 제외) ------------------------------------------
-    baseline_start = today - timedelta(days=_BASELINE_DAYS)
-    baseline_rows = list(
+    # --- 과거 기록 (오늘 제외, 최근 _DETAIL_DAYS 일) -------------------
+    # 한 번에 넓게(30일) 떠와서, 7일 평균과 날짜별 상세 둘 다 여기서 뽑는다.
+    history_start = today - timedelta(days=_DETAIL_DAYS)
+    history_rows = list(
         db.execute(
             select(Meal).where(
                 Meal.user_id == user_id,
-                Meal.eaten_on >= baseline_start,
+                Meal.eaten_on >= history_start,
                 Meal.eaten_on < today,
             )
         ).scalars()
     )
+    # 7일 평균은 최근 7일 부분집합으로만 계산.
+    baseline_start = today - timedelta(days=_BASELINE_DAYS)
+    baseline_rows = [m for m in history_rows if m.eaten_on >= baseline_start]
     kcal_by_date: dict[DateType, int] = {}
     for m in baseline_rows:
         if m.calories is None:
@@ -169,7 +188,7 @@ def build_diet_context(
         else None
     )
 
-    if not today_rows and not baseline_rows:
+    if not today_rows and not history_rows:
         return ""
 
     # --- 텍스트 조립 --------------------------------------------------
@@ -230,9 +249,59 @@ def build_diet_context(
     else:
         lines.append(f"- 최근 {_BASELINE_DAYS}일(오늘 제외) 기록 없음")
 
+    # --- 날짜별 상세 (최근 _DETAIL_DAYS 일, 최신순 최대 _MAX_DETAIL_DAYS 일) --
+    # 평균값만으로는 "지난주 수요일 저녁 뭐였지?" 같은 질문에 답할 수 없으므로
+    # 날짜·끼니별 목록을 함께 넣어 AI 가 특정 날짜 식단도 답할 수 있게 한다.
+    # 기록이 띄엄띄엄일 수 있어 7일이 아닌 _DETAIL_DAYS(기본 30일)까지 본다.
+    if history_rows:
+        meals_by_date: dict[DateType, list[Meal]] = {}
+        for m in history_rows:
+            meals_by_date.setdefault(m.eaten_on, []).append(m)
+
+        recent_dates = sorted(meals_by_date.keys(), reverse=True)[:_MAX_DETAIL_DAYS]
+        lines.append(f"- 최근 식단 기록(최신순, 최대 {_MAX_DETAIL_DAYS}일):")
+        for d in recent_dates:
+            day_meals = meals_by_date[d]
+            by_type = {m.meal_type: m for m in day_meals}
+            parts: list[str] = []
+            for meal_type in (
+                MealType.breakfast,
+                MealType.lunch,
+                MealType.dinner,
+                MealType.snack,
+            ):
+                m = by_type.get(meal_type)
+                if not m:
+                    continue
+                menu = m.menu or m.ai_summary or "(메뉴 미기록)"
+                seg = f"{_MEAL_KO[meal_type]} {menu}"
+                if m.calories is not None:
+                    seg += f" {int(m.calories)}kcal"
+                # 과거 끼니에도 영양소(단/탄/지)를 넣어 며칠 단위 영양 피드백이
+                # 가능하게 한다. 매크로 기록이 없으면 자연스럽게 생략된다.
+                macros = _fmt_macros(m)
+                if macros:
+                    seg += f"({macros})"
+                parts.append(seg)
+            day_total = sum((m.calories or 0) for m in day_meals)
+            line = f"  · {d.isoformat()} ({_relative_day_label(d, today)}): " + ", ".join(parts)
+            if day_total:
+                line += f" — 합계 약 {day_total} kcal"
+            # 그날 영양소 비율도 함께 — "이 날은 탄수화물 위주였네요" 같은 피드백용.
+            day_macro = _compute_macro_ratio(day_meals)
+            if day_macro:
+                line += (
+                    f" [영양소 비율 탄 {day_macro['carbs_pct']}%·"
+                    f"단 {day_macro['protein_pct']}%·"
+                    f"지 {day_macro['fat_pct']}%]"
+                )
+            lines.append(line)
+
     lines.append(
         "위 정보는 환자가 직접 기록한 데이터입니다. 환자가 식단·영양에 대해 "
-        "물으면 이 데이터를 자연스럽게 참고해 답하세요. 데이터에 없는 끼니나 "
-        "영양정보는 추측하지 말고 '아직 기록되지 않았어요'라고 안내하세요."
+        "물으면 이 데이터를 자연스럽게 참고해 답하세요. '어제'나 '지난주' 같은 "
+        "특정 날짜의 식단도 위 '날짜별 식단' 목록에서 찾아 답할 수 있습니다. "
+        "다만 목록에 없는 날짜·끼니나 영양정보는 추측하지 말고 '아직 기록되지 "
+        "않았어요'라고 안내하세요."
     )
     return "\n".join(lines)

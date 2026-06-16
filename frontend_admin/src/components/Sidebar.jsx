@@ -1,4 +1,4 @@
-import { AlertTriangle, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { AlertTriangle, LayoutDashboard, LogOut, Users, Wallet } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
@@ -7,6 +7,7 @@ const NAV = [
   { to: "/", label: "대시보드", icon: LayoutDashboard, end: true },
   { to: "/users", label: "회원 관리", icon: Users, end: false },
   { to: "/safety", label: "위험 신호", icon: AlertTriangle, end: false },
+  { to: "/rewards", label: "현금 보상 신청", icon: Wallet, end: false },
 ];
 
 export default function Sidebar() {
@@ -15,8 +16,8 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <span className="sidebar-logo">🧀</span>
-        <span>Cheddar 관리자</span>
+        <span className="brand-mark">Cheddar</span>
+        <span className="sidebar-brand-tag">admin</span>
       </div>
 
       <nav className="sidebar-nav">

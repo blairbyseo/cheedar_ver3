@@ -5,9 +5,9 @@
   CP : 소비 가능한 포인트. 적립은 XP 와 '같은 값'으로 함께 일어나지만,
        이후 보상 교환 등으로 차감될 수 있다(차감은 별도 로직).
 
-적립 규칙은 7가지(POINT_RULES) — 프론트 Point.jsx 의 적립 기준 카드와 같다.
+적립 규칙은 6가지(POINT_RULES) — 프론트 Point.jsx 의 적립 기준 카드와 같다.
 적립처는 3가지이고, 모두 같은 _grant 경로로 XP/CP 를 함께 올린다:
-  - 식단: award_points_for_meal()      식단 1건 저장 시 (규칙 4종)
+  - 식단: award_points_for_meal()      식단 1건 저장 시 (규칙 3종)
   - 운동: award_points_for_exercise()  운동 기록 저장 시 (규칙 2종)
   - 설문: award_points_for_survey()    설문 제출(완료) 시 (규칙 1종)
 
@@ -35,7 +35,6 @@ from app.models.user import User
 RULE_MEAL_CHECK = "meal-check"
 RULE_THREE_MEALS = "three-meals"
 RULE_WEEKLY_GOAL = "weekly-goal"
-RULE_FULL_WEEK = "full-week"
 RULE_EXERCISE_LOG = "exercise-log"     # 하루 운동 기록 1건
 RULE_EXERCISE_WEEK = "exercise-week"   # 한 주 운동 N일 보너스
 RULE_SURVEY_DONE = "survey-done"       # 설문 1건 완료
@@ -44,12 +43,14 @@ POINT_RULES: list[dict] = [
     {"id": RULE_MEAL_CHECK,    "label": "식단 1회 기록",      "point": 10},
     {"id": RULE_THREE_MEALS,   "label": "하루 3끼 완료",      "point": 20},
     {"id": RULE_WEEKLY_GOAL,   "label": "주 5일 기록",        "point": 100},
-    {"id": RULE_FULL_WEEK,     "label": "주 7일 기록 보너스", "point": 50},
-    {"id": RULE_EXERCISE_LOG,  "label": "운동 1회 기록",      "point": 15},
+    {"id": RULE_EXERCISE_LOG,  "label": "운동 1회 기록",      "point": 10},
     {"id": RULE_EXERCISE_WEEK, "label": "주 3일 운동 보너스", "point": 80},
     {"id": RULE_SURVEY_DONE,   "label": "설문 완료",          "point": 50},
 ]
 _POINT_BY_RULE: dict[str, int] = {r["id"]: r["point"] for r in POINT_RULES}
+
+# 설문 1건 완료 시 주는 포인트 — 진행 화면의 "완료하면 N P" 안내에서도 쓰도록 공개.
+SURVEY_REWARD_POINTS: int = _POINT_BY_RULE[RULE_SURVEY_DONE]
 
 # 하루 '3끼'로 인정하는 끼니 — 간식(snack)은 제외.
 _MAIN_MEALS = {MealType.breakfast, MealType.lunch, MealType.dinner}
@@ -226,8 +227,8 @@ def award_points_for_meal(db: Session, user: User, meal: Meal) -> list[dict]:
             earned=earned,
         )
 
-    # 3)/4) 주간 기록 — 그 주에 식단을 기록한 '서로 다른 날' 수로 판정.
-    #        한 주에 5일·7일 보너스를 각각 한 번씩만 준다.
+    # 3) 주간 기록 — 그 주에 식단을 기록한 '서로 다른 날' 수로 판정.
+    #     한 주에 5일 목표 보너스를 한 번만 준다.
     days_in_week = count_meal_days_in_week(db, user.id, day)
     week_key = _iso_week_key(day)
     if days_in_week >= 5:
@@ -235,13 +236,6 @@ def award_points_for_meal(db: Session, user: User, meal: Meal) -> list[dict]:
             db, user, RULE_WEEKLY_GOAL,
             dedup_key=f"week:{week_key}",
             label="주 5일 기록 달성",
-            earned=earned,
-        )
-    if days_in_week >= 7:
-        _grant(
-            db, user, RULE_FULL_WEEK,
-            dedup_key=f"week:{week_key}",
-            label="주 7일 기록 보너스",
             earned=earned,
         )
 

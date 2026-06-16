@@ -50,7 +50,29 @@
       "Bash(git add *)",
       "Bash(git restore *)",
       "Bash(git ls-tree *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(ls *.bat *.ps1)",
+      "Bash(ls frontend_admin/*.bat frontend_admin/*.ps1)",
+      "Bash(powershell -Command \"Start-Process 'C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe'\")",
+      "Skill(run)",
+      "Bash(git commit -m ' *)",
+      "Read(//c/Users/SAMSUNG/Downloads/**)",
+      "Bash(python -c \"import PyPDF2\")",
+      "Bash(python -c \"import app.services.survey.service; import app.routers.exercise; import app.routers.survey; import app.services.points as p; print\\('import OK'\\); print\\([r['id'] for r in p.POINT_RULES]\\)\")",
+      "Bash(.venv/Scripts/python.exe -c \"import app.services.survey.service; import app.routers.exercise; import app.routers.survey; import app.services.points as p; print\\('import OK'\\); print\\([r['id'] for r in p.POINT_RULES]\\)\")",
+      "Bash(sed -n '1,40p' app/routers/admin.py)",
+      "Read(//c/Users/SAMSUNG/Desktop/new_backend/server/alembic/versions/**)",
+      "Bash(.venv/Scripts/python.exe -m alembic current)",
+      "Bash(.venv/Scripts/python.exe -m alembic upgrade head)",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(git -C \"C:/Users/SAMSUNG/Desktop/new_backend\" add -A)",
+      "Bash(git -C \"C:/Users/SAMSUNG/Desktop/new_backend\" reset -q -- .claude/settings.local.json)",
+      "Bash(git -C \"C:/Users/SAMSUNG/Desktop/new_backend\" status --short)",
+      "Bash(git -C C:/Users/SAMSUNG/Desktop/new_backend commit -m ' *)",
+      "Bash(git -C \"C:/Users/SAMSUNG/Desktop/new_backend\" push origin main)",
+      "Bash(echo \"eslint exit: $?\")",
+      "PowerShell(Start-Process \"C:\\\\Users\\\\SAMSUNG\\\\Desktop\\\\new_backend\\\\gamification_summary.html\")"
     ]
   }
 }

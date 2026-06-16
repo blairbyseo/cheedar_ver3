@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>적립 기준 — 도안 4종 비교</title>
+<style>
+  :root {
+    --card: #FFFDF8;
+    --card-white: #FFFFFF;
+    --primary-strong: #D1A916;
+    --primary-soft: #FFF3C4;
+    --cheddar: #F2C94C;
+    --text-main: #2E2A24;
+    --text-sub: #7A746A;
+    --text-muted: #A7A29A;
+    --line: rgba(46, 42, 36, 0.1);
+    --shadow-card: 0 10px 30px rgba(46, 42, 36, 0.08);
+    --shadow-soft: 0 6px 18px rgba(46, 42, 36, 0.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Pretendard', -apple-system, system-ui, sans-serif;
+    background: #ECE9E2;
+    color: var(--text-main);
+    padding: 32px 20px 64px;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1.page-title { text-align: center; font-size: 22px; margin: 0 0 6px; }
+  p.page-sub { text-align: center; color: #6b665d; font-size: 14px; margin: 0 0 32px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 28px;
+    max-width: 1380px;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  /* 폰 프레임 */
+  .phone {
+    background: var(--card);
+    border-radius: 28px;
+    padding: 20px 16px 24px;
+    box-shadow: 0 18px 50px rgba(46,42,36,0.18);
+    border: 1px solid rgba(46,42,36,0.06);
+  }
+  .phone-tag {
+    display: inline-block;
+    background: var(--text-main);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+  }
+  .phone-desc { font-size: 12.5px; color: var(--text-sub); margin: 0 0 18px; line-height: 1.5; }
+
+  .sec-title {
+    font-size: 16px; font-weight: 700; color: var(--text-main);
+    letter-spacing: -0.3px; margin: 0 0 12px;
+  }
+
+  /* 공통 아이콘 배지 */
+  .ic {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--primary-soft); color: var(--primary-strong);
+    font-size: 14px; font-weight: 700; line-height: 1;
+  }
+
+  /* ───────── A. 카테고리 그룹 리스트 ───────── */
+  .a-card {
+    background: var(--card-white); border: 1px solid var(--line);
+    border-radius: 18px; box-shadow: var(--shadow-soft); padding: 6px 16px 12px;
+  }
+  .a-group-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 800; color: var(--text-sub);
+    letter-spacing: 0.4px; padding: 16px 0 6px;
+  }
+  .a-group-head::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .a-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 0; border-bottom: 1px solid var(--line);
+  }
+  .a-row:last-child { border-bottom: none; }
+  .a-label { flex: 1; font-size: 14px; font-weight: 600; color: var(--text-main); }
+  .a-pt { font-size: 15px; font-weight: 800; color: var(--primary-strong); }
+
+  /* ───────── B. 토스풍 플랫 리스트 ───────── */
+  .b-card {
+    background: var(--card-white); border: 1px solid var(--line);
+    border-radius: 20px; box-shadow: var(--shadow-card); padding: 18px 18px 8px;
+  }
+  .b-row { display: flex; align-items: center; gap: 13px; padding: 12px 0; }
+  .b-info { flex: 1; min-width: 0; }
+  .b-label { font-size: 14.5px; font-weight: 600; color: var(--text-main); margin: 0; }
+  .b-sub { font-size: 12px; color: var(--text-muted); margin: 2px 0 0; }
+  .b-pill {
+    flex: 0 0 auto; background: var(--primary-soft); color: var(--primary-strong);
+    font-size: 13px; font-weight: 800; padding: 6px 12px; border-radius: 999px;
+  }
+  .b-more {
+    width: 100%; text-align: center; border: none; background: none;
+    color: var(--text-sub); font-size: 13px; font-weight: 700;
+    padding: 14px 0 6px; border-top: 1px solid var(--line); margin-top: 4px; cursor: pointer;
+  }
+
+  /* ───────── C. 2열 콤팩트 그리드 ───────── */
+  .c-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .c-toggle { font-size: 12px; font-weight: 700; color: var(--primary-strong); }
+  .c-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .c-cell {
+    background: var(--card-white); border: 1px solid var(--line);
+    border-radius: 16px; box-shadow: var(--shadow-soft);
+    padding: 14px 14px; display: flex; align-items: center; gap: 11px;
+  }
+  .c-cell .ic { width: 34px; height: 34px; font-size: 15px; }
+  .c-txt { flex: 1; min-width: 0; }
+  .c-name { font-size: 13px; font-weight: 600; color: var(--text-main); margin: 0; line-height: 1.25; }
+  .c-pt { font-size: 16px; font-weight: 800; color: var(--primary-strong); margin: 2px 0 0; }
+
+  /* ───────── D. 세그먼트 탭 + 리스트 ───────── */
+  .d-seg {
+    display: flex; gap: 6px; background: rgba(46,42,36,0.05);
+    padding: 4px; border-radius: 14px; margin-bottom: 14px;
+  }
+  .d-seg button {
+    flex: 1; border: none; background: none; cursor: pointer;
+    font-size: 13px; font-weight: 700; color: var(--text-sub);
+    padding: 9px 0; border-radius: 10px;
+  }
+  .d-seg button.active { background: var(--card-white); color: var(--text-main); box-shadow: var(--shadow-soft); }
+  .d-card {
+    background: var(--card-white); border: 1px solid var(--line);
+    border-radius: 18px; box-shadow: var(--shadow-soft); padding: 4px 16px;
+  }
+  .d-row { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .d-row:last-child { border-bottom: none; }
+  .d-label { flex: 1; font-size: 14px; font-weight: 600; }
+  .d-pt { font-size: 15px; font-weight: 800; color: var(--primary-strong); }
+  .note { font-size: 11.5px; color: var(--text-muted); margin: 14px 2px 0; line-height: 1.5; }
+</style>
+</head>
+<body>
+  <h1 class="page-title">포인트 적립 기준 — 도안 4종</h1>
+  <p class="page-sub">실제 앱 색감(체다 옐로)으로 렌더링. 마음에 드는 번호를 알려주세요.</p>
+
+  <div class="grid">
+
+    <!-- ===== A. 카테고리 그룹 리스트 ===== -->
+    <div class="phone">
+      <span class="phone-tag">A · 카테고리 그룹 리스트</span>
+      <p class="phone-desc">식단·운동·설문으로 묶고 각 규칙을 한 줄로. 정보 구조가 명확하고 장식 없이 깔끔. 7개에 가장 적합.</p>
+      <h2 class="sec-title">포인트 적립 기준</h2>
+      <div class="a-card">
+        <div class="a-group-head">식단</div>
+        <div class="a-row"><span class="ic">✓</span><span class="a-label">한 끼 기록</span><span class="a-pt">+10P</span></div>
+        <div class="a-row"><span class="ic">•••</span><span class="a-label">하루 3끼 완료</span><span class="a-pt">+30P</span></div>
+        <div class="a-row"><span class="ic">★</span><span class="a-label">주 5일 기록</span><span class="a-pt">+50P</span></div>
+        <div class="a-row"><span class="ic">✦</span><span class="a-label">주 7일 완성</span><span class="a-pt">+100P</span></div>
+        <div class="a-group-head">운동</div>
+        <div class="a-row"><span class="ic">🏃</span><span class="a-label">운동 기록</span><span class="a-pt">+10P</span></div>
+        <div class="a-row"><span class="ic">🔥</span><span class="a-label">주간 운동 달성</span><span class="a-pt">+50P</span></div>
+        <div class="a-group-head">설문</div>
+        <div class="a-row"><span class="ic">📝</span><span class="a-label">설문 완료</span><span class="a-pt">+20P</span></div>
+      </div>
+    </div>
+
+    <!-- ===== B. 토스풍 플랫 리스트 ===== -->
+    <div class="phone">
+      <span class="phone-tag">B · 토스풍 플랫 리스트</span>
+      <p class="phone-desc">카드 한 장 안에 한 줄씩. 원형 배지 + 우측 포인트 pill. 부가 설명 한 줄 가능. 현금 보상 카드와 톤 통일. 가장 미니멀.</p>
+      <h2 class="sec-title">포인트 적립 기준</h2>
+      <div class="b-card">
+        <div class="b-row"><span class="ic">✓</span><div class="b-info"><p class="b-label">한 끼 기록</p><p class="b-sub">식단을 한 번 기록할 때마다</p></div><span class="b-pill">+10P</span></div>
+        <div class="b-row"><span class="ic">•••</span><div class="b-info"><p class="b-label">하루 3끼 완료</p><p class="b-sub">아침·점심·저녁 모두 기록</p></div><span class="b-pill">+30P</span></div>
+        <div class="b-row"><span class="ic">★</span><div class="b-info"><p class="b-label">주 5일 기록</p><p class="b-sub">한 주에 5일 이상 기록</p></div><span class="b-pill">+50P</span></div>
+        <button class="b-more">⌄  4개 더보기</button>
+      </div>
+    </div>
+
+    <!-- ===== C. 2열 콤팩트 그리드 ===== -->
+    <div class="phone">
+      <span class="phone-tag">C · 2열 콤팩트 그리드</span>
+      <p class="phone-desc">지금 그리드 유지하되 노란 장식원 제거 + 3열→2열로 넓혀 아이콘·텍스트 가로 정렬. 기존 느낌 살리며 정돈만.</p>
+      <div class="c-head">
+        <h2 class="sec-title" style="margin:0">포인트 적립 기준</h2>
+        <span class="c-toggle">접기 ⌃</span>
+      </div>
+      <div class="c-grid">
+        <div class="c-cell"><span class="ic">✓</span><div class="c-txt"><p class="c-name">한 끼 기록</p><p class="c-pt">+10P</p></div></div>
+        <div class="c-cell"><span class="ic">•••</span><div class="c-txt"><p class="c-name">하루 3끼</p><p class="c-pt">+30P</p></div></div>
+        <div class="c-cell"><span class="ic">★</span><div class="c-txt"><p class="c-name">주 5일 기록</p><p class="c-pt">+50P</p></div></div>
+        <div class="c-cell"><span class="ic">✦</span><div class="c-txt"><p class="c-name">주 7일 완성</p><p class="c-pt">+100P</p></div></div>
+        <div class="c-cell"><span class="ic">🏃</span><div class="c-txt"><p class="c-name">운동 기록</p><p class="c-pt">+10P</p></div></div>
+        <div class="c-cell"><span class="ic">🔥</span><div class="c-txt"><p class="c-name">주간 운동</p><p class="c-pt">+50P</p></div></div>
+        <div class="c-cell"><span class="ic">📝</span><div class="c-txt"><p class="c-name">설문 완료</p><p class="c-pt">+20P</p></div></div>
+      </div>
+    </div>
+
+    <!-- ===== D. 세그먼트 탭 + 리스트 ===== -->
+    <div class="phone">
+      <span class="phone-tag">D · 세그먼트 탭 + 리스트</span>
+      <p class="phone-desc">상단 식단/운동/설문 탭, 선택한 카테고리만 리스트로. 공간 절약 + 인터랙티브. 단, 탭을 눌러야 다른 항목이 보임.</p>
+      <h2 class="sec-title">포인트 적립 기준</h2>
+      <div class="d-seg">
+        <button class="active">식단</button>
+        <button>운동</button>
+        <button>설문</button>
+      </div>
+      <div class="d-card">
+        <div class="d-row"><span class="ic">✓</span><span class="d-label">한 끼 기록</span><span class="d-pt">+10P</span></div>
+        <div class="d-row"><span class="ic">•••</span><span class="d-label">하루 3끼 완료</span><span class="d-pt">+30P</span></div>
+        <div class="d-row"><span class="ic">★</span><span class="d-label">주 5일 기록</span><span class="d-pt">+50P</span></div>
+        <div class="d-row"><span class="ic">✦</span><span class="d-label">주 7일 완성</span><span class="d-pt">+100P</span></div>
+      </div>
+      <p class="note">※ '운동'·'설문' 탭을 누르면 해당 항목으로 바뀜</p>
+    </div>
+
+  </div>
+</body>
+</html>
