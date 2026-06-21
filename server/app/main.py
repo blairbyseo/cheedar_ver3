@@ -10,6 +10,7 @@ from app.routers import admin_analytics as admin_analytics_router
 from app.routers import auth as auth_router
 from app.routers import chat as chat_router
 from app.routers import exercise as exercise_router
+from app.routers import inquiry as inquiry_router
 from app.routers import meals as meals_router
 from app.routers import points as points_router
 from app.routers import rewards as rewards_router
@@ -35,6 +36,7 @@ app.mount("/uploads", StaticFiles(directory=str(upload_path)), name="uploads")
 app.include_router(auth_router.router)
 app.include_router(meals_router.router)
 app.include_router(exercise_router.router)
+app.include_router(inquiry_router.router)
 app.include_router(chat_router.router)
 app.include_router(points_router.router)
 app.include_router(rewards_router.router)

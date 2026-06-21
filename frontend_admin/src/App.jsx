@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
+import Inquiries from "./pages/Inquiries";
 import Login from "./pages/Login";
 import RewardClaims from "./pages/RewardClaims";
 import SafetyEvents from "./pages/SafetyEvents";
@@ -60,6 +61,14 @@ export default function App() {
         element={
           <RequireAdmin>
             <RewardClaims />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/inquiries"
+        element={
+          <RequireAdmin>
+            <Inquiries />
           </RequireAdmin>
         }
       />

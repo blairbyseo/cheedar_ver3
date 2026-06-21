@@ -70,6 +70,15 @@ export const api = {
       body: JSON.stringify({ status }),
     }),
 
+  // --- 문의하기 ---
+  // status: open(미처리) | resolved(처리완료) | all. 미지정 시 백엔드 기본 open.
+  inquiries: ({ status } = {}) => request(`/admin/inquiries${qs({ status })}`),
+  resolveInquiry: (id, isResolved) =>
+    request(`/admin/inquiries/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_resolved: isResolved }),
+    }),
+
   // --- 현금 보상 신청 ---
   // status 미지정 시 전체. 응답: { items, total, counts: {pending,paid,rejected} }
   rewardClaims: ({ status } = {}) =>

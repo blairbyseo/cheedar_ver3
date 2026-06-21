@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Secrets / keys — 절대 커밋 금지
+*.pem
+*.key
+
+# 배포 작업 임시물
+_s3backup/
+_cf_*.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

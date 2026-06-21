@@ -85,9 +85,10 @@ function Settings() {
   const [weeklyReportNotificationOn, setWeeklyReportNotificationOn] =
     useState(false);
 
-  // 6) 문의하기 — 관리자 쪽지 모달 표시 여부 + 입력 버퍼.
+  // 6) 문의하기 — 관리자 쪽지 모달 표시 여부 + 입력 버퍼 + 전송 중 여부.
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
   const [inquiryText, setInquiryText] = useState("");
+  const [isSubmittingInquiry, setIsSubmittingInquiry] = useState(false);
 
   // ── 아이디 관련 파생값 (state 가 아니라 user 로부터 매 렌더 계산) ──
   const currentUserId = user?.user_id ?? "";
@@ -219,15 +220,32 @@ function Settings() {
     setIsInquiryOpen(false);
     setInquiryText("");
   }
-  function handleSubmitInquiry() {
+  async function handleSubmitInquiry() {
     const text = inquiryText.trim();
     if (!text) {
       alert("쪽지 내용을 입력해주세요");
       return;
     }
-    // MVP: 실제 전송 미연결 — 추후 관리자 inbox API 연동 필요.
-    alert("쪽지를 보냈습니다. 관리자가 확인 후 답변드릴게요.");
-    handleCloseInquiry();
+    setIsSubmittingInquiry(true);
+    try {
+      const res = await fetch("/api/inquiries", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || `전송에 실패했어요 (${res.status})`);
+      }
+      alert("쪽지를 보냈습니다. 관리자가 확인 후 답변드릴게요.");
+      handleCloseInquiry();
+    } catch (err) {
+      console.error("[Settings] 문의 전송 실패:", err);
+      alert(err.message);
+    } finally {
+      setIsSubmittingInquiry(false);
+    }
   }
 
   // TODO: 추후 브라우저 Notification API 또는 앱 푸시 연동 필요.
@@ -486,15 +504,20 @@ function Settings() {
               autoFocus
             />
             <div className="inquiry-modal-buttons">
-              <button type="button" onClick={handleCloseInquiry}>
+              <button
+                type="button"
+                onClick={handleCloseInquiry}
+                disabled={isSubmittingInquiry}
+              >
                 취소
               </button>
               <button
                 type="button"
                 className="is-primary"
                 onClick={handleSubmitInquiry}
+                disabled={isSubmittingInquiry}
               >
-                보내기
+                {isSubmittingInquiry ? "보내는 중…" : "보내기"}
               </button>
             </div>
           </div>

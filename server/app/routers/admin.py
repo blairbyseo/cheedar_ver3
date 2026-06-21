@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import get_current_admin
 from app.models.chat import ChatMessage
+from app.models.inquiry import Inquiry
 from app.models.meal import Meal
 from app.models.points import PointHistory
 from app.models.reward import RewardClaim, RewardClaimStatus
@@ -22,6 +23,7 @@ from app.schemas.admin import (
     SafetyEventResolveRequest,
 )
 from app.schemas.chat import ChatMessageOut
+from app.schemas.inquiry import InquiryOut, InquiryResolveRequest
 from app.schemas.meal import MealOut
 from app.schemas.points import PointHistoryItem
 from app.schemas.rewards import (
@@ -410,3 +412,56 @@ def update_reward_claim(
 
     user = db.get(User, claim.user_id)
     return _claim_to_item(claim, user)
+
+
+# -- 문의하기 (Inquiry) -----------------------------------------------------
+# 사용자가 '설정 > 문의하기'에서 남긴 문의를 관리자가 확인하고 처리완료로 표시한다.
+
+def _inquiry_out(inq: Inquiry, user: User) -> InquiryOut:
+    """문의 + 작성자 User → 관리자 화면용 응답으로 변환."""
+    return InquiryOut(
+        id=inq.id,
+        user_id=inq.user_id,
+        account_id=user.user_id,
+        nickname=user.nickname,
+        content=inq.content,
+        is_resolved=inq.is_resolved,
+        created_at=inq.created_at,
+    )
+
+
+@router.get("/inquiries", response_model=list[InquiryOut])
+def list_inquiries(
+    status_filter: str = Query(
+        default="open",
+        alias="status",
+        description="open(미처리) | resolved(처리완료) | all",
+    ),
+    limit: int = Query(default=200, ge=1, le=500),
+    db: Session = Depends(get_db),
+) -> list[InquiryOut]:
+    """문의 목록 — 기본은 미처리, 최신순."""
+    stmt = select(Inquiry, User).join(User, User.id == Inquiry.user_id)
+    if status_filter == "open":
+        stmt = stmt.where(Inquiry.is_resolved.is_(False))
+    elif status_filter == "resolved":
+        stmt = stmt.where(Inquiry.is_resolved.is_(True))
+    stmt = stmt.order_by(Inquiry.created_at.desc()).limit(limit)
+    return [_inquiry_out(inq, user) for inq, user in db.execute(stmt).all()]
+
+
+@router.patch("/inquiries/{inquiry_id}", response_model=InquiryOut)
+def update_inquiry(
+    inquiry_id: int,
+    body: InquiryResolveRequest,
+    db: Session = Depends(get_db),
+) -> InquiryOut:
+    """문의 처리 상태 변경(처리완료 / 미처리)."""
+    inq = db.get(Inquiry, inquiry_id)
+    if inq is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Inquiry not found")
+    inq.is_resolved = body.is_resolved
+    db.commit()
+    db.refresh(inq)
+    user = db.get(User, inq.user_id)
+    return _inquiry_out(inq, user)

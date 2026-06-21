@@ -1,5 +1,6 @@
 from app.models.chat import ChatMessage, ChatRole
 from app.models.exercise import ExerciseLog
+from app.models.inquiry import Inquiry
 from app.models.meal import Meal, MealType
 from app.models.points import PointHistory
 from app.models.reward import KIND_FINAL_LEVEL, RewardClaim, RewardClaimStatus
@@ -24,6 +25,7 @@ __all__ = [
     "RewardClaimStatus",
     "KIND_FINAL_LEVEL",
     "ExerciseLog",
+    "Inquiry",
     "SafetyEvent",
     "RiskLevel",
     "PageTimeLog",
