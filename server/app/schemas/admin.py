@@ -36,6 +36,25 @@ class SafetyEventResolveRequest(BaseModel):
     status: str  # unresolved | reviewing | resolved
 
 
+class AdminSurveyResponseItem(BaseModel):
+    """회원의 설문 응답 1건 — 관리자 화면용(원본 답안 + 채점 결과 포함).
+
+    answers/derived_flags 를 가공 없이 그대로 내려준다. 자살·섭식 같은 민감
+    신호가 들어 있으므로 이 엔드포인트는 관리자(get_current_admin) 전용이다.
+    """
+
+    id: int
+    schema_version: str        # 어떤 설문 버전에 응답했는지
+    kind: str                  # onboarding | recurring
+    status: str                # in_progress | completed | abandoned
+    current_section: str | None
+    answers: dict              # question_id → 응답 원본
+    derived_flags: dict        # 채점으로 파생된 위험/프로파일 플래그
+    started_at: datetime
+    updated_at: datetime
+    completed_at: datetime | None
+
+
 class AdminUserListItem(BaseModel):
     """회원 목록 표의 한 줄."""
 

@@ -13,8 +13,14 @@ from app.models.meal import Meal
 from app.models.points import PointHistory
 from app.models.reward import RewardClaim, RewardClaimStatus
 from app.models.safety import RiskLevel, SafetyEvent
+from app.models.survey import (
+    SurveyResponse,
+    SurveyResponseStatus,
+    SurveySchema,
+)
 from app.models.user import User
 from app.schemas.admin import (
+    AdminSurveyResponseItem,
     AdminUserDetail,
     AdminUserListItem,
     AdminUserListResponse,
@@ -309,6 +315,56 @@ def get_user_chat(
     rows = list(db.execute(stmt).scalars())
     rows.reverse()
     return rows
+
+
+@router.get(
+    "/users/{user_id}/survey-responses",
+    response_model=list[AdminSurveyResponseItem],
+)
+def get_user_survey_responses(
+    user_id: int,
+    include_in_progress: bool = Query(
+        default=False,
+        description="True 면 미완료(in_progress) 응답도 포함. 기본은 완료분만.",
+    ),
+    db: Session = Depends(get_db),
+) -> list[AdminSurveyResponseItem]:
+    """특정 회원의 설문 응답 원본(answers + derived_flags) — 최신 완료순.
+
+    SurveySchema 와 조인해 응답이 어떤 설문 버전인지(schema_version)도 함께
+    내려준다. 기본은 완료(completed)된 응답만; include_in_progress=True 면
+    진행 중 응답도 포함한다(정렬은 completed_at, 없으면 started_at 기준).
+    """
+    _get_user_or_404(user_id, db)
+    stmt = (
+        select(SurveyResponse, SurveySchema.version)
+        .join(SurveySchema, SurveySchema.id == SurveyResponse.schema_id)
+        .where(SurveyResponse.user_id == user_id)
+    )
+    if not include_in_progress:
+        stmt = stmt.where(
+            SurveyResponse.status == SurveyResponseStatus.COMPLETED
+        )
+    stmt = stmt.order_by(
+        func.coalesce(
+            SurveyResponse.completed_at, SurveyResponse.started_at
+        ).desc()
+    )
+    return [
+        AdminSurveyResponseItem(
+            id=resp.id,
+            schema_version=version,
+            kind=resp.kind.value,
+            status=resp.status.value,
+            current_section=resp.current_section,
+            answers=resp.answers or {},
+            derived_flags=resp.derived_flags or {},
+            started_at=resp.started_at,
+            updated_at=resp.updated_at,
+            completed_at=resp.completed_at,
+        )
+        for resp, version in db.execute(stmt).all()
+    ]
 
 
 @router.get("/users/{user_id}/points", response_model=list[PointHistoryItem])

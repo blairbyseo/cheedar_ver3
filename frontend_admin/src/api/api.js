@@ -49,6 +49,13 @@ export const api = {
   userMeals: (id) => request(`/admin/users/${id}/meals`),
   userChat: (id) => request(`/admin/users/${id}/chat-messages`),
   userPoints: (id) => request(`/admin/users/${id}/points`),
+  // 설문 응답 원본 — 기본은 완료분만, includeInProgress 로 진행 중도 포함.
+  userSurveyResponses: (id, { includeInProgress } = {}) =>
+    request(
+      `/admin/users/${id}/survey-responses${qs({
+        include_in_progress: includeInProgress ? "true" : undefined,
+      })}`,
+    ),
 
   // --- 분석(대시보드 차트) ---
   analyticsActivityWeekly: ({ from, to } = {}) =>
