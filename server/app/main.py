@@ -9,6 +9,7 @@ from app.routers import admin as admin_router
 from app.routers import admin_analytics as admin_analytics_router
 from app.routers import auth as auth_router
 from app.routers import chat as chat_router
+from app.routers import emotion as emotion_router
 from app.routers import exercise as exercise_router
 from app.routers import inquiry as inquiry_router
 from app.routers import meals as meals_router
@@ -38,6 +39,7 @@ app.include_router(meals_router.router)
 app.include_router(exercise_router.router)
 app.include_router(inquiry_router.router)
 app.include_router(chat_router.router)
+app.include_router(emotion_router.router)
 app.include_router(points_router.router)
 app.include_router(rewards_router.router)
 app.include_router(survey_router.router)

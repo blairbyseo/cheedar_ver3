@@ -1,7 +1,8 @@
 /*5-2. Chat.jsx: App.jsx 파일에 걸림 */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { usePoints } from "../usePoints";
+import MoodOpener from "./MoodOpener";
 
 // 첫 진입 안내 메시지 (DB에 저장되진 않고 화면에만 보이는 인삿말)
 // 채팅 상태는 부모(MainShell)로 끌어올렸으므로, 초기값으로 쓰기 위해 export 한다.
@@ -28,6 +29,33 @@ function Chat({
 
   const bottomRef = useRef(null);
   const initialScrollPendingRef = useRef(true);
+
+  // 기분 체크인(MoodOpener) 표시 여부.
+  //  null = 아직 모름(today-status 응답 전), true = 오늘 미기록 → 카드 표시,
+  //  false = 오늘 이미 기록 → 숨김. 채팅 탭 진입(마운트) 시 1회 조회한다.
+  //  서버가 KST 자정 경계로 "오늘"을 판정하므로, 기록 후엔 다음 날까지 다시 안 뜬다.
+  const [moodNeeded, setMoodNeeded] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/emotion/today-status", {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error(`emotion today-status ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setMoodNeeded(!data.has_logged_today);
+      } catch (err) {
+        // 조회 실패 시엔 굳이 띄우지 않는다(과한 노출 < 조용한 누락).
+        console.error("[Chat] emotion today-status failed:", err);
+        if (!cancelled) setMoodNeeded(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // 채팅창 자동 스크롤
   // - 첫 진입 시 과거 기록 로드 직후: 즉시 점프해서 처음부터 가장 최근 대화가 보이게
@@ -94,6 +122,55 @@ function Chat({
     }
   }
 
+  // NDJSON 스트림 응답을 끝까지 읽어 한 줄(이벤트)씩 화면에 반영한다.
+  // 일반 전송(handleSubmit)과 기분 체크인 직후 opener(triggerOpener)가 공용으로 쓴다.
+  async function consumeNdjson(res) {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // 줄바꿈 단위로 끊어, 완성된 줄만 파싱 (조각난 줄은 buffer에 남김)
+      let nl;
+      while ((nl = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, nl).trim();
+        buffer = buffer.slice(nl + 1);
+        if (line) applyStreamEvent(JSON.parse(line));
+      }
+    }
+  }
+
+  // 기분 체크인 직후, AI 가 먼저 인사하도록 opener 스트림을 받아 화면에 흘린다.
+  // 유저 메시지 없이 AI 버블만 생긴다(서버 /api/chat/opener 는 "user" 이벤트를 안 보냄).
+  async function triggerOpener() {
+    setIsSending(true);
+    setErrorText("");
+    try {
+      const res = await fetch("/api/chat/opener", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok || !res.body) throw new Error(`opener ${res.status}`);
+      await consumeNdjson(res);
+    } catch (err) {
+      console.error("[Chat] opener failed:", err);
+      // opener 는 부가 기능이라 실패해도 조용히 넘어간다(에러 배너까지는 띄우지 않음).
+      setMessages((prev) => prev.filter((m) => !m._streaming));
+    } finally {
+      setIsSending(false);
+    }
+  }
+
+  // MoodOpener 가 기록에 성공하면: 카드를 감추고 곧바로 AI 인사를 트리거한다.
+  function handleMoodLogged() {
+    setMoodNeeded(false);
+    triggerOpener();
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     const text = draft.trim();
@@ -114,25 +191,7 @@ function Chat({
         body: JSON.stringify({ text }),
       });
       if (!res.ok || !res.body) throw new Error(`send ${res.status}`);
-
-      // 응답은 NDJSON 스트림 — 한 줄에 JSON 이벤트 1개씩 들어온다.
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        // 줄바꿈 단위로 끊어, 완성된 줄만 파싱 (조각난 줄은 buffer에 남김)
-        let nl;
-        while ((nl = buffer.indexOf("\n")) >= 0) {
-          const line = buffer.slice(0, nl).trim();
-          buffer = buffer.slice(nl + 1);
-          if (line) applyStreamEvent(JSON.parse(line));
-        }
-      }
+      await consumeNdjson(res);
     } catch (err) {
       console.error("[Chat] send failed:", err);
       // 낙관적 유저 메시지/진행 중이던 AI 버블을 걷어낸다
@@ -198,6 +257,11 @@ function Chat({
               <span className="chat-typing-dot" />
             </div>
           </div>
+        )}
+        {/* 기분 체크인 — 오늘 미기록일 때만, 대화 흐름 맨 아래에 카드로 노출.
+            확인을 누르면 사라지고 AI 가 먼저 인사(opener)를 건넨다. */}
+        {moodNeeded === true && !isSending && (
+          <MoodOpener onLogged={handleMoodLogged} />
         )}
         <div ref={bottomRef} />
       </section>

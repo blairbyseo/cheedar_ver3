@@ -274,3 +274,208 @@
 .chat-send:hover {
   transform: translateY(-1px);
 }
+
+/* 6. 기분 체크인 카드 (MoodOpener) — 채팅 진입 시 하루 1회, 스레드 안에 표시.
+      앱 테마(크림/골드)에 맞춘 따뜻한 카드. 점수에 따라 표정·라벨이 바뀐다. */
+.mood-opener {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(180deg, #FFFDF5 0%, #FFF6DD 100%);
+  border: 1px solid rgba(209, 169, 22, 0.22);
+  border-radius: var(--radius-card);
+  padding: 22px 18px 20px;
+  box-shadow: var(--shadow-card);
+}
+
+.mood-opener-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 작은 골드 핀 배지 — '오늘의 기분' */
+.mood-opener-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  border: 1px solid rgba(209, 169, 22, 0.3);
+  color: var(--primary-strong);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.mood-opener-title {
+  margin: 0;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+}
+
+/* 표정 이모지 — 흰 원판 위에 올려 카드와 대비 */
+.mood-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: var(--card-white);
+  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--line);
+}
+
+.mood-face-emoji {
+  font-size: 40px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.mood-face-emoji.is-empty {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+
+.mood-face-label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  min-height: 18px;
+}
+
+.mood-face-label.is-empty {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.mood-slider-wrap {
+  width: 100%;
+  margin-top: 2px;
+}
+
+/* 1~10 단계 눈금. 좌우 패딩(13px)을 thumb 반지름과 맞춰 각 눈금이 슬라이더
+   정지 위치(10단계)에 정렬되게 한다. 선택값까지는 골드로 채워진다. */
+.mood-ticks {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 12px;
+  padding: 0 13px;
+  margin-top: 7px;
+}
+
+.mood-tick {
+  width: 2px;
+  height: 7px;
+  border-radius: 1px;
+  background: rgba(46, 42, 36, 0.18);
+  transition: background-color 0.12s ease, height 0.12s ease;
+}
+
+/* 선택값 이하 — 채워진 단계 */
+.mood-tick.is-active {
+  background: var(--primary-strong);
+}
+
+/* 현재 선택된 단계 — 더 길게 만들어 포인터처럼 보이게 */
+.mood-tick.is-current {
+  height: 12px;
+  width: 3px;
+}
+
+.mood-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: linear-gradient(to right, #F0907A 0%, #F2C94C 50%, #7FC9A0 100%);
+  box-shadow: inset 0 1px 2px rgba(46, 42, 36, 0.12);
+}
+
+.mood-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid var(--primary-strong);
+  box-shadow: 0 2px 6px rgba(46, 42, 36, 0.2);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.mood-slider::-webkit-slider-thumb:active {
+  transform: scale(1.12);
+}
+
+.mood-slider::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid var(--primary-strong);
+  box-shadow: 0 2px 6px rgba(46, 42, 36, 0.2);
+  cursor: pointer;
+}
+
+/* 미터치 상태 — thumb 살짝 흐리게(아직 안 고른 표시) */
+.mood-slider-empty::-webkit-slider-thumb {
+  opacity: 0.55;
+  border-color: var(--text-muted);
+}
+
+.mood-slider-empty::-moz-range-thumb {
+  opacity: 0.55;
+  border-color: var(--text-muted);
+}
+
+.mood-anchor-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 9px;
+  font-size: 11px;
+  color: var(--text-sub);
+}
+
+.mood-opener-error {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: #c0392b;
+}
+
+.mood-opener-submit {
+  align-self: stretch;
+  height: 44px;
+  margin-top: 2px;
+  border: none;
+  border-radius: 999px;
+  background: var(--primary-strong);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(209, 169, 22, 0.28);
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mood-opener-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(209, 169, 22, 0.34);
+}
+
+.mood-opener-submit:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  box-shadow: none;
+}

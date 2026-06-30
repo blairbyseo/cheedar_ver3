@@ -11,8 +11,14 @@ from app.models.chat import ChatMessage, ChatRole
 from app.models.user import User
 from app.schemas.chat import ChatMessageOut, ChatSendRequest
 from app.services.diet_context import build_diet_context
+from app.services.emotion_context import build_emotion_context
 from app.services.exercise_context import build_exercise_context
-from app.services.openai_client import CHAT_MOCK_RESPONSE, chat_completion_stream
+from app.services.openai_client import (
+    CHAT_MOCK_RESPONSE,
+    CHAT_OPENER_MOCK_RESPONSE,
+    chat_completion_stream,
+    chat_opener_stream,
+)
 from app.services.survey_context import build_survey_context
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -80,6 +86,8 @@ def send_message(
     # 떠둔다(event_stream 안에서는 이미 닫혀 있을 수 있음).
     diet_context = build_diet_context(db, current_user.id)
     exercise_context = build_exercise_context(db, current_user.id)
+    # 오늘 남긴 기분 → 응답 톤 조정 지시. 최근 24h 기록 없으면 빈 문자열.
+    emotion_context = build_emotion_context(db, current_user.id)
     # 설문 프로파일 → 오늘의 개인화 지시(렌즈/스레드/금기). 신호 없으면 빈 문자열.
     survey_context = build_survey_context(db, current_user.id)
 
@@ -105,11 +113,67 @@ def send_message(
             diet_context=diet_context,
             exercise_context=exercise_context,
             survey_context=survey_context,
+            emotion_context=emotion_context,
         ):
             chunks.append(delta)
             yield _ndjson({"type": "delta", "text": delta})
 
         ai_text = "".join(chunks).strip() or CHAT_MOCK_RESPONSE
+
+        with SessionLocal() as session:
+            ai_msg = ChatMessage(
+                user_id=user_id, role=ChatRole.ai, text=ai_text
+            )
+            session.add(ai_msg)
+            session.commit()
+            session.refresh(ai_msg)
+            done_event = _ndjson(
+                {
+                    "type": "done",
+                    "message": ChatMessageOut.model_validate(ai_msg).model_dump(
+                        mode="json"
+                    ),
+                }
+            )
+        yield done_event
+
+    return StreamingResponse(event_stream(), media_type="application/x-ndjson")
+
+
+@router.post("/opener")
+def opener(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    """기분 체크인 직후, AI 가 먼저 건네는 인사를 NDJSON 스트림으로 흘려보낸다.
+
+    유저 메시지 없이 AI 메시지만 생성·저장한다(send_message 와 달리 "user"
+    이벤트 없음). 프론트는 /api/emotion/log 성공 직후 이 엔드포인트를 호출한다.
+
+    스트림 이벤트:
+      {"type": "delta", "text": "..."}   — AI 인사 조각
+      {"type": "done",  "message": {...}} — AI 메시지 저장 완료
+    """
+    # 컨텍스트는 요청 스코프 db 가 살아있을 때 미리 문자열로 떠둔다(event_stream
+    # 안에서는 세션이 닫혀 있을 수 있음).
+    diet_context = build_diet_context(db, current_user.id)
+    exercise_context = build_exercise_context(db, current_user.id)
+    emotion_context = build_emotion_context(db, current_user.id)
+    survey_context = build_survey_context(db, current_user.id)
+    user_id = current_user.id
+
+    def event_stream():
+        chunks: list[str] = []
+        for delta in chat_opener_stream(
+            diet_context=diet_context,
+            exercise_context=exercise_context,
+            emotion_context=emotion_context,
+            survey_context=survey_context,
+        ):
+            chunks.append(delta)
+            yield _ndjson({"type": "delta", "text": delta})
+
+        ai_text = "".join(chunks).strip() or CHAT_OPENER_MOCK_RESPONSE
 
         with SessionLocal() as session:
             ai_msg = ChatMessage(

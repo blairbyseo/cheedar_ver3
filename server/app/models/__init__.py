@@ -1,4 +1,5 @@
 from app.models.chat import ChatMessage, ChatRole
+from app.models.emotion import EmotionLog
 from app.models.exercise import ExerciseLog
 from app.models.inquiry import Inquiry
 from app.models.meal import Meal, MealType
@@ -20,6 +21,7 @@ __all__ = [
     "MealType",
     "ChatMessage",
     "ChatRole",
+    "EmotionLog",
     "PointHistory",
     "RewardClaim",
     "RewardClaimStatus",

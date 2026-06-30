@@ -102,6 +102,18 @@ CHAT_MOCK_RESPONSE = (
     "(.env의 AI_MOCK_MODE=false로 바꾸면 실제 응답으로 동작합니다.)"
 )
 
+# 기분 체크인 직후, AI 가 사용자 입력 없이 먼저 말을 거는 opener 용 지시.
+OPENER_INSTRUCTION = """사용자가 방금 오늘의 기분을 기록했어. 이제 너(체다)가 사용자 입력 없이 먼저 말을 걸어 대화를 시작해줘.
+
+- 위 [오늘의 기분]에 자연스럽게 공감하며 따뜻하게 인사해.
+- 2~3문장으로 짧게. 마지막에 부담 없는 가벼운 후속 질문 1개만.
+- 기분 점수(숫자)나 '기분을 기록하셨네요' 같은 시스템적인 말은 하지 마. 사람처럼 자연스럽게.
+- 기분이 좋으면 가볍고 밝게, 좋지 않으면 더 부드럽고 다정하게 톤을 맞춰."""
+
+CHAT_OPENER_MOCK_RESPONSE = (
+    "오늘도 와줘서 고마워요. 오늘은 어떤 하루 보내고 계세요?"
+)
+
 MOCK_RESPONSE = {
     "summary": "새우버거로 추정돼요",
     "calories": 520,
@@ -166,11 +178,76 @@ def analyze_meal_image(image_path: Path) -> dict:
         return dict(MOCK_RESPONSE)
 
 
+def _system_context_messages(
+    diet_context: str | None,
+    exercise_context: str | None,
+    emotion_context: str | None,
+    survey_context: str | None,
+) -> list[dict]:
+    """데이터·개인화 컨텍스트를 system 메시지 리스트로. 빈 값은 건너뛴다.
+
+    순서가 곧 우선순위(뒤일수록 대화에 가까워 더 salient). 식단·운동(본인
+    데이터) → 오늘의 기분 → 설문 개인화 지시(안전·금기) 순으로 둔다.
+    """
+    msgs: list[dict] = []
+    if diet_context:
+        msgs.append({"role": "system", "content": diet_context})
+    if exercise_context:
+        msgs.append({"role": "system", "content": exercise_context})
+    if emotion_context:
+        msgs.append({"role": "system", "content": emotion_context})
+    if survey_context:
+        msgs.append({"role": "system", "content": survey_context})
+    return msgs
+
+
+def chat_opener_stream(
+    diet_context: str | None = None,
+    exercise_context: str | None = None,
+    emotion_context: str | None = None,
+    survey_context: str | None = None,
+) -> Iterator[str]:
+    """기분 체크인 직후 AI 가 먼저 건네는 인사를 토큰 단위로 흘려보낸다.
+
+    사용자 메시지 없이 system 지시만으로 LLM 이 첫 마디를 생성한다.
+    AI 비활성/실패 시 고정 mock 인사로 폴백한다.
+    """
+    if settings.ai_mock_mode or not settings.openai_api_key:
+        yield CHAT_OPENER_MOCK_RESPONSE
+        return
+
+    messages: list[dict] = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
+    messages += _system_context_messages(
+        diet_context, exercise_context, emotion_context, survey_context
+    )
+    messages.append({"role": "system", "content": OPENER_INSTRUCTION})
+    # LLM 이 system 만으로도 응답하지만, 첫 턴을 확실히 유도하려 가벼운 트리거를 둔다.
+    messages.append({"role": "user", "content": "(오늘의 기분 체크인을 마쳤어요)"})
+
+    produced = False
+    try:
+        stream = _client().chat.completions.create(
+            model=settings.openai_model,
+            messages=messages,
+            stream=True,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                produced = True
+                yield delta
+    except (OpenAIError, KeyError, IndexError) as exc:
+        logger.warning("OpenAI opener stream failed, falling back to mock: %s", exc)
+        if not produced:
+            yield CHAT_OPENER_MOCK_RESPONSE
+
+
 def chat_completion_stream(
     history: list[dict],
     diet_context: str | None = None,
     exercise_context: str | None = None,
     survey_context: str | None = None,
+    emotion_context: str | None = None,
 ) -> Iterator[str]:
     """Yield the assistant's reply for a chat turn, chunk by chunk.
 
@@ -180,6 +257,7 @@ def chat_completion_stream(
     식단·운동 스냅샷을 각각 system 메시지로 끼워 넣는다 — AI 가 "오늘 뭐
     먹었어요?" / "나 운동 잘 하고 있어?" 같은 질문에 실제 DB 기록을 보고
     답하도록.
+    `emotion_context` 는 오늘 남긴 기분을 응답 톤 조정용 한 줄로 변환한 것이다.
     `survey_context` 는 설문 프로파일에서 만든 '오늘의 개인화 지시'(렌즈/스레드/
     금기)다. 안전·개인화 지침이라 대화 직전(가장 가까운 위치)에 둬서 가장
     salient 하게 만든다.
@@ -191,13 +269,9 @@ def chat_completion_stream(
         return
 
     messages: list[dict] = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
-    if diet_context:
-        messages.append({"role": "system", "content": diet_context})
-    if exercise_context:
-        messages.append({"role": "system", "content": exercise_context})
-    # 개인화 지시는 데이터 컨텍스트 뒤(대화 직전)에 둬서 우선 적용되도록 한다.
-    if survey_context:
-        messages.append({"role": "system", "content": survey_context})
+    messages += _system_context_messages(
+        diet_context, exercise_context, emotion_context, survey_context
+    )
     for msg in history:
         role = "assistant" if msg["role"] == "ai" else "user"
         messages.append({"role": role, "content": msg["text"]})
