@@ -22,10 +22,10 @@ import Ranking from './tab_pages/Ranking';
 import WeeklyReport from './tab_pages/WeeklyReport';
 import TabBar from './TabBar';
 
-import Survey from './survey/Survey';
+import Survey from './survey/onboarding/OnboardingSurvey';
 import { getNextSurvey } from './utils/survey';
 
-import { AuthProvider } from './auth/AuthContext';
+import { AuthProvider, useAuth } from './auth/AuthContext';
 import { useTabTelemetry } from './useTabTelemetry';
 import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
@@ -35,6 +35,8 @@ import ProtectedRoute from './auth/ProtectedRoute';
 /* 로그인 이후 보여줄 메인 화면 — 탭 5개 + 하단 TabBar */
 function MainShell() {
   const [activeTab, setActiveTab] = useState("home");
+  // 로그인한 사용자 닉네임 — 설문 Welcome 인사("OO님, 반가워요!")에 쓴다.
+  const { user } = useAuth();
 
   // 탭 전환을 페이지 이동으로 계측 — 관리자 분석(페이지 소요시간/동선)용 샘플 적재.
   // (hook 규칙상 surveyData 조기 return 보다 위에서 호출해야 한다.)
@@ -89,7 +91,12 @@ function MainShell() {
   }, []);
 
   if (surveyData) {
-    return <Survey data={surveyData} onDone={() => setSurveyData(null)} />;
+    return (
+      <Survey
+        data={{ ...surveyData, user_name: user?.nickname || "" }}
+        onDone={() => setSurveyData(null)}
+      />
+    );
   }
 
   return (

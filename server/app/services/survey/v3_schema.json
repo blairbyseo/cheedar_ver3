@@ -676,6 +676,13 @@
           "allow_other_free_text": true
         },
         {
+          "id": "E-1-5b",
+          "text": "어떤 경험이었나요?",
+          "type": "free_text",
+          "max_length": 60,
+          "show_if": {"question_id": "E-1-5", "op": "==", "value": "yes"}
+        },
+        {
           "id": "E-2-1",
           "text": "가족 안에서 마음 상하는 일이 자주 있나요?",
           "type": "likert_0_3"
