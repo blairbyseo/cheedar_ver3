@@ -460,6 +460,219 @@
 }
 
 
+/* 분석 힌트용 설명 입력 (선택) */
+.meal-desc-input {
+  margin-bottom: 12px;
+}
+.meal-desc-input input {
+  width: 100%;
+  margin-top: 6px;
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--text-main);
+  box-sizing: border-box;
+}
+.meal-desc-input input::placeholder { color: var(--text-sub); }
+
+/* 4. AI 항목별 분석 플레이트 */
+.ai-plate {
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
+  border: 1px solid rgba(46, 42, 36, 0.04);
+  border-radius: 22px;
+  padding: 16px 16px 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-card);
+}
+
+.ai-plate-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.ai-plate-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+.ai-plate-total {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--primary-strong);
+  letter-spacing: -0.2px;
+}
+.ai-plate-confidence {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin: 0 0 10px;
+}
+
+.plate-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.plate-item {
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 12px 10px;
+}
+
+.plate-item-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plate-item-name {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  padding: 2px 0;
+}
+.plate-item-name:focus {
+  outline: none;
+  border-bottom-color: rgba(209, 169, 22, 0.5);
+}
+.plate-item-delete {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(46, 42, 36, 0.06);
+  color: var(--text-sub);
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1;
+}
+.plate-item-delete:hover { background: rgba(224, 90, 74, 0.14); color: #E05A4A; }
+
+.plate-item-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 6px;
+}
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(46, 42, 36, 0.04);
+  border-radius: 10px;
+  padding: 3px 6px;
+}
+.qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: #FFF0B8;
+  color: var(--text-main);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+.qty-btn:active { transform: scale(0.94); }
+.qty-value {
+  min-width: 34px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+.unit-select {
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.plate-item-macros {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-strong);
+  letter-spacing: -0.1px;
+}
+.plate-item-reest { color: var(--text-sub); font-weight: 600; }
+
+.plate-add-btn {
+  width: 100%;
+  margin-top: 12px;
+  background: transparent;
+  border: 1px dashed rgba(209, 169, 22, 0.5);
+  border-radius: 12px;
+  padding: 11px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary-strong);
+  cursor: pointer;
+}
+.plate-add-btn:hover { background: rgba(255, 240, 184, 0.4); }
+
+/* 자연어 수정사항 */
+.delta-box {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.delta-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.delta-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-size: 14px;
+  color: var(--text-main);
+}
+.delta-input::placeholder { color: var(--text-sub); }
+.delta-apply {
+  flex: none;
+  background: #FFF0B8;
+  border: 1px solid rgba(209, 169, 22, 0.28);
+  border-radius: 12px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-main);
+  cursor: pointer;
+}
+.delta-apply:disabled { opacity: 0.5; cursor: default; }
+.delta-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+
+
 /* 5. 저장 버튼 + 보상 피드백 (+10P 배지, 반짝이, 토스트) */
 .meal-save-wrap {
   position: relative;

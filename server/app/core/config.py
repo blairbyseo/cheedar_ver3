@@ -86,6 +86,13 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_model: str = "gpt-5-mini"
 
+    # 식단 사진 분석용 vision 모델. 기본은 openai_model 과 동일 계열.
+    #   openai_vision_model          : 1차 분석 모델(사진 인식).
+    #   openai_flagship_vision_model : 1차가 음식을 0개 인식했을 때 1회 재시도할
+    #                                  상위 모델. 비우면 재시도하지 않는다.
+    openai_vision_model: str = "gpt-5-mini"
+    openai_flagship_vision_model: str = "gpt-5"
+
     # When true, /api/meals/analyze returns a fixed mock instead of calling OpenAI.
     ai_mock_mode: bool = False
 

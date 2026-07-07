@@ -1,8 +1,10 @@
+import json
+import uuid
 from datetime import date as DateType
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -12,13 +14,22 @@ from app.models.meal import Meal, MealType
 from app.models.user import User
 from app.schemas.meal import (
     AIAnalysisResult,
+    AnalyzeItemRequest,
+    AnalyzeItemResponse,
+    ApplyDeltaRequest,
+    ApplyDeltaResponse,
     DailyStatusItem,
     DailyStatusResponse,
     MealCreate,
+    MealItem,
     MealOut,
     MealUpdate,
 )
-from app.services.openai_client import analyze_meal_image
+from app.services.openai_client import (
+    analyze_meal_image,
+    analyze_single_item,
+    apply_delta_to_items,
+)
 from app.services.points import award_points_for_meal
 from app.services.uploads import save_meal_image
 
@@ -27,14 +38,140 @@ router = APIRouter(prefix="/api/meals", tags=["meals"])
 
 # -- AI analysis ------------------------------------------------------------
 
+
+def _sanitize_items(raw_items: object) -> list[MealItem]:
+    """LLM 이 준 items 배열을 방어적으로 정규화한다.
+
+    - 이름 없는 항목 제거
+    - quantity None/음수 → 1.0
+    - unit 비어있으면 "개" (프론트 드롭다운 유효값 보장)
+    """
+    items: list[MealItem] = []
+    if not isinstance(raw_items, list):
+        return items
+    for x in raw_items:
+        if not isinstance(x, dict):
+            continue
+        name = str(x.get("name") or "").strip()
+        if not name:
+            continue
+
+        q_raw = x.get("quantity")
+        try:
+            q = float(q_raw) if q_raw is not None else 1.0
+        except (TypeError, ValueError):
+            q = 1.0
+        if q < 0.1:
+            q = 1.0
+
+        unit = str(x.get("unit")).strip() if x.get("unit") else ""
+        if not unit:
+            unit = "개"
+
+        items.append(
+            MealItem(
+                name=name,
+                calories=x.get("calories"),
+                carbs=x.get("carbs"),
+                protein=x.get("protein"),
+                fat=x.get("fat"),
+                quantity=q,
+                unit=unit,
+                is_ingredient=x.get("is_ingredient"),
+            )
+        )
+    return items
+
+
 @router.post("/analyze", response_model=AIAnalysisResult)
 def analyze_image(
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(default=None),
+    meal_time: str = Form(default=""),
+    description: str = Form(default=""),
     _: User = Depends(get_current_user),
 ) -> AIAnalysisResult:
-    abs_path, public_url = save_meal_image(file)
-    result = analyze_meal_image(Path(abs_path))
-    return AIAnalysisResult(image_path=public_url, **result)
+    if file is None and not (description or "").strip():
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "사진이나 설명 중 하나는 필요해요."
+        )
+
+    public_url: str | None = None
+    abs_path: Path | None = None
+    if file is not None:
+        saved_path, public_url = save_meal_image(file)
+        abs_path = Path(saved_path)
+
+    data = analyze_meal_image(
+        abs_path, meal_time=meal_time, description=description or ""
+    )
+    items = _sanitize_items(data.get("items"))
+    return AIAnalysisResult(
+        analysis_id=str(uuid.uuid4()),
+        image_path=public_url,
+        items=items,
+        suggested_description=data.get("suggested_description"),
+        calories=data.get("calories"),
+        carbs=data.get("carbs"),
+        protein=data.get("protein"),
+        fat=data.get("fat"),
+        foods=[i.name for i in items],
+        confidence=data.get("confidence"),
+        notes=data.get("notes"),
+    )
+
+
+@router.post("/analyze-item", response_model=AnalyzeItemResponse)
+def analyze_item(
+    payload: AnalyzeItemRequest,
+    _: User = Depends(get_current_user),
+) -> AnalyzeItemResponse:
+    name = (payload.name or "").strip()
+    if not name:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "음식 이름이 필요해요.")
+
+    quantity = payload.quantity if payload.quantity and payload.quantity > 0 else 1.0
+    unit = (payload.unit or "").strip() or "개"
+
+    data = analyze_single_item(name, quantity, unit)
+
+    def _num(v: object) -> float | None:
+        if v is None:
+            return None
+        try:
+            n = float(v)
+            return n if n >= 0 else None
+        except (TypeError, ValueError):
+            return None
+
+    return AnalyzeItemResponse(
+        calories=_num(data.get("calories")),
+        carbs=_num(data.get("carbs")),
+        protein=_num(data.get("protein")),
+        fat=_num(data.get("fat")),
+        notes=data.get("notes"),
+    )
+
+
+@router.post("/apply-delta", response_model=ApplyDeltaResponse)
+def apply_delta(
+    payload: ApplyDeltaRequest,
+    _: User = Depends(get_current_user),
+) -> ApplyDeltaResponse:
+    delta = (payload.delta_text or "").strip()
+    if not delta:
+        return ApplyDeltaResponse(items=payload.items, notes=None)
+
+    data = apply_delta_to_items(
+        [it.model_dump() for it in payload.items], delta
+    )
+    new_items = _sanitize_items(data.get("items"))
+    # 파싱 실패로 비었는데 원본이 있었으면 원본 유지 (데이터 소실 방지)
+    if not new_items and payload.items:
+        return ApplyDeltaResponse(
+            items=payload.items,
+            notes="수정사항 반영이 안정적으로 완료되지 않아 기존 상태를 유지했어요. 다시 시도해주세요.",
+        )
+    return ApplyDeltaResponse(items=new_items, notes=data.get("notes"))
 
 
 # -- CRUD -------------------------------------------------------------------
@@ -45,6 +182,11 @@ def create_meal(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Meal:
+    items_json = (
+        json.dumps([it.model_dump() for it in payload.items], ensure_ascii=False)
+        if payload.items
+        else None
+    )
     meal = Meal(
         user_id=current_user.id,
         meal_type=payload.meal_type,
@@ -57,6 +199,9 @@ def create_meal(
         image_path=payload.image_path,
         ai_summary=payload.ai_summary,
         ai_comment=payload.ai_comment,
+        ai_notes=payload.ai_notes,
+        ai_confidence=payload.ai_confidence,
+        items=items_json,
     )
     db.add(meal)
     # flush 로 meal.id 를 먼저 확보한다 — 포인트 적립이 meal.id 를 중복 방지
