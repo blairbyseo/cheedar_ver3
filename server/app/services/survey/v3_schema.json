@@ -36,7 +36,7 @@
           "unit": "세",
           "integer": true,
           "min": 5,
-          "max": 25,
+          "max": 100,
           "prefill_from": "user.age",
           "skippable_if_prefilled": true
         },
