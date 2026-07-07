@@ -8,9 +8,10 @@ import AnalyticsCharts from "../components/AnalyticsCharts";
 // 대시보드 요약 카드 정의 — 키는 백엔드 DashboardStats 의 필드명과 맞춘다.
 // (위험 대화 감지 카드는 클릭 동작이 있어 별도로 렌더링한다 — CARDS 에는 없음.)
 const CARDS = [
-  { key: "total_users", label: "전체 회원", icon: Users, suffix: "명", color: "#3182f6" },
+  { key: "total_users", label: "전체 회원", icon: Users, suffix: "명", color: "#3182f6", to: "/users" },
   { key: "today_meals", label: "오늘 기록된 식단", icon: UtensilsCrossed, suffix: "건", color: "#10b981" },
-  { key: "total_chat_messages", label: "누적 채팅 메시지", icon: MessageSquare, suffix: "개", color: "#ec4899" },
+  { key: "today_chat_messages", label: "오늘 채팅", icon: MessageSquare, suffix: "개", color: "#f59e0b" },
+  { key: "total_chat_messages", label: "전체 채팅", icon: MessageSquare, suffix: "개", color: "#ec4899" },
 ];
 
 export default function Dashboard() {
@@ -48,20 +49,29 @@ export default function Dashboard() {
       </button>
 
       <div className="card-grid">
-        {CARDS.map(({ key, label, icon: Icon, suffix, color }, i) => (
+        {CARDS.map(({ key, label, icon: Icon, suffix, color, to }, i) => (
           <Fragment key={key}>
-            <div className="stat-card">
-              <div className="stat-body">
-                <span className="stat-label">{label}</span>
-                <span className="stat-value">
-                  {stats ? stats[key].toLocaleString() : "—"}
-                  <span className="stat-suffix">{suffix}</span>
-                </span>
-              </div>
-              <div className="stat-icon" style={{ background: `${color}1a`, color }}>
-                <Icon size={22} />
-              </div>
-            </div>
+            {/* to 가 있으면 클릭 시 해당 화면으로 이동하는 버튼으로 렌더 */}
+            {(() => {
+              const Card = to ? "button" : "div";
+              return (
+                <Card
+                  className={`stat-card${to ? " clickable" : ""}`}
+                  onClick={to ? () => navigate(to) : undefined}
+                >
+                  <div className="stat-body">
+                    <span className="stat-label">{label}</span>
+                    <span className="stat-value">
+                      {stats ? stats[key].toLocaleString() : "—"}
+                      <span className="stat-suffix">{suffix}</span>
+                    </span>
+                  </div>
+                  <div className="stat-icon" style={{ background: `${color}1a`, color }}>
+                    <Icon size={22} />
+                  </div>
+                </Card>
+              );
+            })()}
 
             {/* 전체 회원 카드 다음에 '위험 대화 감지' 카드 — 클릭 시 위험 신호로 이동 */}
             {i === 0 && (

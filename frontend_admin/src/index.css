@@ -209,7 +209,10 @@ button { font-family: inherit; cursor: pointer; }
 /* ---------- 페이지 공통 ---------- */
 .page { max-width: 1180px; }
 .page-header { margin-bottom: 28px; }
+.page-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .page-header h1 { font-size: 26px; margin: 0 0 6px; font-weight: 700; letter-spacing: -0.02em; }
+.btn-export { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn-export:disabled { opacity: 0.5; cursor: not-allowed; }
 .page-desc { color: var(--muted); margin: 0; font-size: 14px; }
 .error-banner {
   background: var(--danger-soft);
@@ -224,18 +227,23 @@ button { font-family: inherit; cursor: pointer; }
 /* ---------- 대시보드 카드 ---------- */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 16px;
+  /* 카드 5개를 한 행에 — minmax(0,1fr)로 좁아져도 넘치지 않게 균등 분할 */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+/* 화면이 좁으면(예: 태블릿) 자동으로 접혀서 깨지지 않도록 */
+@media (max-width: 1100px) {
+  .card-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 }
 .stat-card {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 10px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 24px;
+  padding: 18px 16px;
   box-shadow: var(--shadow);
   transition: box-shadow 0.15s, transform 0.15s;
 }
@@ -250,17 +258,18 @@ button { font-family: inherit; cursor: pointer; }
 .stat-card.clickable:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 .stat-card.clickable:active { transform: translateY(0); }
 .stat-icon {
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   order: 2;
 }
-.stat-body { display: flex; flex-direction: column; order: 1; }
-.stat-label { color: var(--muted); font-size: 13px; font-weight: 500; margin-bottom: 6px; }
-.stat-value { font-size: 30px; font-weight: 700; letter-spacing: -0.03em; }
+.stat-body { display: flex; flex-direction: column; order: 1; min-width: 0; }
+.stat-label { color: var(--muted); font-size: 13px; font-weight: 500; margin-bottom: 6px; white-space: nowrap; }
+.stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.03em; }
 .stat-suffix { font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 3px; }
 .dashboard-note { color: var(--muted); font-size: 14px; margin-top: 20px; }
 
@@ -285,6 +294,20 @@ button { font-family: inherit; cursor: pointer; }
   transition: box-shadow 0.15s, border-color 0.15s;
 }
 .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
+.sort-select {
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.sort-select:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
 .btn-primary {
   height: 46px;
   padding: 0 22px;

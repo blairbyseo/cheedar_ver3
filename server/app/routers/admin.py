@@ -1,13 +1,16 @@
+import csv
+import io
 from datetime import date as DateType
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_admin
-from app.models.chat import ChatMessage
+from app.models.chat import ChatMessage, ChatRole
 from app.models.inquiry import Inquiry
 from app.models.meal import Meal
 from app.models.points import PointHistory
@@ -63,6 +66,16 @@ def dashboard_stats(db: Session = Depends(get_db)) -> DashboardStats:
     today_meals = db.scalar(
         select(func.count()).select_from(Meal).where(Meal.eaten_on == today)
     ) or 0
+    # 채팅은 timestamp라서 KST '오늘' 00:00~내일 00:00 구간으로 센다.
+    today_start = datetime(today.year, today.month, today.day, tzinfo=KST)
+    today_chat_messages = db.scalar(
+        select(func.count())
+        .select_from(ChatMessage)
+        .where(
+            ChatMessage.created_at >= today_start,
+            ChatMessage.created_at < today_start + timedelta(days=1),
+        )
+    ) or 0
     total_chat_messages = db.scalar(
         select(func.count()).select_from(ChatMessage)
     ) or 0
@@ -79,6 +92,7 @@ def dashboard_stats(db: Session = Depends(get_db)) -> DashboardStats:
         total_users=total_users,
         admin_count=admin_count,
         today_meals=today_meals,
+        today_chat_messages=today_chat_messages,
         total_chat_messages=total_chat_messages,
         total_points_awarded=total_points_awarded,
         unresolved_safety_count=unresolved_safety_count,
@@ -178,37 +192,80 @@ def update_safety_event(
 
 # -- 회원 목록 / 검색 -------------------------------------------------------
 
+def _user_search_filters(q: str | None) -> list:
+    """검색어(q)를 아이디/닉네임/이메일 부분검색 필터로 변환."""
+    if not q:
+        return []
+    like = f"%{q.strip()}%"
+    return [
+        or_(
+            User.user_id.ilike(like),
+            User.nickname.ilike(like),
+            User.email.ilike(like),
+        )
+    ]
+
+
+def _chat_count_expr():
+    """회원이 직접 보낸 채팅(user 발화) 수.
+
+    식단 outerjoin 과 곱해져 카운트가 부풀지 않도록 상관 서브쿼리로 계산한다.
+    AI 응답(role=ai)은 제외하고, 사용자가 실제로 말한 메시지만 센다.
+    """
+    return (
+        select(func.count(ChatMessage.id))
+        .where(
+            ChatMessage.user_id == User.id,
+            ChatMessage.role == ChatRole.user,
+        )
+        .scalar_subquery()
+    )
+
+
+def _user_order_by(sort: str, order: str, extra: dict | None = None) -> tuple:
+    """정렬 기준/방향을 order_by 인자로 변환.
+
+    화이트리스트에 없는 sort 값은 기본(가입순)으로 폴백한다.
+    정렬값이 같을 때는 가입순(User.id)으로 tie-break 하여 결과가 안정적으로 나오게 한다.
+    extra: created_at/xp 외에 정렬 가능한 집계식(chat_count 등)을 추가로 넘긴다.
+    """
+    sort_columns = {"created_at": User.id, "xp": User.xp}
+    if extra:
+        sort_columns.update(extra)
+    sort_col = sort_columns.get(sort, User.id)
+    if order == "asc":
+        return (sort_col.asc(), User.id.asc())
+    return (sort_col.desc(), User.id.desc())
+
+
 @router.get("/users", response_model=AdminUserListResponse)
 def list_users(
     q: str | None = Query(default=None, description="아이디/닉네임/이메일 부분검색"),
+    sort: str = Query(
+        default="created_at",
+        description="정렬 기준: created_at | xp | chat_count",
+    ),
+    order: str = Query(default="desc", description="정렬 방향: asc | desc"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> AdminUserListResponse:
-    """회원 목록 — 검색어(q)와 페이지네이션 지원. 최신 가입순."""
-    filters = []
-    if q:
-        like = f"%{q.strip()}%"
-        filters.append(
-            or_(
-                User.user_id.ilike(like),
-                User.nickname.ilike(like),
-                User.email.ilike(like),
-            )
-        )
+    """회원 목록 — 검색어(q)·정렬(sort/order)·페이지네이션 지원. 기본 최신 가입순."""
+    filters = _user_search_filters(q)
 
     total = db.scalar(
         select(func.count()).select_from(User).where(*filters)
     ) or 0
 
-    # 회원별 식단 수를 한 번의 쿼리로 함께 가져온다 (N+1 방지).
+    # 회원별 식단 수·채팅 수를 한 번의 쿼리로 함께 가져온다 (N+1 방지).
     meal_count = func.count(Meal.id).label("meal_count")
+    chat_count = _chat_count_expr().label("chat_count")
     stmt = (
-        select(User, meal_count)
+        select(User, meal_count, chat_count)
         .outerjoin(Meal, Meal.user_id == User.id)
         .where(*filters)
         .group_by(User.id)
-        .order_by(User.id.desc())
+        .order_by(*_user_order_by(sort, order, {"chat_count": chat_count}))
         .limit(page_size)
         .offset((page - 1) * page_size)
     )
@@ -223,14 +280,74 @@ def list_users(
             xp=user.xp,
             cp=user.cp,
             is_admin=user.is_admin,
-            meal_count=cnt,
+            meal_count=meal_cnt,
+            chat_count=chat_cnt,
             created_at=user.created_at,
         )
-        for user, cnt in rows
+        for user, meal_cnt, chat_cnt in rows
     ]
 
     return AdminUserListResponse(
         items=items, total=total, page=page, page_size=page_size
+    )
+
+
+@router.get("/users/export")
+def export_users(
+    q: str | None = Query(default=None, description="아이디/닉네임/이메일 부분검색"),
+    sort: str = Query(
+        default="created_at",
+        description="정렬 기준: created_at | xp | chat_count",
+    ),
+    order: str = Query(default="desc", description="정렬 방향: asc | desc"),
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    """현재 검색어(q)·정렬(sort/order)을 그대로 반영한 회원 전체를 CSV로 내려준다.
+
+    목록 화면과 동일한 필터/정렬을 쓰되 페이지네이션 없이 매칭되는 전체를 내보낸다.
+    """
+    meal_count = func.count(Meal.id).label("meal_count")
+    chat_count = _chat_count_expr().label("chat_count")
+    stmt = (
+        select(User, meal_count, chat_count)
+        .outerjoin(Meal, Meal.user_id == User.id)
+        .where(*_user_search_filters(q))
+        .group_by(User.id)
+        .order_by(*_user_order_by(sort, order, {"chat_count": chat_count}))
+    )
+    rows = db.execute(stmt).all()
+
+    def _iter_csv():
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(
+            ["ID", "아이디", "닉네임", "이메일", "식단수", "채팅수", "XP", "CP", "관리자", "가입일"]
+        )
+        for user, meal_cnt, chat_cnt in rows:
+            writer.writerow(
+                [
+                    user.id,
+                    user.user_id,
+                    user.nickname or "",
+                    user.email or "",
+                    meal_cnt,
+                    chat_cnt,
+                    user.xp,
+                    user.cp,
+                    "Y" if user.is_admin else "N",
+                    user.created_at.astimezone(KST).strftime("%Y-%m-%d %H:%M")
+                    if user.created_at
+                    else "",
+                ]
+            )
+        # Excel이 UTF-8 한글을 깨지 않도록 BOM을 앞에 붙인다.
+        yield "﻿" + buf.getvalue()
+
+    filename = f"cheddar_users_{datetime.now(KST).strftime('%Y%m%d_%H%M')}.csv"
+    return StreamingResponse(
+        _iter_csv(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

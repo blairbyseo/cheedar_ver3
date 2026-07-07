@@ -9,6 +9,7 @@ class DashboardStats(BaseModel):
     total_users: int          # 전체 회원 수
     admin_count: int          # 그중 관리자 수
     today_meals: int          # 오늘(KST) 기록된 식단 수
+    today_chat_messages: int  # 오늘(KST) 오간 채팅 메시지 수
     total_chat_messages: int  # 누적 채팅 메시지 수
     total_points_awarded: int  # 누적 적립 포인트 합 (point_history.amount 합)
     unresolved_safety_count: int  # 아직 처리 안 된 위험 신호 수
@@ -66,6 +67,7 @@ class AdminUserListItem(BaseModel):
     cp: int
     is_admin: bool
     meal_count: int       # 이 회원이 기록한 총 식단 수
+    chat_count: int       # 이 회원이 직접 보낸 채팅(user 발화) 수
     created_at: datetime
 
     class Config:

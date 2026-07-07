@@ -43,8 +43,24 @@ export const api = {
 
   // --- 관리자 ---
   dashboard: () => request("/admin/stats/dashboard"),
-  users: ({ q, page, pageSize } = {}) =>
-    request(`/admin/users${qs({ q, page, page_size: pageSize })}`),
+  users: ({ q, sort, order, page, pageSize } = {}) =>
+    request(`/admin/users${qs({ q, sort, order, page, page_size: pageSize })}`),
+  // 현재 검색/정렬을 반영한 회원 전체를 CSV(blob)로 받아온다.
+  exportUsers: async ({ q, sort, order } = {}) => {
+    const res = await fetch(
+      `/api/admin/users/export${qs({ q, sort, order })}`,
+      { credentials: "include" }
+    );
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const err = new Error(data.detail || `내보내기에 실패했어요 (${res.status})`);
+      err.status = res.status;
+      throw err;
+    }
+    const cd = res.headers.get("Content-Disposition") || "";
+    const match = cd.match(/filename="?([^"]+)"?/);
+    return { blob: await res.blob(), filename: match ? match[1] : "users.csv" };
+  },
   user: (id) => request(`/admin/users/${id}`),
   userMeals: (id) => request(`/admin/users/${id}/meals`),
   userChat: (id) => request(`/admin/users/${id}/chat-messages`),
