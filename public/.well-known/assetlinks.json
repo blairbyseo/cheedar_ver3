@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.cheddar.care",
+      "sha256_cert_fingerprints": [
+        "50:7A:4F:FF:9B:29:61:EE:FC:02:34:53:01:62:F7:8B:14:C0:7B:32:BB:F2:C6:BB:06:8E:FC:C4:14:2F:9C:0F"
+      ]
+    }
+  }
+]

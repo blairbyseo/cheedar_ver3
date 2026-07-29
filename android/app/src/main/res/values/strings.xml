@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Cheddar</string>
+    <string name="title_activity_main">Cheddar</string>
+    <string name="package_name">com.cheddar.care</string>
+    <string name="custom_url_scheme">com.cheddar.care</string>
+</resources>

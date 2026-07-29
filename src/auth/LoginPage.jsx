@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import { useAuth } from "./AuthContext";
+import { isNativeApp, openKakaoNative } from "./kakaoNative";
 
 function LoginPage() {
   const { user, idLogin } = useAuth();
@@ -37,12 +38,21 @@ function LoginPage() {
     }
   }
 
-  // 카카오 로그인 — 백엔드가 만들어준 동의 URL 로 이동
+  // 카카오 로그인
+  //  - 앱(Capacitor): 동의창을 시스템 브라우저로 열고, 로그인 후 App Link 로
+  //    앱에 돌아오면 KakaoDeepLinkHandler 가 나머지(코드 교환)를 처리한다.
+  //  - 웹: 기존대로 백엔드가 만들어준 동의 URL 로 현재 창을 이동시킨다.
   async function handleKakaoLogin() {
     if (busy) return;
     setIsKakaoLoading(true);
     setErrorText("");
     try {
+      if (isNativeApp()) {
+        await openKakaoNative();
+        // 이후는 딥링크 핸들러가 처리 — 브라우저에 갔다 오는 동안 버튼만 원복
+        setIsKakaoLoading(false);
+        return;
+      }
       const res = await fetch("/api/auth/kakao/authorize-url");
       if (!res.ok) throw new Error(`authorize-url ${res.status}`);
       const { url } = await res.json();
@@ -60,7 +70,7 @@ function LoginPage() {
       <div className="login-card">
         <h1 className="login-logo">Cheddar</h1>
         <p className="login-tagline">
-          식단을 기록하고<br />건강한 하루를 만들어요
+          식단을 기록하고<br />정신건강을 관리해요
         </p>
 
         <form className="login-form" onSubmit={handleLogin}>
@@ -108,8 +118,8 @@ function LoginPage() {
           onClick={handleKakaoLogin}
           disabled={busy}
         >
-          <span className="login-kakao-icon" aria-hidden="true">💬</span>
-          {isKakaoLoading ? "카카오로 이동 중..." : "카카오로 시작하기"}
+          <span className="login-kakao-icon" aria-hidden="true"></span>
+          {isKakaoLoading ? "카카오로 이동 중..." : "카카오톡으로 시작하기"}
         </button>
       </div>
     </div>

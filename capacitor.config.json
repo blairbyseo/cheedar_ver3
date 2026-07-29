@@ -1,0 +1,10 @@
+{
+  "appId": "com.cheddar.care",
+  "appName": "Cheddar",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

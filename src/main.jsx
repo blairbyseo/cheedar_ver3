@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
+import { installApiBaseFetch } from './api/base.js'
+
+// 앱 빌드에서만 fetch("/api/...") 를 절대주소로 번역(웹에서는 no-op).
+installApiBaseFetch()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

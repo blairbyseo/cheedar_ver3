@@ -31,6 +31,7 @@ import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
 import OAuthKakaoCallback from './auth/OAuthKakaoCallback';
 import ProtectedRoute from './auth/ProtectedRoute';
+import { KakaoDeepLinkHandler } from './auth/kakaoNative';
 
 /* 로그인 이후 보여줄 메인 화면 — 탭 5개 + 하단 TabBar */
 function MainShell() {
@@ -131,6 +132,8 @@ function MainShell() {
 function App() {
   return (
     <AuthProvider>
+      {/* 앱에서 카카오 App Link redirect 를 받아 로그인 완료시키는 리스너 (웹은 no-op) */}
+      <KakaoDeepLinkHandler />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
