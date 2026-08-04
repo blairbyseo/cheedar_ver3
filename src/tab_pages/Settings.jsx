@@ -1,9 +1,13 @@
 /*5-5. Settings.jsx: App.jsx 파일에 걸림 */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { usePoints } from "../usePoints";
+import {
+  scheduleMealReminders,
+  cancelMealReminders,
+} from "../notifications/mealReminders";
 
 // 기본 프로필 사진 placeholder 로 사용
 const DEFAULT_PROFILE_IMAGE = "/cheese/cheese_profile.jpg";
@@ -79,11 +83,27 @@ function Settings() {
 
   // 5) 알림 4종 — 마스터(전체) + 개별 3종.
   //    마스터가 false 면 개별 토글은 disabled 처리.
-  const [allNotificationsOn, setAllNotificationsOn] = useState(true);
-  const [mealReminderOn, setMealReminderOn] = useState(true);
+  //    식단/전체 토글은 로컬 알림 예약과 연결되므로 localStorage 에 저장해 재실행 시 유지.
+  const [allNotificationsOn, setAllNotificationsOn] = useState(
+    () => localStorage.getItem("notif.all") !== "off",
+  );
+  const [mealReminderOn, setMealReminderOn] = useState(
+    () => localStorage.getItem("notif.meal") !== "off",
+  );
   const [rankingNotificationOn, setRankingNotificationOn] = useState(true);
   const [weeklyReportNotificationOn, setWeeklyReportNotificationOn] =
     useState(false);
+
+  // 식단 기록 알림 토글(+마스터) → 실제 로컬 알림 예약/취소 동기화. 앱에서만 동작, 웹은 no-op.
+  useEffect(() => {
+    localStorage.setItem("notif.all", allNotificationsOn ? "on" : "off");
+    localStorage.setItem("notif.meal", mealReminderOn ? "on" : "off");
+    if (allNotificationsOn && mealReminderOn) {
+      scheduleMealReminders(); // 권한 요청 후 아침/점심/저녁 매일 예약
+    } else {
+      cancelMealReminders();
+    }
+  }, [allNotificationsOn, mealReminderOn]);
 
   // 6) 문의하기 — 관리자 쪽지 모달 표시 여부 + 입력 버퍼 + 전송 중 여부.
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
@@ -248,8 +268,8 @@ function Settings() {
     }
   }
 
-  // TODO: 추후 브라우저 Notification API 또는 앱 푸시 연동 필요.
-  //       현재는 UI 토글 상태만 메모리에 보관.
+  // 식단 기록 알림 = 로컬 알림으로 구현됨(위 useEffect + notifications/mealReminders.js).
+  // 랭킹/주간 리포트 알림은 서버 푸시(FCM)가 필요해 아직 UI 토글만 있음(TODO: 추후 푸시 연동).
 
   return (
     <div className="settings-page">
