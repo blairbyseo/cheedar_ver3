@@ -68,7 +68,7 @@ export function WelcomeScreen({ t, userName, onNext }) {
       <Footer>
         <PrimaryButton t={t} label="시작하기" onClick={onNext} />
         <p style={{ margin: "14px 0 0", textAlign: "center", fontSize: 12.5, color: t.ter, wordBreak: "keep-all" }}>
-          평가하려는 게 아니에요. 더 잘 돕고 싶어서 물어보는 거예요.
+          몸과 마음 상태에 따라, 체다의 말투와 도움 방향이 달라져요.
         </p>
       </Footer>
     </Shell>

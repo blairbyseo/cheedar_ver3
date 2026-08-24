@@ -281,7 +281,7 @@ export default function OnboardingSurvey({ data, onDone }) {
                 {rewardPoints > 0 ? `${rewardPoints}P 포기` : "나중에 하기"}
               </button>
               <div style={{ flex: 1 }}>
-                <PrimaryButton t={t} label={rewardPoints > 0 ? `계속하고 ${rewardPoints}P 받기` : "계속하기"} onClick={() => setConfirmingQuit(false)} />
+                <PrimaryButton t={t} label={rewardPoints > 0 ? `계속하고 ${rewardPoints}P 받기` : "계속하기"} onClick={() => setConfirmingQuit(false)} />
               </div>
             </div>
           </div>

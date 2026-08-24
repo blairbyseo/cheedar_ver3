@@ -191,13 +191,13 @@ function Home({setActiveTab}) {
     <section className="menus">
       <div className="menu-card menu-rank" onClick={() => setActiveTab("ranking")} role="button" tabIndex={0}>
         <h3>랭킹</h3>
-        <p>병원 내 랭킹<br /> 확인하기</p>
+        <p>병원 내<br />랭킹보기</p>
         {/* <RankingIcon /> */}
       </div>
 
       <div className="menu-card menu-point" onClick={() => setActiveTab("point")} role="button" tabIndex={0}>
         <h3>포인트</h3>
-        <p>누적 포인트 <br />확인하기</p>
+        <p>누적포인트<br />확인하기</p>
         {/* <BadgeIcon /> */}
       </div>
 

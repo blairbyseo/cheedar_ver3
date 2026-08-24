@@ -104,6 +104,7 @@ export function PrimaryButton({ label, onClick, t, disabled, variant = "solid" }
         background: solid ? (disabled ? t.line : t.accent) : "transparent",
         color: solid ? t.btnInk : t.sub,
         fontSize: 17, fontWeight: 700, fontFamily: "inherit", letterSpacing: "-0.01em",
+        wordBreak: "keep-all", lineHeight: 1.2, padding: "0 10px",
         boxShadow: solid && !disabled ? t.btnShadow : "none",
         transform: press && !disabled ? "scale(0.975)" : "scale(1)",
         transition: "transform .12s ease, background .2s ease, box-shadow .2s ease",
