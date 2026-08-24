@@ -1,0 +1,164 @@
+<!doctype html>
+<!--
+  Google Play 의 "계정 삭제 요청 URL" 로 제출하는 페이지입니다.
+  (Play Console > 앱 콘텐츠 > 데이터 보안 > 계정 삭제 URL)
+
+  이 페이지 주소: https://cheddar-care.com/account-deletion.html
+
+  ⚠️ class="todo" 로 표시된 문의 이메일을 반드시 채우세요.
+-->
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>계정 삭제 안내 | Cheddar</title>
+    <style>
+      :root {
+        --cream: #faf7ef;
+        --card: #ffffff;
+        --text: #33302a;
+        --sub: #6b665c;
+        --line: #e8e2d4;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 24px 16px 64px;
+        background: var(--cream);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+          "Malgun Gothic", "Noto Sans KR", sans-serif;
+        line-height: 1.7;
+        word-break: keep-all;
+        -webkit-text-size-adjust: 100%;
+      }
+      .wrap { max-width: 640px; margin: 0 auto; }
+      header {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 20px 22px;
+        margin-bottom: 20px;
+      }
+      h1 { font-size: 21px; margin: 0 0 6px; letter-spacing: -0.4px; }
+      .meta { font-size: 13px; color: var(--sub); margin: 0; }
+      h2 {
+        font-size: 16px;
+        margin: 30px 0 8px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+      }
+      p, li { font-size: 14px; }
+      ol, ul { padding-left: 20px; margin: 8px 0; }
+      li { margin-bottom: 6px; }
+      .steps {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px 18px 16px 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0 16px;
+        font-size: 13px;
+      }
+      th, td {
+        border: 1px solid var(--line);
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th { background: #f3efe4; font-weight: 700; width: 40%; }
+      .scroll { overflow-x: auto; }
+      .todo {
+        background: #ffdcd4;
+        color: #a52d14;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 6px;
+      }
+      .note {
+        background: #fff8e0;
+        border: 1px solid rgba(209, 169, 22, 0.35);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 13px;
+        margin: 12px 0;
+      }
+      a { color: #9c7f10; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>Cheddar 계정 삭제 안내</h1>
+        <p class="meta">앱 이름: Cheddar · 개발자: <span class="todo">[기관명]</span></p>
+      </header>
+
+      <p>
+        Cheddar 계정은 <strong>앱 안에서 직접 삭제</strong>하실 수 있습니다.
+        앱을 사용할 수 없는 상황이라면 아래 이메일로 요청하셔도 됩니다.
+      </p>
+
+      <h2>1. 앱에서 직접 삭제하기</h2>
+      <div class="steps">
+        <ol>
+          <li>Cheddar 앱을 실행하고 로그인합니다.</li>
+          <li>하단 탭에서 <strong>설정</strong>을 누릅니다.</li>
+          <li>맨 아래 <strong>회원탈퇴</strong>를 누릅니다.</li>
+          <li>
+            안내를 확인하고(아이디·비밀번호로 가입한 경우 비밀번호를 입력)
+            <strong>탈퇴하기</strong>를 누르면 즉시 처리됩니다.
+          </li>
+        </ol>
+      </div>
+
+      <h2>2. 이메일로 요청하기</h2>
+      <p>
+        <span class="todo">[이메일 주소]</span> 로 가입하신 아이디와 함께 삭제를
+        요청해 주세요. 본인 확인 후 <strong>영업일 기준 7일 이내</strong>에
+        처리하고 결과를 회신해 드립니다.
+      </p>
+
+      <h2>3. 삭제되는 정보 / 남는 정보</h2>
+      <div class="scroll">
+        <table>
+          <tbody>
+            <tr>
+              <th>즉시 삭제됩니다</th>
+              <td>
+                아이디, 비밀번호, 이메일, 카카오 계정 연결 정보, 닉네임, 프로필
+                사진, 식단으로 올린 음식 사진
+              </td>
+            </tr>
+            <tr>
+              <th>
+                개인을 알아볼 수 없게 처리한 뒤 통계 목적으로만 보관합니다
+              </th>
+              <td>
+                식단 기록(칼로리·영양소 수치), 운동 기록, 설문 응답, 기분 기록,
+                대화 기록, 포인트 내역
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        익명 처리된 기록은 특정 개인과 연결할 수 없으며, 다시 복원되지 않습니다.
+        따라서 <strong>탈퇴 후에는 기존 기록을 되살릴 수 없습니다.</strong>
+      </p>
+
+      <div class="note">
+        같은 카카오 계정으로 다시 가입하시더라도 이전 기록과는 연결되지 않고
+        완전히 새로운 계정으로 시작됩니다.
+      </div>
+
+      <h2>4. 문의</h2>
+      <p>
+        <span class="todo">[이메일 주소]</span> ·
+        <a href="/privacy.html">개인정보처리방침</a>
+      </p>
+    </div>
+  </body>
+</html>

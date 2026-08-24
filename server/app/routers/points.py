@@ -95,6 +95,7 @@ def ranking(
     """
     rows = db.execute(
         select(User.id, User.user_id, User.xp, User.profile_image_path)
+        .where(User.deleted_at.is_(None))  # 탈퇴 계정은 랭킹에 안 보인다
         .order_by(User.xp.desc(), User.id.asc())
         .limit(RANKING_LIMIT)
     ).all()
@@ -117,7 +118,7 @@ def ranking(
         higher = db.execute(
             select(func.count())
             .select_from(User)
-            .where(User.xp > current_user.xp)
+            .where(User.xp > current_user.xp, User.deleted_at.is_(None))
         ).scalar_one()
         me = RankingEntry(
             rank=higher + 1,

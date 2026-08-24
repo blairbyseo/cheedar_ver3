@@ -124,6 +124,34 @@ def save_profile_image(file: UploadFile) -> str:
     return f"/uploads/profiles/{filename}"
 
 
+def delete_meal_image(public_url: str | None) -> None:
+    """식단 사진(S3 객체 + 로컬 임시 파일)을 삭제한다 (best-effort).
+
+    회원탈퇴 익명화에서 쓴다. 영양 수치는 연구용으로 남기지만 사진은
+    본인·주변이 찍힐 수 있어 파일 자체를 지운다.
+
+    save_meal_image 가 만든 URL 형식만 처리한다:
+      https://{bucket}.s3.{region}.amazonaws.com/meals/{filename}
+    형식이 다르거나(레거시 이관분 등) 삭제에 실패해도 조용히 넘어간다 —
+    탈퇴 처리 자체를 실패시키지 않는 게 우선이다.
+    """
+    prefix = f"https://{settings.s3_bucket}.s3.{settings.aws_region}.amazonaws.com/"
+    if not public_url or not public_url.startswith(prefix):
+        return
+
+    s3_key = public_url[len(prefix) :]
+    try:
+        _s3_client().delete_object(Bucket=settings.s3_bucket, Key=s3_key)
+    except (BotoCoreError, ClientError):
+        pass
+
+    # 분석용으로 떨어뜨렸던 로컬 임시 파일도 함께 정리
+    try:
+        (Path(settings.upload_dir) / s3_key).unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 def delete_profile_image(public_path: str | None) -> None:
     """이전 프로필 사진 파일을 삭제한다 (best-effort).
 

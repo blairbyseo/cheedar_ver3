@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.security import create_access_token, hash_password, verify_password
+from app.models.meal import Meal
 from app.models.user import User
 from app.schemas.auth import (
     KakaoLoginRequest,
@@ -19,9 +20,14 @@ from app.schemas.auth import (
     SignupRequest,
     UserIdUpdateRequest,
     UserOut,
+    WithdrawRequest,
 )
 from app.services import kakao as kakao_service
-from app.services.uploads import delete_profile_image, save_profile_image
+from app.services.uploads import (
+    delete_meal_image,
+    delete_profile_image,
+    save_profile_image,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 settings = get_settings()
@@ -98,9 +104,14 @@ def _user_id_taken(
 
 
 def _find_user_by_user_id(db: Session, user_id: str) -> User | None:
-    """아이디로 사용자 조회 (대소문자 무시)."""
+    """아이디로 사용자 조회 (대소문자 무시). 탈퇴 계정은 없는 것으로 취급."""
     return (
-        db.execute(select(User).where(func.lower(User.user_id) == user_id.lower()))
+        db.execute(
+            select(User).where(
+                func.lower(User.user_id) == user_id.lower(),
+                User.deleted_at.is_(None),
+            )
+        )
         .scalars()
         .first()
     )
@@ -242,10 +253,94 @@ def login(
     return LoginResponse(user=UserOut.model_validate(user))
 
 
+def _clear_auth_cookie(response: Response) -> None:
+    """로그인 쿠키 제거. 지울 때도 발급 때와 같은 속성을 줘야
+    브라우저가 '같은 쿠키'로 인식해 실제로 삭제된다."""
+    response.delete_cookie(
+        key=settings.auth_cookie_name,
+        path="/",
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+    )
+
+
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(response: Response) -> Response:
-    response.delete_cookie(key=settings.auth_cookie_name, path="/")
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+def logout() -> Response:
+    # 주의: 주입받은 Response 에 쿠키를 심고 별도 Response 를 반환하면
+    # FastAPI 가 그 헤더를 버린다. 반환할 응답 객체에 직접 심어야 한다.
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    _clear_auth_cookie(response)
+    return response
+
+
+@router.post("/me/withdraw", status_code=status.HTTP_204_NO_CONTENT)
+def withdraw(
+    payload: WithdrawRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """회원탈퇴 — 계정을 '익명화'한다 (Google Play 계정 삭제 정책 대응).
+
+    행을 지우지 않는 이유: 식단·설문·채팅은 연구 데이터라 통계로는 남겨야 한다.
+    대신 **누구의 기록인지 알 수 없게** 만든다.
+
+    - 즉시 제거: 카카오ID, 이메일, 비밀번호, 닉네임, 프로필 사진(파일까지),
+      식단 사진 파일(S3 객체까지), 관리자 권한
+    - 익명으로 유지: 식단 영양수치, 운동, 설문 응답, 감정, 채팅, 포인트
+    - user_id 는 `deleted#{id}` 로 치환 — '#' 는 아이디 규칙상 쓸 수 없는
+      문자라 다른 사람이 이 아이디로 가입해 겹칠 일이 없다.
+
+    탈퇴 후 같은 카카오 계정으로 다시 로그인하면 kakao_id 가 비워졌으므로
+    완전히 새 계정이 만들어진다(옛 기록과 연결되지 않음).
+    """
+    # 1) 본인 확인 — 비밀번호 계정이면 비밀번호를 다시 받는다
+    if current_user.password_hash is not None:
+        if not payload.password or not verify_password(
+            payload.password, current_user.password_hash
+        ):
+            raise HTTPException(
+                status.HTTP_401_UNAUTHORIZED,
+                "비밀번호가 올바르지 않아요.",
+            )
+
+    # 2) 지울 파일 경로를 먼저 모아둔다 (commit 후 실제 삭제)
+    old_profile_image = current_user.profile_image_path
+    meal_images = [
+        path
+        for (path,) in db.execute(
+            select(Meal.image_path).where(
+                Meal.user_id == current_user.id,
+                Meal.image_path.is_not(None),
+            )
+        ).all()
+    ]
+
+    # 3) DB 익명화 — 사진 경로도 함께 끊는다(파일 삭제 후 깨진 링크 방지)
+    db.execute(
+        update(Meal)
+        .where(Meal.user_id == current_user.id)
+        .values(image_path=None)
+    )
+    current_user.kakao_id = None
+    current_user.email = None
+    current_user.password_hash = None
+    current_user.nickname = None
+    current_user.profile_image_path = None
+    current_user.is_admin = False
+    current_user.user_id = f"deleted#{current_user.id}"
+    current_user.deleted_at = datetime.now(timezone.utc)
+    db.commit()
+
+    # 4) 실제 파일 삭제 (best-effort — 실패해도 탈퇴는 이미 확정)
+    delete_profile_image(old_profile_image)
+    for image_url in meal_images:
+        delete_meal_image(image_url)
+
+    # 5) 로그인 쿠키 제거
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    _clear_auth_cookie(response)
+    return response
 
 
 @router.get("/me", response_model=UserOut)

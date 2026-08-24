@@ -110,6 +110,12 @@ function Settings() {
   const [inquiryText, setInquiryText] = useState("");
   const [isSubmittingInquiry, setIsSubmittingInquiry] = useState(false);
 
+  // 7) 회원탈퇴 — 확인 모달 + 비밀번호 확인 버퍼 + 처리 중 여부.
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [withdrawPassword, setWithdrawPassword] = useState("");
+  const [withdrawError, setWithdrawError] = useState("");
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+
   // ── 아이디 관련 파생값 (state 가 아니라 user 로부터 매 렌더 계산) ──
   const currentUserId = user?.user_id ?? "";
   const { changesLeft: userIdChangesLeft, unlockDate: userIdUnlockDate } =
@@ -118,6 +124,9 @@ function Settings() {
       user?.user_id_change_count,
     );
   const isUserIdLocked = userIdChangesLeft === 0;
+
+  // 카카오 전용 계정은 비밀번호가 없어 탈퇴 시 비밀번호 확인을 건너뛴다
+  const needsPasswordToWithdraw = user?.has_password === true;
 
   // ────────────────────────────────────────────────────────
   // [핸들러]
@@ -265,6 +274,51 @@ function Settings() {
       alert(err.message);
     } finally {
       setIsSubmittingInquiry(false);
+    }
+  }
+
+  // 회원탈퇴 — 모달 열기/닫기/실행.
+  // 서버는 계정을 지우지 않고 '익명화'한다(식별정보 삭제, 기록은 익명 통계로만 남음).
+  function handleOpenWithdraw() {
+    setWithdrawPassword("");
+    setWithdrawError("");
+    setIsWithdrawOpen(true);
+  }
+  function handleCloseWithdraw() {
+    if (isWithdrawing) return; // 처리 중에는 닫히지 않게
+    setIsWithdrawOpen(false);
+    setWithdrawPassword("");
+    setWithdrawError("");
+  }
+  async function handleConfirmWithdraw() {
+    // 아이디/비밀번호 계정은 비밀번호로 본인 확인 (카카오 계정은 생략)
+    if (needsPasswordToWithdraw && !withdrawPassword) {
+      setWithdrawError("비밀번호를 입력해주세요.");
+      return;
+    }
+
+    setIsWithdrawing(true);
+    setWithdrawError("");
+    try {
+      const res = await fetch("/api/auth/me/withdraw", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password: needsPasswordToWithdraw ? withdrawPassword : null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || `탈퇴 처리에 실패했어요 (${res.status})`);
+      }
+      // 서버가 쿠키를 지웠으니 전역 로그인 상태만 비우고 로그인 화면으로
+      setUser(null);
+      navigate("/login", { replace: true });
+    } catch (err) {
+      console.error("[Settings] 회원탈퇴 실패:", err);
+      setWithdrawError(err.message);
+      setIsWithdrawing(false);
     }
   }
 
@@ -496,6 +550,14 @@ function Settings() {
           로그아웃
           <span className="settings-list-row-arrow">›</span>
         </button>
+        <button
+          type="button"
+          className="settings-list-row settings-list-danger"
+          onClick={handleOpenWithdraw}
+        >
+          회원탈퇴
+          <span className="settings-list-row-arrow">›</span>
+        </button>
       </section>
 
       {/* ───────── 문의하기 모달 ───────── */}
@@ -538,6 +600,68 @@ function Settings() {
                 disabled={isSubmittingInquiry}
               >
                 {isSubmittingInquiry ? "보내는 중…" : "보내기"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ───────── 회원탈퇴 모달 ───────── */}
+      {isWithdrawOpen && (
+        <div
+          className="inquiry-modal-backdrop"
+          onClick={handleCloseWithdraw}
+          role="presentation"
+        >
+          <div
+            className="inquiry-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-label="회원탈퇴"
+          >
+            <h3 className="inquiry-modal-title">정말 탈퇴하시겠어요?</h3>
+            <p className="inquiry-modal-desc">
+              탈퇴하면 아이디·이메일·닉네임·프로필 사진과 식단 사진이 즉시
+              삭제되고, 다시 로그인할 수 없어요. 쌓아온 포인트와 레벨도 사라져요.
+            </p>
+            <p className="withdraw-modal-note">
+              식단·설문 기록은 누구의 것인지 알 수 없게 만든 뒤 연구 통계용으로만
+              남습니다.
+            </p>
+
+            {needsPasswordToWithdraw && (
+              <input
+                type="password"
+                className="withdraw-modal-input"
+                value={withdrawPassword}
+                onChange={(e) => {
+                  setWithdrawPassword(e.target.value);
+                  setWithdrawError("");
+                }}
+                placeholder="본인 확인을 위해 비밀번호를 입력해주세요"
+                autoComplete="current-password"
+                autoFocus
+              />
+            )}
+            {withdrawError && (
+              <p className="withdraw-modal-error">{withdrawError}</p>
+            )}
+
+            <div className="inquiry-modal-buttons">
+              <button
+                type="button"
+                onClick={handleCloseWithdraw}
+                disabled={isWithdrawing}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="is-danger"
+                onClick={handleConfirmWithdraw}
+                disabled={isWithdrawing}
+              >
+                {isWithdrawing ? "처리 중…" : "탈퇴하기"}
               </button>
             </div>
           </div>

@@ -506,4 +506,52 @@
   box-shadow: 0 3px 8px rgba(209, 169, 22, 0.10);
 }
 
+/* 탈퇴하기 버튼 — 되돌릴 수 없는 동작이라 붉은 톤으로 구분 */
+.inquiry-modal-buttons button.is-danger {
+  background: #FFE9E4;
+  color: #B4341C;
+  border-color: rgba(180, 52, 28, 0.24);
+  box-shadow: 0 3px 8px rgba(180, 52, 28, 0.10);
+}
+
+/* ───────── 회원탈퇴 모달 전용 ───────── */
+
+/* 연구 데이터가 어떻게 남는지 알리는 보조 문구 */
+.withdraw-modal-note {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0 0 12px;
+}
+
+.withdraw-modal-input {
+  width: 100%;
+  background: var(--card-white);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 13px;
+  color: var(--text-main);
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.withdraw-modal-input::placeholder {
+  color: var(--text-muted);
+}
+
+.withdraw-modal-input:focus {
+  border-color: rgba(209, 169, 22, 0.45);
+}
+
+.withdraw-modal-error {
+  font-size: 12px;
+  font-weight: 600;
+  color: #B4341C;
+  line-height: 1.4;
+  margin: 8px 0 0;
+}
+
 

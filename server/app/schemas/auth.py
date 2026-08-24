@@ -25,6 +25,9 @@ class UserOut(BaseModel):
     user_id_change_count: int = 0
     # 관리자 화면 접근 가능 여부 — 프론트(frontend_admin)가 로그인 후 확인.
     is_admin: bool = False
+    # 아이디/비밀번호 계정인지(카카오 전용 계정이면 False).
+    # 회원탈퇴 시 비밀번호 확인란을 띄울지 판단하는 데 쓴다.
+    has_password: bool = False
 
     class Config:
         from_attributes = True
@@ -61,3 +64,13 @@ class SignupRequest(BaseModel):
 class LoginRequest(BaseModel):
     user_id: str
     password: str
+
+
+class WithdrawRequest(BaseModel):
+    """회원탈퇴 요청 바디.
+
+    아이디/비밀번호 계정은 본인 확인을 위해 password 가 필요하다.
+    카카오 계정은 비밀번호가 없으므로 생략 가능(앱에서 한 번 더 확인 모달).
+    """
+
+    password: str | None = None

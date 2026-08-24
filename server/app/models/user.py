@@ -84,3 +84,20 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+    # --- 회원탈퇴(익명화) -----------------------------------------------
+    # 탈퇴 시 행을 지우지 않고 식별정보만 비운 뒤 이 시각을 찍는다
+    # (식단·설문 기록은 연구 통계용으로 익명 상태로 남긴다).
+    # None 이 아니면 탈퇴한 계정 → 로그인·랭킹에서 제외된다.
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    @property
+    def has_password(self) -> bool:
+        """아이디/비밀번호 계정이면 True, 카카오 전용 계정이면 False.
+
+        프론트(설정 > 회원탈퇴)가 비밀번호 확인란을 띄울지 정하는 데 쓴다.
+        해시 자체는 절대 밖으로 내보내지 않는다.
+        """
+        return self.password_hash is not None

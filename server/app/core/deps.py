@@ -33,6 +33,9 @@ def get_current_user(
     user = db.get(User, int(subject))
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
+    # 탈퇴(익명화)된 계정 — 아직 유효한 쿠키를 들고 있어도 더는 못 쓴다
+    if user.deleted_at is not None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Withdrawn account")
     return user
 
 
