@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "cap:sync": "vite build --mode app && cap sync android",
+    "cap:sync:local": "vite build --mode applocal && cap sync android",
     "cap:open": "cap open android",
     "android": "vite build --mode app && cap sync android && cap open android"
   },
@@ -27,6 +28,7 @@
     "react-router-dom": "^7.15.1"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

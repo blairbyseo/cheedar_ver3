@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  디버그 빌드에만 병합되는 매니페스트.
+  로컬 백엔드(http://10.0.2.2:8000) 테스트를 위해 평문 HTTP 예외를 건다.
+  release 빌드에는 병합되지 않는다.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:replace="android:networkSecurityConfig" />
+</manifest>
