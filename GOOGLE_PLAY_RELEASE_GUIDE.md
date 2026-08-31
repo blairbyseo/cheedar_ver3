@@ -76,10 +76,21 @@ cd server && docker-compose -f docker-compose.prod.yml up -d --build
 ### 2-3. 프론트 배포 (S3 + CloudFront)
 
 ```bash
-npm run build
-aws s3 sync dist/ s3://cheddar-frontend --delete
-aws cloudfront create-invalidation --distribution-id E1IEVWG4XAD4IZ --paths "/*"
+npm run deploy:web
 ```
+
+`scripts/deploy-web.sh` 가 아래를 한 번에 처리한다. **`aws s3 sync` 를 직접 치지 말 것** —
+`aws s3 sync` 는 확장자 없는 파일(`apple-app-site-association`, `oauth/kakao/app-callback`)의
+content-type 을 `binary/octet-stream` 으로 깨뜨리고, 그러면 애플이 AASA 를 조용히 무시해
+iOS 카카오 로그인 딥링크가 죽는다.
+
+1. 웹 모드로 빌드 (앱용 `--mode app` 이 섞이면 배포 중단)
+2. 삭제 예정 목록을 보여주고 확인받은 뒤 sync
+3. 확장자 없는 파일 content-type 복구
+4. CloudFront 무효화
+5. 실서비스 URL 검증
+
+미리보기만 하려면 `npm run deploy:web:dry` (아무것도 바뀌지 않는다).
 
 확인:
 - https://cheddar-care.com/privacy.html → 200

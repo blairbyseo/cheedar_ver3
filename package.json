@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "deploy:web": "bash scripts/deploy-web.sh",
+    "deploy:web:dry": "bash scripts/deploy-web.sh --dry-run",
     "lint": "eslint .",
     "preview": "vite preview",
     "cap:sync": "vite build --mode app && cap sync android",
