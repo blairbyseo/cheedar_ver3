@@ -14,6 +14,13 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<!-- 앱이 한국어를 지원한다고 선언해야 시스템 프레임워크(WebKit 파일 선택 메뉴 등)가
+		     한국어로 표시된다. 없으면 "Photo Library / Take Photo" 처럼 영어로 나온다. -->
+		<string>ko</string>
+		<string>en</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
