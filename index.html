@@ -6,7 +6,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Cheddar Care</title>
-    <style>html, body { height: 80%; margin: 0; } #root { height: 100%; }</style>
+    <style>
+      html, body { height: 80%; margin: 0; } #root { height: 100%; }
+      /* 안전영역 별칭 — 플랫폼별 전달 방식 차이를 여기서 흡수한다.
+         Android(Capacitor): --safe-area-inset-* 를 주입 (WebView<140 이면 네이티브가
+           패딩을 직접 넣고 이 값은 0 → 이중 패딩 방지)
+         iOS: 주입 없음 → env() 로 폴백 */
+      :root {
+        --sa-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+        --sa-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+        --sa-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+        --sa-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div> <!--React가 들어갈 자리-->

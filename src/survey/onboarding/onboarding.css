@@ -10,7 +10,7 @@
   /* 상태바/노치 아래로 내용을 내린다. inset:0 으로 화면을 꽉 채우므로
      border-box 로 두어야 padding 이 높이 '안'에서 흡수된다. */
   box-sizing: border-box;
-  padding-top: env(safe-area-inset-top);
+  padding-top: var(--sa-top);
   font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   -webkit-font-smoothing: antialiased;

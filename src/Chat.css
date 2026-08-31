@@ -114,7 +114,7 @@
   flex-direction: column;
   gap: 10px;
   margin-bottom: 0;
-  padding-bottom: calc(90px + env(safe-area-inset-bottom)); /* fixed 입력창에 마지막 메시지가 가려지지 않도록 (입력창이 safe-area만큼 올라간 것 반영) */
+  padding-bottom: calc(90px + var(--sa-bottom)); /* fixed 입력창에 마지막 메시지가 가려지지 않도록 (입력창이 safe-area만큼 올라간 것 반영) */
   /* 스크롤바 시각적 숨김 (스크롤 기능은 유지) */
   scrollbar-width: none;        /* Firefox */
   -ms-overflow-style: none;     /* IE / 구버전 Edge */
@@ -211,11 +211,11 @@
 }
 
 /* 5. 하단 입력창 — 탭바 바로 위에 fixed.
-   탭바 실제 높이 = 78px + 노치 안전영역(env)이므로 입력창도 그만큼 띄워야
-   탭바에 가려지지 않는다. (safe-area 없는 기기에선 env가 0이라 78px와 동일) */
+   탭바 실제 높이 = 78px + 노치 안전영역(--sa-bottom)이므로 입력창도 그만큼 띄워야
+   탭바에 가려지지 않는다. (안전영역 없는 기기에선 0이라 78px와 동일) */
 .chat-composer {
   position: fixed;
-  bottom: calc(78px + env(safe-area-inset-bottom));
+  bottom: calc(78px + var(--sa-bottom));
   left: 50%;
   transform: translateX(-50%);
   width: 100%;

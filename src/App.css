@@ -45,7 +45,7 @@ body {
   /* 하단 패딩은 고정 탭바(.tabs 높이 78px)보다 커야 마지막 콘텐츠가 가려지지 않음.
      78px + 여유 + 노치(safe-area) 만큼 확보한다. */
   /* 상단: 상태바/노치 아래로 콘텐츠를 내린다. viewport-fit=cover 가 있어야 값이 잡힌다. */
-  padding: calc(24px + env(safe-area-inset-top)) 20px calc(78px + 24px + env(safe-area-inset-bottom));
+  padding: calc(24px + var(--sa-top)) 20px calc(78px + 24px + var(--sa-bottom));
   box-sizing: border-box;
   }
 
@@ -123,7 +123,7 @@ html {
      → 버튼이 차지하는 영역은 항상 78px로 고정되고, safe-area가 스크롤 중 변해도
        버튼/아이콘 크기는 안 흔들린다(변화는 맨 아래 쿠션에서만 흡수). */
   box-sizing: border-box;
-  height: calc(78px + env(safe-area-inset-bottom));
+  height: calc(78px + var(--sa-bottom));
   background: white;
   border-radius: 0px 0px 0 0; /*탭바의 윗부분만 둥글게*/
   border-top: 1px solid var(--line); /*탭바 위쪽에 연한 회색 선*/
@@ -133,7 +133,7 @@ html {
   justify-content: space-around; /*버튼들 사이 간격을 비슷하게 벌림*/
   align-items: center; /*버튼들을 세로 가운데 정렬*/
   z-index : 20; /*탭바가 다른 요소들보다 위에 보이도록 설정*/
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--sa-bottom);
 }
 
 
