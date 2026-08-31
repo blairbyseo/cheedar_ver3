@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 카카오 로그인 콜백(https://cheddar-care.com/oauth/kakao/app-callback)이
+	     Safari 대신 이 앱으로 전달되도록 하는 Universal Links 설정.
+	     서버의 /.well-known/apple-app-site-association 과 짝을 이룬다. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:cheddar-care.com</string>
+	</array>
+</dict>
+</plist>

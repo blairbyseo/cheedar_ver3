@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>로그인 처리 중…</title>
+<style>
+  html,body{height:100%;margin:0}
+  body{display:flex;align-items:center;justify-content:center;
+       font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
+       background:#faf7f0;color:#3d3833;text-align:center;padding:24px}
+  .box{max-width:340px}
+  h1{font-size:19px;margin:0 0 10px;font-weight:700}
+  p{font-size:14px;line-height:1.6;color:#7a7167;margin:0 0 24px}
+  a.btn{display:block;padding:15px 20px;background:#d4a71c;color:#fff;
+        border-radius:12px;text-decoration:none;font-size:16px;font-weight:700}
+  .err{color:#c0392b}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1 id="title">앱으로 돌아가는 중…</h1>
+  <p id="desc">잠시만 기다려 주세요. 자동으로 이동하지 않으면 아래 버튼을 눌러주세요.</p>
+  <a class="btn" id="btn" href="#">Cheddar 앱으로 돌아가기</a>
+</div>
+<script>
+(function () {
+  var APP_SCHEME = "cheddarcare://oauth/kakao/app-callback";
+  var qs = window.location.search || "";
+  var params = new URLSearchParams(qs);
+
+  // 카카오가 code 대신 error 를 준 경우엔 앱을 깨우지 않고 사유를 보여준다.
+  if (!params.get("code")) {
+    document.getElementById("title").textContent = "로그인에 실패했어요";
+    document.getElementById("title").className = "err";
+    document.getElementById("desc").textContent =
+      "사유: " + (params.get("error_description") || params.get("error") || "인증 코드를 받지 못했습니다") +
+      ". 앱으로 돌아가 다시 시도해 주세요.";
+    document.getElementById("btn").style.display = "none";
+    return;
+  }
+
+  var target = APP_SCHEME + qs;
+  document.getElementById("btn").setAttribute("href", target);
+
+  // iOS 는 사용자 제스처 없는 스킴 이동을 무시하는 경우가 있어 버튼을 항상 함께 둔다.
+  window.location.replace(target);
+})();
+</script>
+</body>
+</html>

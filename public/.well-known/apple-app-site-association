@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["38CQS8VUC4.com.cheddar.care"],
+        "components": [
+          {
+            "/": "/oauth/kakao/app-callback*",
+            "comment": "카카오 로그인 콜백을 브라우저 대신 앱으로 전달"
+          }
+        ]
+      }
+    ]
+  }
+}
