@@ -44,7 +44,8 @@ body {
   margin: 0 auto;
   /* 하단 패딩은 고정 탭바(.tabs 높이 78px)보다 커야 마지막 콘텐츠가 가려지지 않음.
      78px + 여유 + 노치(safe-area) 만큼 확보한다. */
-  padding: 24px 20px calc(78px + 24px + env(safe-area-inset-bottom));
+  /* 상단: 상태바/노치 아래로 콘텐츠를 내린다. viewport-fit=cover 가 있어야 값이 잡힌다. */
+  padding: calc(24px + env(safe-area-inset-top)) 20px calc(78px + 24px + env(safe-area-inset-bottom));
   box-sizing: border-box;
   }
 
