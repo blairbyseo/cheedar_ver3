@@ -21,9 +21,12 @@ const ROOT = path.resolve(__dirname, "..");
 const RAW = path.join(ROOT, "assets/appstore/raw");
 const OUT = path.join(ROOT, "assets/appstore");
 
-// 출력 캔버스 — App Store 6.9인치 필수 규격
-const W = 1320;
-const H = 2868;
+// App Store Connect 는 디스플레이 크기별로 슬롯이 나뉘고 요구 픽셀이 다르다.
+// 둘 다 만들어두면 어느 슬롯에 올리든 맞는다.
+const SIZES = [
+  { name: "6.9-inch", W: 1320, H: 2868, shotH: 2330, shotTop: 420, title: 82, sub: 46, titleY: 196, subY: 286 },
+  { name: "6.5-inch", W: 1284, H: 2778, shotH: 2250, shotTop: 410, title: 80, sub: 45, titleY: 190, subY: 278 },
+];
 
 // 원본에서 잘라낼 시스템 영역 (원본 1206x2622 기준 픽셀)
 const CROP_TOP = 180; // 상태바 + 다이나믹 아일랜드
@@ -31,9 +34,6 @@ const CROP_TOP = 180; // 상태바 + 다이나믹 아일랜드
 //   150 으로는 다이나믹 아일랜드 아랫부분이 검게 남았다.
 const CROP_BOTTOM = 30; // 홈 인디케이터
 
-// 화면 이미지 배치
-const SHOT_H = 2330; // 캔버스 안에서의 화면 높이
-const SHOT_TOP = 420; // 캔버스 위에서부터의 위치
 const RADIUS = 48;
 
 const CREAM = "#FAF7EF";
@@ -50,7 +50,7 @@ const CAPTIONS = {
 };
 
 /** 상태바를 잘라내고 둥근 모서리를 씌운 화면 이미지 */
-async function roundedShot(file) {
+async function roundedShot(file, SHOT_H) {
   const src = sharp(file);
   const { width, height } = await src.metadata();
 
@@ -81,15 +81,15 @@ async function roundedShot(file) {
 }
 
 /** 배경 + 문구 레이어 */
-function background(title, subtitle) {
+function background(title, subtitle, S) {
   return Buffer.from(`
-<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
-  <rect width="${W}" height="${H}" fill="${CREAM}"/>
-  <text x="${W / 2}" y="196" text-anchor="middle"
-        font-family="${FONT}" font-size="82" font-weight="800"
+<svg xmlns="http://www.w3.org/2000/svg" width="${S.W}" height="${S.H}">
+  <rect width="${S.W}" height="${S.H}" fill="${CREAM}"/>
+  <text x="${S.W / 2}" y="${S.titleY}" text-anchor="middle"
+        font-family="${FONT}" font-size="${S.title}" font-weight="800"
         fill="${TEXT_MAIN}" letter-spacing="-1.5">${title}</text>
-  <text x="${W / 2}" y="286" text-anchor="middle"
-        font-family="${FONT}" font-size="46" font-weight="500"
+  <text x="${S.W / 2}" y="${S.subY}" text-anchor="middle"
+        font-family="${FONT}" font-size="${S.sub}" font-weight="500"
         fill="${TEXT_SUB}">${subtitle}</text>
 </svg>`);
 }
@@ -99,7 +99,6 @@ function background(title, subtitle) {
     console.error(`원본 폴더가 없습니다: ${RAW}`);
     process.exit(1);
   }
-  fs.mkdirSync(OUT, { recursive: true });
 
   const files = fs.readdirSync(RAW).filter((f) => f.endsWith(".png")).sort();
   if (files.length === 0) {
@@ -107,40 +106,44 @@ function background(title, subtitle) {
     process.exit(1);
   }
 
-  for (const f of files) {
-    const key = path.basename(f, ".png");
-    const [title, subtitle] = CAPTIONS[key] ?? ["Cheddar", ""];
-    const shot = await roundedShot(path.join(RAW, f));
+  for (const S of SIZES) {
+    const outDir = path.join(OUT, S.name);
+    fs.mkdirSync(outDir, { recursive: true });
+    console.log(`\n[${S.name}] ${S.W}x${S.H}`);
 
-    // 앱 배경도 크림색이라 그냥 얹으면 캔버스와 경계가 안 보인다 → 옅은 테두리
-    const border = Buffer.from(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${shot.width}" height="${shot.height}">
-         <rect x="1.5" y="1.5" width="${shot.width - 3}" height="${shot.height - 3}"
-               rx="${RADIUS}" ry="${RADIUS}"
-               fill="none" stroke="rgba(51,48,42,0.16)" stroke-width="3"/>
-       </svg>`,
-    );
-    const shotLeft = Math.round((W - shot.width) / 2);
+    for (const f of files) {
+      const key = path.basename(f, ".png");
+      const [title, subtitle] = CAPTIONS[key] ?? ["Cheddar", ""];
+      const shot = await roundedShot(path.join(RAW, f), S.shotH);
 
-    const out = path.join(OUT, `${key}.png`);
-    const composed = await sharp(background(title, subtitle), { density: 72 })
-      .composite([
-        { input: shot.buffer, top: SHOT_TOP, left: shotLeft },
-        { input: border, top: SHOT_TOP, left: shotLeft },
-      ])
-      .png()
-      .toBuffer();
+      // 앱 배경도 크림색이라 그냥 얹으면 캔버스와 경계가 안 보인다 → 옅은 테두리
+      const border = Buffer.from(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${shot.width}" height="${shot.height}">
+           <rect x="1.5" y="1.5" width="${shot.width - 3}" height="${shot.height - 3}"
+                 rx="${RADIUS}" ry="${RADIUS}"
+                 fill="none" stroke="rgba(51,48,42,0.16)" stroke-width="3"/>
+         </svg>`,
+      );
+      const shotLeft = Math.round((S.W - shot.width) / 2);
 
-    await sharp(composed).flatten({ background: CREAM }).png().toFile(out);
+      const out = path.join(outDir, `${key}.png`);
+      const composed = await sharp(background(title, subtitle, S), { density: 72 })
+        .composite([
+          { input: shot.buffer, top: S.shotTop, left: shotLeft },
+          { input: border, top: S.shotTop, left: shotLeft },
+        ])
+        .png()
+        .toBuffer();
 
-    const meta = await sharp(out).metadata();
-    const ok = meta.width === W && meta.height === H;
-    console.log(
-      `${ok ? "✓" : "✗"} ${key}.png  ${meta.width}x${meta.height}  "${title}"`,
-    );
-    if (!ok) process.exitCode = 1;
+      await sharp(composed).flatten({ background: CREAM }).png().toFile(out);
+
+      const meta = await sharp(out).metadata();
+      const ok = meta.width === S.W && meta.height === S.H;
+      console.log(`  ${ok ? "✓" : "✗"} ${key}.png  ${meta.width}x${meta.height}`);
+      if (!ok) process.exitCode = 1;
+    }
   }
 
-  console.log(`\n출력: ${OUT}`);
-  console.log("App Store Connect 6.9인치 슬롯에 그대로 업로드하면 됩니다.");
+  console.log(`\n출력: ${OUT}/<규격>/`);
+  console.log("App Store Connect 의 해당 디스플레이 슬롯에 그대로 업로드하면 됩니다.");
 })();
