@@ -32,6 +32,18 @@
                     android:pathPrefix="/oauth/kakao/app-callback"
                 />
             </intent-filter>
+
+            <!-- 커스텀 스킴 폴백. 위 App Link 검증이 실패하면 카카오 redirect 가
+                 앱이 아니라 브라우저에서 열리는데, 그때 뜨는 환승 페이지
+                 (public/oauth/kakao/app-callback)가 이 스킴으로 앱을 깨운다.
+                 iOS 가 쓰던 경로를 안드로이드도 함께 쓴다 — assetlinks 검증
+                 상태와 무관하게 동작하므로 로그인이 막히지 않는다. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="cheddarcare" />
+            </intent-filter>
         </activity>
 
         <provider
