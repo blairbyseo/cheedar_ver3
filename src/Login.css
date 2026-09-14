@@ -209,3 +209,50 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ── 초대코드 게이트 ─────────────────────────────────────────────
+   가입 경로 앞에 세우는 코드 입력 화면. 로그인 카드 스타일을 그대로 쓰고
+   설명 문구와 코드 입력칸만 따로 손본다. */
+.invite-gate-hint {
+  margin: 0 0 18px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-sub, #6B665C);
+  text-align: center;
+  /* 문자열의 \n 을 실제 줄바꿈으로 */
+  white-space: pre-line;
+}
+
+.invite-gate-input {
+  /* 코드는 영문 대문자+숫자라 자간을 벌리면 눈으로 대조하기 쉽다 */
+  text-align: center;
+  letter-spacing: 2px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.invite-gate-back {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub, #6B665C);
+  cursor: pointer;
+}
+
+/* 안내 문구(에러 아님) — 초대코드 확인 후 "카카오 로그인을 다시 눌러 주세요" 같은 경우 */
+.login-notice {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #FFF6DC;
+  color: #7A5B12;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+}

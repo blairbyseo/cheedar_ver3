@@ -39,7 +39,14 @@ function OAuthKakaoCallback() {
         navigate("/", { replace: true });
       } catch (err) {
         console.error("[OAuth] kakao login failed:", err);
-        navigate("/login", { replace: true });
+        // 처음 보는 카카오 계정 = 신규 가입 → 로그인 화면에서 초대코드부터 받는다.
+        // 카카오 인가코드는 1회용이라 코드 입력 후 카카오 로그인을 다시 눌러야 한다.
+        navigate("/login", {
+          replace: true,
+          state: err.needsInviteCode
+            ? { needsInviteCode: true, inviteMessage: err.message }
+            : undefined,
+        });
       }
     }
     complete();

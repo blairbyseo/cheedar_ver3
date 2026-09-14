@@ -1,23 +1,50 @@
 /* 로그인 화면 — 아이디/비밀번호 로그인 + 카카오 로그인.
  * 회원가입은 별도 /signup 페이지에서 처리. */
 import { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "./AuthContext";
+import InviteGate from "./InviteGate";
 import { isNativeApp, openKakaoNative } from "./kakaoNative";
 
 function LoginPage() {
   const { user, idLogin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [isKakaoLoading, setIsKakaoLoading] = useState(false); // 카카오로 이동 중
   const [isLoggingIn, setIsLoggingIn] = useState(false); // 아이디 로그인 처리 중
   const [errorText, setErrorText] = useState("");
+  // 카카오 신규 가입이라 초대코드가 필요한 상태 — 콜백에서 넘겨준다
+  const [needsInvite, setNeedsInvite] = useState(
+    () => location.state?.needsInviteCode === true,
+  );
+  const [noticeText, setNoticeText] = useState("");
 
   // 이미 로그인된 상태로 /login 에 들어오면 메인으로 보냄
   if (user) return <Navigate to="/" replace />;
+
+  // 카카오로 처음 들어온 사람 — 코드를 먼저 받는다.
+  // 통과해도 자동으로 이어지지 않는다: 카카오 인가코드가 1회용이라
+  // 카카오 로그인 버튼을 한 번 더 눌러야 한다. 그 사정을 안내로 알려준다.
+  if (needsInvite) {
+    return (
+      <InviteGate
+        title="회원가입"
+        hint={
+          location.state?.inviteMessage ||
+          "초대받은 분만 가입할 수 있어요.\n받으신 코드를 입력해 주세요."
+        }
+        onPass={() => {
+          setNeedsInvite(false);
+          setNoticeText("초대코드를 확인했어요. 카카오 로그인을 한 번 더 눌러 주세요.");
+        }}
+        onCancel={() => setNeedsInvite(false)}
+      />
+    );
+  }
 
   const busy = isKakaoLoading || isLoggingIn;
 
@@ -99,6 +126,7 @@ function LoginPage() {
           </button>
         </form>
 
+        {noticeText && <p className="login-notice">{noticeText}</p>}
         {errorText && <p className="login-error">{errorText}</p>}
 
         <p className="login-signup-row">

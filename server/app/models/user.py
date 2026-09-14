@@ -1,6 +1,15 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, func, text
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    func,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -83,6 +92,13 @@ class User(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
+    )
+
+    # --- 초대코드 ----------------------------------------------------------
+    # 어떤 초대코드로 가입했는지. 코드에 그룹 라벨을 달아두면 참여자 분류에
+    # 그대로 쓸 수 있다. 초대코드 도입 전에 가입한 계정은 NULL.
+    invite_code_id: Mapped[int | None] = mapped_column(
+        ForeignKey("invite_codes.id", ondelete="SET NULL"), nullable=True
     )
 
     # --- 회원탈퇴(익명화) -----------------------------------------------

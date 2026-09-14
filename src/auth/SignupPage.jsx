@@ -1,9 +1,15 @@
 /* 회원가입 화면 — 아이디/비밀번호로 가입.
  * 가입에 성공하면 백엔드가 바로 로그인 쿠키를 심어주므로 메인(/)으로 이동. */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import { useAuth } from "./AuthContext";
+import InviteGate from "./InviteGate";
+import {
+  clearInviteCode,
+  isInviteRequired,
+  loadInviteCode,
+} from "./inviteCode";
 
 // 아이디/비밀번호 규칙 — 서버(app/routers/auth.py)와 반드시 동일하게 유지할 것
 const USER_ID_REGEX = /^[가-힣a-zA-Z0-9_]+$/;
@@ -57,9 +63,46 @@ function SignupPage() {
   const [weight, setWeight] = useState("");
   const [errorText, setErrorText] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  // 초대코드를 이미 통과한 적이 있으면(기기에 저장돼 있으면) 폼부터 보여준다.
+  // 저장된 코드가 그새 만료·소진됐다면 가입 시도에서 403 이 오고, 그때 다시 묻는다.
+  const [inviteOk, setInviteOk] = useState(() => Boolean(loadInviteCode()));
+  // 서버가 초대코드를 요구하는지 — null 이면 확인 중.
+  // 앱만 먼저 업데이트되고 서버는 아직 옛 버전인 구간에서 가입이 막히지 않게 한다.
+  const [inviteRequired, setInviteRequired] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    isInviteRequired().then((required) => {
+      if (alive) setInviteRequired(required);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // 이미 로그인된 상태로 /signup 에 들어오면 메인으로 보냄
   if (user) return <Navigate to="/" replace />;
+
+  if (inviteRequired === null) {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <p className="login-tagline">불러오는 중…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 가입 경로 앞의 초대코드 관문 — 로그인에는 코드가 필요 없다
+  if (inviteRequired && !inviteOk) {
+    return (
+      <InviteGate
+        title="회원가입"
+        onPass={() => setInviteOk(true)}
+        onCancel={() => navigate("/login")}
+      />
+    );
+  }
 
   async function handleSignup(e) {
     e.preventDefault();
@@ -93,6 +136,11 @@ function SignupPage() {
     } catch (err) {
       console.error("[Signup] signup failed:", err);
       setErrorText(err.message);
+      // 코드가 만료·소진된 경우 — 저장본을 버리고 코드 입력부터 다시
+      if (err.needsInviteCode) {
+        clearInviteCode();
+        setInviteOk(false);
+      }
     } finally {
       setIsBusy(false);
     }

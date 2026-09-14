@@ -2,6 +2,7 @@ from app.models.chat import ChatMessage, ChatRole
 from app.models.emotion import EmotionLog
 from app.models.exercise import ExerciseLog
 from app.models.inquiry import Inquiry
+from app.models.invite_code import InviteCode, normalize_code
 from app.models.meal import Meal, MealType
 from app.models.points import PointHistory
 from app.models.reward import KIND_FINAL_LEVEL, RewardClaim, RewardClaimStatus
@@ -28,6 +29,8 @@ __all__ = [
     "KIND_FINAL_LEVEL",
     "ExerciseLog",
     "Inquiry",
+    "InviteCode",
+    "normalize_code",
     "SafetyEvent",
     "RiskLevel",
     "PageTimeLog",

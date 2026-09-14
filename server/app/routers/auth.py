@@ -11,9 +11,12 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.security import create_access_token, hash_password, verify_password
+from app.models.invite_code import InviteCode, normalize_code
 from app.models.meal import Meal
 from app.models.user import User
 from app.schemas.auth import (
+    InviteCodeCheckRequest,
+    InviteCodeCheckResponse,
     KakaoLoginRequest,
     LoginRequest,
     LoginResponse,
@@ -117,7 +120,49 @@ def _find_user_by_user_id(db: Session, user_id: str) -> User | None:
     )
 
 
-def _find_or_create_user(db: Session, profile: kakao_service.KakaoProfile) -> User:
+def _consume_invite_code(db: Session, raw_code: str | None) -> InviteCode:
+    """가입용 초대코드를 검증하고 사용 횟수를 1 올린다.
+
+    실패는 전부 403 으로 돌려준다 — 프론트는 401(로그인 실패)과 구분해서
+    '초대코드 입력' 화면을 띄운다. detail 문장은 사용자에게 그대로 보여주는
+    안내라, 왜 막혔는지(없는 코드/정원 초과/기간 만료)를 구분해 알려준다.
+
+    with_for_update 로 행을 잠그는 이유: 정원이 1자리 남았을 때 두 명이 동시에
+    가입하면 둘 다 통과해버린다.
+    """
+    if raw_code is None or not raw_code.strip():
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "초대코드가 필요해요. 초대받은 코드를 입력해 주세요.",
+        )
+
+    invite = (
+        db.execute(
+            select(InviteCode)
+            .where(InviteCode.code == normalize_code(raw_code))
+            .with_for_update()
+        )
+        .scalars()
+        .first()
+    )
+    if invite is None:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "없는 초대코드예요. 다시 확인해 주세요."
+        )
+
+    reason = invite.unusable_reason(datetime.now(timezone.utc))
+    if reason is not None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, reason)
+
+    invite.used_count += 1
+    return invite
+
+
+def _find_or_create_user(
+    db: Session,
+    profile: kakao_service.KakaoProfile,
+    invite_code: str | None = None,
+) -> User:
     # 카카오가 프로필 사진을 http 로 줄 때가 있어 https 로 맞춘다
     # (운영 https 환경에서 http 이미지가 mixed-content 로 차단되는 것 방지).
     kakao_image = (
@@ -142,6 +187,10 @@ def _find_or_create_user(db: Session, profile: kakao_service.KakaoProfile) -> Us
         db.refresh(user)
         return user
 
+    # 여기부터는 '처음 보는 카카오 계정' = 신규 가입이다. 아이디 회원가입과
+    # 똑같이 초대코드를 요구해야 뒷문이 생기지 않는다.
+    invite = _consume_invite_code(db, invite_code)
+
     display_id = f"user_{profile.kakao_id}"
     user = User(
         kakao_id=profile.kakao_id,
@@ -150,6 +199,7 @@ def _find_or_create_user(db: Session, profile: kakao_service.KakaoProfile) -> Us
         nickname=profile.nickname,
         # 카카오 가입 시 카카오톡 프로필 사진을 그대로 가져온다
         profile_image_path=kakao_image,
+        invite_code_id=invite.id,
     )
     db.add(user)
     db.commit()
@@ -167,11 +217,46 @@ def kakao_login(
         payload.code, redirect_uri=payload.redirect_uri
     )
     profile = kakao_service.fetch_profile(access_token)
-    user = _find_or_create_user(db, profile)
+    user = _find_or_create_user(db, profile, payload.invite_code)
 
     jwt_token = create_access_token(user.id)
     _set_auth_cookie(response, jwt_token)
     return LoginResponse(user=UserOut.model_validate(user))
+
+
+@router.post("/invite-code/check", response_model=InviteCodeCheckResponse)
+def check_invite_code(
+    payload: InviteCodeCheckRequest,
+    db: Session = Depends(get_db),
+) -> InviteCodeCheckResponse:
+    """초대코드가 지금 쓸 수 있는 코드인지만 확인한다(소모하지 않음).
+
+    가입 폼을 다 채운 뒤에 "코드가 틀렸어요"를 보게 되면 화가 나므로,
+    앱은 코드 입력 화면에서 이걸 먼저 호출해 통과시킨 뒤 폼을 보여준다.
+    실제 소모는 가입 시점에 한 번 더 검증하며 이뤄진다.
+    """
+    if not payload.code.strip():
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "초대코드를 입력해 주세요."
+        )
+
+    invite = (
+        db.execute(
+            select(InviteCode).where(InviteCode.code == normalize_code(payload.code))
+        )
+        .scalars()
+        .first()
+    )
+    if invite is None:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "없는 초대코드예요. 다시 확인해 주세요."
+        )
+
+    reason = invite.unusable_reason(datetime.now(timezone.utc))
+    if reason is not None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, reason)
+
+    return InviteCodeCheckResponse(code=invite.code, label=invite.label)
 
 
 @router.post(
@@ -202,7 +287,11 @@ def signup(
             status.HTTP_409_CONFLICT, "이미 누군가 쓰고 있는 아이디예요."
         )
 
-    # 3) 계정 생성 — 신체 정보(나이/키/체중)도 함께 저장. 범위 검증은
+    # 3) 초대코드 검증 — 형식·중복 검사를 모두 통과한 뒤에 소모한다.
+    #    (비밀번호가 짧아 실패한 요청이 코드 정원을 깎으면 안 되기 때문)
+    invite = _consume_invite_code(db, payload.invite_code)
+
+    # 4) 계정 생성 — 신체 정보(나이/키/체중)도 함께 저장. 범위 검증은
     #    스키마(SignupRequest)의 Field 제약으로 이미 통과한 값이다.
     user = User(
         user_id=new_user_id,
@@ -210,6 +299,7 @@ def signup(
         age=payload.age,
         height_cm=payload.height_cm,
         weight_kg=payload.weight_kg,
+        invite_code_id=invite.id,
     )
     db.add(user)
     try:
@@ -222,7 +312,7 @@ def signup(
         ) from None
     db.refresh(user)
 
-    # 4) 가입 즉시 로그인 처리
+    # 5) 가입 즉시 로그인 처리
     jwt_token = create_access_token(user.id)
     _set_auth_cookie(response, jwt_token)
     return LoginResponse(user=UserOut.model_validate(user))

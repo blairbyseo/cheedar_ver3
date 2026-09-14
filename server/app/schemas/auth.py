@@ -7,6 +7,22 @@ class KakaoLoginRequest(BaseModel):
     code: str
     # 프론트에서 같은 도메인이 아닌 다른 redirect_uri를 썼다면 명시. 기본값은 서버 .env.
     redirect_uri: str | None = None
+    # 초대코드 — 처음 보는 카카오 계정일 때만 필요하다. 이미 가입한 계정은
+    # 비어 있어도 그대로 로그인된다(프론트가 매번 물어보지 않게 하기 위함).
+    invite_code: str | None = None
+
+
+class InviteCodeCheckRequest(BaseModel):
+    """초대코드 사전 확인 요청 — 가입 폼을 띄우기 전에 코드만 검사한다."""
+
+    code: str
+
+
+class InviteCodeCheckResponse(BaseModel):
+    # 정규화(대문자·공백 제거)된 코드. 앱은 이 값을 저장해뒀다가 가입 요청에 싣는다.
+    code: str
+    # 관리자가 붙여둔 라벨("1차 참여자" 등). 사용자에게 확인용으로 보여줄 수 있다.
+    label: str | None = None
 
 
 class UserOut(BaseModel):
@@ -54,6 +70,8 @@ class UserIdUpdateRequest(BaseModel):
 class SignupRequest(BaseModel):
     user_id: str
     password: str
+    # 초대코드 — 가입에 반드시 필요하다.
+    invite_code: str | None = None
     # 신체 정보 — 회원가입 폼에서 함께 입력받는다.
     # 범위 검증은 명확한 한국어 메시지를 위해 라우터에서 함께 처리.
     age: int | None = Field(default=None, ge=1, le=120)

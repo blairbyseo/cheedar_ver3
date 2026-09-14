@@ -102,6 +102,34 @@ export const api = {
       body: JSON.stringify({ is_resolved: isResolved }),
     }),
 
+  // --- 초대코드 ---
+  // 가입 차단용 코드. 목록은 최신 발급 순.
+  inviteCodes: () => request("/admin/invite-codes"),
+  // code 를 비우면 서버가 무작위로 만들어 준다.
+  // maxUses null = 무제한, expiresAt null = 무기한.
+  createInviteCode: ({ code, label, maxUses, expiresAt }) =>
+    request("/admin/invite-codes", {
+      method: "POST",
+      body: JSON.stringify({
+        code: code || null,
+        label: label || null,
+        max_uses: maxUses ?? null,
+        expires_at: expiresAt || null,
+      }),
+    }),
+  // 보낸 필드만 바뀐다 — 유출 시 { isActive: false } 만 보내면 즉시 차단.
+  updateInviteCode: (id, changes) => {
+    const body = {};
+    if ("label" in changes) body.label = changes.label;
+    if ("maxUses" in changes) body.max_uses = changes.maxUses;
+    if ("expiresAt" in changes) body.expires_at = changes.expiresAt;
+    if ("isActive" in changes) body.is_active = changes.isActive;
+    return request(`/admin/invite-codes/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  },
+
   // --- 현금 보상 신청 ---
   // status 미지정 시 전체. 응답: { items, total, counts: {pending,paid,rejected} }
   rewardClaims: ({ status } = {}) =>

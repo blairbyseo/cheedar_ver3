@@ -802,3 +802,47 @@ button { font-family: inherit; cursor: pointer; }
   overflow-x: auto;
   white-space: pre;
 }
+
+/* ── 초대코드 발급 폼 ─────────────────────────────────────────── */
+.invite-form {
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid #e8e6e1;
+  border-radius: 12px;
+}
+
+.invite-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.invite-form-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b665c;
+}
+
+.invite-form-row input {
+  padding: 8px 10px;
+  border: 1px solid #ddd9d2;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+/* 코드 자체 — 눈으로 대조하기 쉽게 고정폭 + 자간 */
+.invite-code-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}

@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquare,
+  Ticket,
   Users,
   Wallet,
 } from "lucide-react";
@@ -16,6 +17,7 @@ const NAV = [
   { to: "/safety", label: "위험 신호", icon: AlertTriangle, end: false },
   { to: "/rewards", label: "현금 보상 신청", icon: Wallet, end: false },
   { to: "/inquiries", label: "문의하기", icon: MessageSquare, end: false },
+  { to: "/invite-codes", label: "초대코드", icon: Ticket, end: false },
 ];
 
 export default function Sidebar() {

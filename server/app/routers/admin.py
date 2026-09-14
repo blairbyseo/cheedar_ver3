@@ -1,5 +1,6 @@
 import csv
 import io
+import secrets
 from datetime import date as DateType
 from datetime import datetime, timedelta, timezone
 
@@ -12,6 +13,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_admin
 from app.models.chat import ChatMessage, ChatRole
 from app.models.inquiry import Inquiry
+from app.models.invite_code import InviteCode, normalize_code
 from app.models.meal import Meal
 from app.models.points import PointHistory
 from app.models.reward import RewardClaim, RewardClaimStatus
@@ -23,6 +25,9 @@ from app.models.survey import (
 )
 from app.models.user import User
 from app.schemas.admin import (
+    AdminInviteCodeCreateRequest,
+    AdminInviteCodeItem,
+    AdminInviteCodeUpdateRequest,
     AdminSurveyResponseItem,
     AdminUserDetail,
     AdminUserListItem,
@@ -638,3 +643,115 @@ def update_inquiry(
     db.refresh(inq)
     user = db.get(User, inq.user_id)
     return _inquiry_out(inq, user)
+
+
+# -- 초대코드 --------------------------------------------------------------
+
+# 코드 자동 생성용 문자 집합 — 카톡으로 받은 코드를 손으로 옮겨 치는 상황이라
+# 헷갈리는 글자(O/0, I/1/L)를 빼서 오타를 줄인다.
+_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+
+def _generate_code() -> str:
+    """CHEDDAR-A3F9 형태의 무작위 코드를 만든다."""
+    body = "".join(secrets.choice(_CODE_ALPHABET) for _ in range(4))
+    tail = "".join(secrets.choice(_CODE_ALPHABET) for _ in range(4))
+    return f"{body}-{tail}"
+
+
+def _invite_out(invite: InviteCode, now: datetime) -> AdminInviteCodeItem:
+    return AdminInviteCodeItem(
+        id=invite.id,
+        code=invite.code,
+        label=invite.label,
+        max_uses=invite.max_uses,
+        used_count=invite.used_count,
+        remaining=invite.remaining(),
+        expires_at=invite.expires_at,
+        is_active=invite.is_active,
+        created_at=invite.created_at,
+        usable=invite.unusable_reason(now) is None,
+    )
+
+
+@router.get("/invite-codes", response_model=list[AdminInviteCodeItem])
+def list_invite_codes(db: Session = Depends(get_db)) -> list[AdminInviteCodeItem]:
+    """초대코드 목록 — 최신 발급 순."""
+    now = datetime.now(timezone.utc)
+    codes = (
+        db.execute(select(InviteCode).order_by(InviteCode.created_at.desc()))
+        .scalars()
+        .all()
+    )
+    return [_invite_out(c, now) for c in codes]
+
+
+@router.post(
+    "/invite-codes",
+    response_model=AdminInviteCodeItem,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_invite_code(
+    body: AdminInviteCodeCreateRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> AdminInviteCodeItem:
+    """초대코드 발급. code 를 비우면 무작위로 만들어 준다."""
+    raw = (body.code or "").strip() or _generate_code()
+    code = normalize_code(raw)
+    if not 4 <= len(code) <= 40:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "코드는 4~40자로 입력해주세요."
+        )
+    if body.max_uses is not None and body.max_uses < 1:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "인원 제한은 1 이상이어야 합니다."
+        )
+
+    exists = (
+        db.execute(select(InviteCode.id).where(InviteCode.code == code)).first()
+        is not None
+    )
+    if exists:
+        raise HTTPException(status.HTTP_409_CONFLICT, "이미 있는 코드입니다.")
+
+    invite = InviteCode(
+        code=code,
+        label=body.label,
+        max_uses=body.max_uses,
+        expires_at=body.expires_at,
+        created_by_user_id=admin.id,
+    )
+    db.add(invite)
+    db.commit()
+    db.refresh(invite)
+    return _invite_out(invite, datetime.now(timezone.utc))
+
+
+@router.patch("/invite-codes/{invite_id}", response_model=AdminInviteCodeItem)
+def update_invite_code(
+    invite_id: int,
+    body: AdminInviteCodeUpdateRequest,
+    db: Session = Depends(get_db),
+) -> AdminInviteCodeItem:
+    """초대코드 수정 — 보낸 필드만 반영한다(유출 시 is_active=false 로 즉시 차단).
+
+    exclude_unset 을 쓰는 이유: max_uses 를 null 로 보내 '무제한으로 바꾸기'와
+    아예 안 보내 '그대로 두기'를 구분해야 하기 때문이다.
+    """
+    invite = db.get(InviteCode, invite_id)
+    if invite is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invite code not found")
+
+    changes = body.model_dump(exclude_unset=True)
+    if "max_uses" in changes and changes["max_uses"] is not None:
+        if changes["max_uses"] < 1:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "인원 제한은 1 이상이어야 합니다."
+            )
+    for field, value in changes.items():
+        setattr(invite, field, value)
+
+    db.commit()
+    db.refresh(invite)
+    return _invite_out(invite, datetime.now(timezone.utc))

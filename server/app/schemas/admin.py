@@ -103,3 +103,49 @@ class AdminUserDetail(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── 초대코드 관리 ─────────────────────────────────────────────────────
+
+
+class AdminInviteCodeItem(BaseModel):
+    """관리자 화면의 초대코드 목록 한 줄."""
+
+    id: int
+    code: str
+    label: str | None
+    max_uses: int | None
+    used_count: int
+    # 남은 인원. 무제한 코드면 None.
+    remaining: int | None
+    expires_at: datetime | None
+    is_active: bool
+    created_at: datetime
+    # 지금 이 코드로 가입할 수 있는지 (정원·기간·활성 상태를 모두 반영)
+    usable: bool
+
+
+class AdminInviteCodeCreateRequest(BaseModel):
+    """초대코드 발급 요청.
+
+    code 를 비우면 서버가 헷갈리는 글자(O/0, I/1/l)를 뺀 무작위 코드를 만든다.
+    max_uses 를 비우면 무제한, expires_at 을 비우면 무기한이다.
+    """
+
+    code: str | None = None
+    label: str | None = None
+    max_uses: int | None = None
+    expires_at: datetime | None = None
+
+
+class AdminInviteCodeUpdateRequest(BaseModel):
+    """초대코드 수정 — 보낸 필드만 바뀐다.
+
+    유출된 코드를 급히 막을 때는 is_active=false 만 보내면 된다.
+    이미 그 코드로 가입한 사용자는 영향을 받지 않는다.
+    """
+
+    label: str | None = None
+    max_uses: int | None = None
+    expires_at: datetime | None = None
+    is_active: bool | None = None

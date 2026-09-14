@@ -4,6 +4,7 @@ import { useAuth } from "./auth/AuthContext";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Inquiries from "./pages/Inquiries";
+import InviteCodes from "./pages/InviteCodes";
 import Login from "./pages/Login";
 import RewardClaims from "./pages/RewardClaims";
 import SafetyEvents from "./pages/SafetyEvents";
@@ -77,6 +78,14 @@ export default function App() {
         element={
           <RequireAdmin>
             <UserDetail />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/invite-codes"
+        element={
+          <RequireAdmin>
+            <InviteCodes />
           </RequireAdmin>
         }
       />

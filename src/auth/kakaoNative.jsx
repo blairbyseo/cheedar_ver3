@@ -57,6 +57,14 @@ export function KakaoDeepLinkHandler() {
         navigate("/", { replace: true });
       } catch (err) {
         console.error("[KakaoDeepLink] 로그인 실패:", err);
+        // 신규 카카오 계정이면 초대코드가 필요하다 → 로그인 화면에서 받는다.
+        // (인가코드는 1회용이라 코드 입력 후 카카오 로그인을 다시 눌러야 한다)
+        if (err.needsInviteCode) {
+          navigate("/login", {
+            replace: true,
+            state: { needsInviteCode: true, inviteMessage: err.message },
+          });
+        }
       }
     });
     return () => {
