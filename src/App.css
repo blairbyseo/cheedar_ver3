@@ -26,6 +26,9 @@ body {
   margin: 0;
   font-family: 'Pretendard', sans-serif;
   word-break: keep-all; /* 한글이 글자 중간에서 깨지지 않게(공백 기준으로만 줄바꿈). 앱 전역 기본값. */
+  /* keep-all 은 공백 없는 긴 토큰(카카오 기본 아이디 user_5078707881, URL 등)을
+     통째로 밀어내 가로 스크롤을 만든다. 넘칠 때만 예외적으로 끊어 그걸 막는다. */
+  overflow-wrap: break-word;
 }
 /*브라우저 기본 여백을 없애는 코드, 안 하면 화면 가장자리에 미세한 흰 여백이 생김*/
 
@@ -264,6 +267,9 @@ html {
 
 .welcome-content {
   flex: 1;
+  /* flex 아이템 기본값 min-width:auto 라 내용보다 작아지지 못한다.
+     긴 아이디가 들어오면 이 칸이 화면 밖까지 늘어나므로 0 으로 풀어준다. */
+  min-width: 0;
 }
 
 /* 인사말 말풍선 — 이름 + 인사말만 이 흰색 만화풍 풍선 안에 들어간다.

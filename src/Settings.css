@@ -555,3 +555,22 @@
 }
 
 
+
+/* 준비 중인 알림 항목 — 켜도 오지 않으므로 토글을 잠근다.
+   notification-row-disabled(0.4)보다 덜 흐리게 해서 '준비 중' 안내가 읽히게 한다. */
+.notification-row-soon {
+  opacity: 0.62;
+}
+
+.notification-soon-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #EFEDE7;
+  color: #7A756B;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  vertical-align: middle;
+}

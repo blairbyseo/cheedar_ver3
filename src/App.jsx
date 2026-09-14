@@ -32,6 +32,7 @@ import SignupPage from './auth/SignupPage';
 import OAuthKakaoCallback from './auth/OAuthKakaoCallback';
 import ProtectedRoute from './auth/ProtectedRoute';
 import { KakaoDeepLinkHandler } from './auth/kakaoNative';
+import { syncMealReminders } from './notifications/mealReminders';
 
 /* 로그인 이후 보여줄 메인 화면 — 탭 5개 + 하단 TabBar */
 function MainShell() {
@@ -69,6 +70,16 @@ function MainShell() {
         setChatErrorText("서버 연결에 실패했어요. 백엔드가 켜져 있는지 확인해주세요.");
       }
     })();
+  }, []);
+
+  // 식단 알림 예약을 앱 진입 시 한 번 맞춘다.
+  // 예약이 설정 화면에서만 걸리면, 설정 탭을 안 열어본 사용자는 토글이 켜져
+  // 보여도 알림을 못 받는다. 여기서 저장된 토글대로 예약/취소를 맞춰준다.
+  // (설정에서 끈 사람은 꺼진 채로 유지된다. 웹에서는 no-op)
+  useEffect(() => {
+    syncMealReminders().catch((err) =>
+      console.error("[Notif] 식단 알림 동기화 실패:", err),
+    );
   }, []);
 
   // 설문 게이트: 로그인 후 첫 진입 시 띄워야 할 설문(온보딩/주기)이 있는지 확인.

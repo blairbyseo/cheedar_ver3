@@ -7,6 +7,8 @@ import { usePoints } from "../usePoints";
 import {
   scheduleMealReminders,
   cancelMealReminders,
+  NOTIF_ALL_KEY,
+  NOTIF_MEAL_KEY,
 } from "../notifications/mealReminders";
 
 // 기본 프로필 사진 placeholder 로 사용
@@ -85,19 +87,18 @@ function Settings() {
   //    마스터가 false 면 개별 토글은 disabled 처리.
   //    식단/전체 토글은 로컬 알림 예약과 연결되므로 localStorage 에 저장해 재실행 시 유지.
   const [allNotificationsOn, setAllNotificationsOn] = useState(
-    () => localStorage.getItem("notif.all") !== "off",
+    () => localStorage.getItem(NOTIF_ALL_KEY) !== "off",
   );
   const [mealReminderOn, setMealReminderOn] = useState(
-    () => localStorage.getItem("notif.meal") !== "off",
+    () => localStorage.getItem(NOTIF_MEAL_KEY) !== "off",
   );
-  const [rankingNotificationOn, setRankingNotificationOn] = useState(true);
-  const [weeklyReportNotificationOn, setWeeklyReportNotificationOn] =
-    useState(false);
+  // 랭킹·주간 리포트 알림은 서버 푸시(FCM)가 필요해 아직 못 만들었다.
+  // 화면에서는 '준비 중'으로 잠가두므로 켜고 끌 상태 자체가 없다.
 
   // 식단 기록 알림 토글(+마스터) → 실제 로컬 알림 예약/취소 동기화. 앱에서만 동작, 웹은 no-op.
   useEffect(() => {
-    localStorage.setItem("notif.all", allNotificationsOn ? "on" : "off");
-    localStorage.setItem("notif.meal", mealReminderOn ? "on" : "off");
+    localStorage.setItem(NOTIF_ALL_KEY, allNotificationsOn ? "on" : "off");
+    localStorage.setItem(NOTIF_MEAL_KEY, mealReminderOn ? "on" : "off");
     if (allNotificationsOn && mealReminderOn) {
       scheduleMealReminders(); // 권한 요청 후 아침/점심/저녁 매일 예약
     } else {
@@ -471,7 +472,7 @@ function Settings() {
           <div className="notification-row-info">
             <p className="notification-row-title">식단 기록 알림</p>
             <p className="notification-row-desc">
-              아침 7시, 점심 12시, 저녁 6시에 기록 알림을 드려요
+              아침 8시, 점심 12시, 저녁 7시에 기록 알림을 드려요
             </p>
           </div>
           <ToggleSwitch
@@ -482,43 +483,36 @@ function Settings() {
           />
         </div>
 
-        {/* 랭킹 알림 */}
-        <div
-          className={`notification-row ${
-            !allNotificationsOn ? "notification-row-disabled" : ""
-          }`}
-        >
+        {/* 랭킹 알림 — 서버 푸시(FCM) 미구현이라 켜도 오지 않는다.
+            켜지는데 안 오면 고장으로 보이므로 '준비 중'으로 잠가둔다. */}
+        <div className="notification-row notification-row-soon">
           <div className="notification-row-info">
-            <p className="notification-row-title">랭킹 알림</p>
+            <p className="notification-row-title">
+              랭킹 알림
+              <span className="notification-soon-badge">준비 중</span>
+            </p>
             <p className="notification-row-desc">
-              랭킹이 올라가면 알려드려요
+              랭킹이 올라가면 알려드릴게요. 곧 제공할 예정이에요
             </p>
           </div>
-          <ToggleSwitch
-            isOn={rankingNotificationOn && allNotificationsOn}
-            onClick={makeNotificationToggle(setRankingNotificationOn)}
-            disabled={!allNotificationsOn}
-            label="랭킹 알림"
-          />
+          <ToggleSwitch isOn={false} disabled label="랭킹 알림 (준비 중)" />
         </div>
 
-        {/* 주간 리포트 알림 */}
-        <div
-          className={`notification-row ${
-            !allNotificationsOn ? "notification-row-disabled" : ""
-          }`}
-        >
+        {/* 주간 리포트 알림 — 위와 같은 이유로 준비 중 */}
+        <div className="notification-row notification-row-soon">
           <div className="notification-row-info">
-            <p className="notification-row-title">주간 리포트 알림</p>
+            <p className="notification-row-title">
+              주간 리포트 알림
+              <span className="notification-soon-badge">준비 중</span>
+            </p>
             <p className="notification-row-desc">
-              주간 피드백 리포트가 준비되면 알려드려요
+              주간 피드백 리포트가 준비되면 알려드릴게요. 곧 제공할 예정이에요
             </p>
           </div>
           <ToggleSwitch
-            isOn={weeklyReportNotificationOn && allNotificationsOn}
-            onClick={makeNotificationToggle(setWeeklyReportNotificationOn)}
-            disabled={!allNotificationsOn}
-            label="주간 리포트 알림"
+            isOn={false}
+            disabled
+            label="주간 리포트 알림 (준비 중)"
           />
         </div>
         </div>

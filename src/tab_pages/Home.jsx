@@ -6,6 +6,7 @@ import {ChatIcon} from "../charticons/ChatIcon";
 import { usePoints } from "../usePoints";
 import { useTodayStatus } from "../useTodayStatus";
 import { useFinalReward } from "../useFinalReward";
+import { useAuth } from "../auth/AuthContext";
 
 // 헤더 멘트·끼니 현황 줄에서 쓰는 끼니 한글 표기.
 const MEAL_KR = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
@@ -13,6 +14,7 @@ const MEAL_KR = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
 const MEAL_SLOT_START = { breakfast: 0, lunch: 11, dinner: 17 };
 
 function Home({setActiveTab}) {
+  const { user: authUser } = useAuth();
   const days = ["월", "화", "수", "목", "금", "토", "일"];
   /* const mealStatusText = "아침 완료 · 점심 미기록 · 저녁 예정"; */
 
@@ -93,7 +95,9 @@ function Home({setActiveTab}) {
       "하루의 마지막 식사, 천천히 즐겨봐요",
     ],
   };
-  const userName = points?.user_id;
+  // 인사말에 쓸 이름 — 카카오 가입자는 로그인 아이디가 user_5078707881 처럼
+  // 자동 생성된 값이라 인사말에 어울리지 않는다. 카카오 닉네임이 있으면 그걸 쓴다.
+  const userName = authUser?.nickname || points?.user_id;
   // 지금 시간대의 인사말 후보 중 오늘 날짜로 하나 선택 (매일 조금씩 바뀜).
   const greetingPool = GREETINGS[currentMeal];
   const greeting = greetingPool[date % greetingPool.length];

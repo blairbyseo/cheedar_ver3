@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { refreshPoints } from "../usePoints";
 import {
   lookupKnownMet,
   estimateCalories,
@@ -169,6 +170,8 @@ function Exercise({ onBack, embedded = false }) {
       });
       if (!res.ok) throw new Error(`save ${res.status}`);
       const saved = await res.json();
+      // 적립된 포인트를 헤더에 바로 반영 (탭을 옮겨야 갱신되던 문제)
+      refreshPoints();
       setItems(saved.items ?? []);
       setSavedForToday(true);
       setIsEditing(false);

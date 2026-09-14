@@ -1,6 +1,6 @@
 /*5-4. Diet.jsx: App.jsx 파일에 걸림 */
 import { useEffect, useRef, useState } from "react";
-import { usePoints } from "../usePoints";
+import { usePoints, refreshPoints } from "../usePoints";
 import Exercise from "./Exercise";
 
 const MEAL_TYPES = [
@@ -467,6 +467,9 @@ function Diet() {
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(`save ${res.status}`);
+
+    // 적립된 포인트를 헤더에 바로 반영 (탭을 옮겨야 갱신되던 문제)
+    refreshPoints();
 
     setShowPointReward(true);
     setSavedMessage(`${selectedMealLabel} 기록 완료! 10P가 적립됐어요`);

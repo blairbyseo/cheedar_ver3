@@ -74,3 +74,37 @@ export async function cancelMealReminders() {
     notifications: REMINDER_IDS.map((id) => ({ id })),
   });
 }
+
+// 토글 상태를 담아두는 localStorage 키. Settings 와 앱 시작 코드가 같은 값을
+// 봐야 하므로 문자열을 여기 한 곳에만 둔다.
+export const NOTIF_ALL_KEY = "notif.all";
+export const NOTIF_MEAL_KEY = "notif.meal";
+
+/** 저장된 토글 기준으로 식단 알림이 켜져 있는지. 기본값은 켜짐. */
+export function isMealReminderEnabled() {
+  try {
+    return (
+      localStorage.getItem(NOTIF_ALL_KEY) !== "off" &&
+      localStorage.getItem(NOTIF_MEAL_KEY) !== "off"
+    );
+  } catch {
+    // localStorage 접근이 막힌 경우엔 기본값(켜짐)으로 본다
+    return true;
+  }
+}
+
+/**
+ * 저장된 토글 상태에 맞춰 실제 예약을 맞춘다. 앱 시작 시 한 번 호출한다.
+ *
+ * 예약을 거는 코드가 설정 화면에만 있으면, 설정 탭을 한 번도 안 연 사용자는
+ * 토글이 켜진 것처럼 보여도 알림을 영영 못 받는다. 그 구멍을 막는 함수다.
+ * 같은 id(1001~1003)로 덮어쓰므로 여러 번 호출해도 중복되지 않는다.
+ */
+export async function syncMealReminders() {
+  if (!isNativeApp()) return;
+  if (isMealReminderEnabled()) {
+    await scheduleMealReminders();
+  } else {
+    await cancelMealReminders();
+  }
+}

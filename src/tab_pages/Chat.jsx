@@ -63,8 +63,12 @@ function Chat({
   useEffect(() => {
     const isInitial =
       initialScrollPendingRef.current && messages.length > 1;
+    // 입력중(●●●) 표시가 막 나타난 순간에는 즉시 점프한다.
+    // 앱(CapacitorHttp)은 전송 직후 네이티브 HTTP 응답을 기다리느라 JS 가
+    // 묶여서 smooth 스크롤이 끝까지 굴러가지 못한다. 그러면 점이 화면 아래에
+    // 그려진 채 사용자 눈에는 "안 뜨는" 것으로 보인다.
     bottomRef.current?.scrollIntoView({
-      behavior: isInitial ? "auto" : "smooth",
+      behavior: isInitial || isSending ? "auto" : "smooth",
       block: "end",
     });
     if (isInitial) initialScrollPendingRef.current = false;
@@ -92,7 +96,17 @@ function Chat({
     }
   }
 
-  // 스트림으로 들어온 이벤트 1건을 화면 상태에 반영
+  // 브라우저가 화면을 한 번 그릴 때까지 기다린다.
+// setState 직후 곧바로 무거운 요청을 시작하면 그 상태가 화면에 반영되지
+// 못하는데, 앱(CapacitorHttp)에서 특히 그렇다. rAF 두 번을 기다려야 그리기가
+// 실제로 끝난 다음 프레임이 보장된다.
+function paintFrame() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
+// 스트림으로 들어온 이벤트 1건을 화면 상태에 반영
   function applyStreamEvent(event) {
     if (event.type === "user") {
       // 낙관적으로 그려둔 유저 메시지를 서버가 저장한 실제 메시지로 교체
@@ -149,6 +163,7 @@ function Chat({
   async function triggerOpener() {
     setIsSending(true);
     setErrorText("");
+    await paintFrame(); // 입력중 표시를 먼저 그린다 (handleSubmit 과 같은 이유)
     try {
       const res = await fetch("/api/chat/opener", {
         method: "POST",
@@ -182,6 +197,11 @@ function Chat({
     setDraft("");
     setIsSending(true);
     setErrorText("");
+
+    // 요청을 시작하기 전에 화면을 한 번 그리게 양보한다.
+    // 앱은 CapacitorHttp(네이티브 HTTP)로 응답을 통째로 받아오는데, 그 사이
+    // JS 가 묶여서 입력중(●●●) 표시가 아예 그려지지 못한 채 답변만 뜬다.
+    await paintFrame();
 
     try {
       const res = await fetch("/api/chat/messages", {
