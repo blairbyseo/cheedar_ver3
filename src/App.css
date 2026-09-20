@@ -1015,6 +1015,30 @@ background: rgba(242, 201, 76, 0.24);
   50%      { box-shadow: 0 0 0 10px rgba(209, 169, 22, 0); }
 }
 
+/* 보상 규정 링크 — 심사 요건이라 항상 보여야 하므로 카드 안에 고정 */
+.reward-card-rules {
+  display: block;
+  margin-top: 14px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: var(--text-sub);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Apple 비관여 고지 — 작게 두되 지우지 말 것(App Store 요건) */
+.reward-card-legal {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text-sub);
+  opacity: 0.8;
+  word-break: keep-all;
+}
+
 /* 신청 후 상태 안내 — 상태별 색만 다르게 */
 .reward-result {
   margin-top: 16px;

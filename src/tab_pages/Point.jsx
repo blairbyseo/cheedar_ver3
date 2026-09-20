@@ -2,6 +2,11 @@
 import { useState, useEffect } from "react";
 import { usePoints } from "../usePoints";
 import { useFinalReward } from "../useFinalReward";
+import { REWARD_RULES_URL, handleExternalClick } from "../openExternal";
+
+// 현금 보상 규정 링크. App Store 심사는 현금 보상이 있는 앱에 (1) 주최자 명시,
+// (2) 규정 공개, (3) "Apple 비관여" 고지를 요구하므로 보상 카드에서 반드시 닿아야 한다.
+const openRewardRules = handleExternalClick(REWARD_RULES_URL);
 
 // 적립 규칙·내역의 아이콘 — rule(id)별 고정. CSS는 icon-${id} 클래스를 함께 쓴다.
 // 백엔드 services/points.py 의 POINT_RULES 7종과 키를 맞춘다(식단4 + 운동2 + 설문1).
@@ -222,6 +227,20 @@ function Point() {
               </button>
             )}
             {claimError && <p className="reward-card-error">{claimError}</p>}
+
+            <a
+              className="reward-card-rules"
+              href={REWARD_RULES_URL}
+              target="_blank"
+              rel="noreferrer"
+              onClick={openRewardRules}
+            >
+              보상 규정 보기
+            </a>
+            <p className="reward-card-legal">
+              Cheddar 운영팀이 주최·운영하며, Apple은 본 챌린지의 주최자가 아니고
+              어떠한 방식으로도 관여하지 않습니다.
+            </p>
           </section>
         );
       })()}

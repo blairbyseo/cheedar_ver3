@@ -1,0 +1,240 @@
+<!doctype html>
+<!--
+  현금 보상 챌린지 운영 규정 — 사용자에게 공개되는 페이지입니다.
+
+  이 페이지 주소: https://cheddar-care.com/reward-rules.html
+  앱 안에서는 [포인트 탭 → 현금 보상 챌린지 카드 → "보상 규정 보기"] 로 열립니다.
+
+  ⚠️ 저장소 루트의 cash_reward_criteria.html 은 내부 설계 문서입니다.
+     소스 파일명·구현 한계가 적혀 있으므로 배포하지 마세요. 이 페이지가 공개용입니다.
+
+  ⚠️ App Store 심사 요건: 현금 보상이 있는 앱은 (1) 주최자 명시, (2) 규정 공개,
+     (3) "Apple은 주최자가 아님" 고지가 모두 필요합니다. 9번 항목을 삭제하지 마세요.
+
+  ⚠️ 금액·자격 레벨을 바꾸면 백엔드 config.py 의 final_level /
+     final_level_reward_amount 와 이 페이지를 함께 고쳐야 합니다.
+-->
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cheddar 현금 보상 챌린지 운영 규정</title>
+    <style>
+      :root {
+        --cream: #faf7ef;
+        --card: #ffffff;
+        --text: #33302a;
+        --sub: #6b665c;
+        --line: #e8e2d4;
+        --accent: #d1a916;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 24px 16px 64px;
+        background: var(--cream);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+          "Malgun Gothic", "Noto Sans KR", sans-serif;
+        line-height: 1.7;
+        word-break: keep-all;
+        -webkit-text-size-adjust: 100%;
+      }
+      .wrap { max-width: 720px; margin: 0 auto; }
+      header {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 20px 22px;
+        margin-bottom: 20px;
+      }
+      h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: -0.4px; }
+      .meta { font-size: 13px; color: var(--sub); margin: 0; }
+      h2 {
+        font-size: 16px;
+        margin: 32px 0 8px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        letter-spacing: -0.3px;
+      }
+      p, li { font-size: 14px; color: var(--text); }
+      ul { padding-left: 20px; margin: 8px 0; }
+      li { margin-bottom: 4px; }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0 16px;
+        font-size: 13px;
+      }
+      th, td {
+        border: 1px solid var(--line);
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th { background: #f3efe4; font-weight: 700; }
+      .amount {
+        display: inline-block;
+        background: #fff8e0;
+        border: 1px solid rgba(209, 169, 22, 0.45);
+        border-radius: 10px;
+        padding: 2px 10px;
+        font-weight: 800;
+        color: #6b4e00;
+      }
+      .note {
+        background: #fff8e0;
+        border: 1px solid rgba(209, 169, 22, 0.35);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 13px;
+        margin: 12px 0;
+      }
+      .legal {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px 16px;
+        font-size: 13px;
+        color: var(--sub);
+        margin: 12px 0;
+      }
+      .legal strong { color: var(--text); }
+      .en { margin-top: 8px; font-size: 12.5px; }
+      footer {
+        margin-top: 40px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--sub);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>현금 보상 챌린지 운영 규정</h1>
+        <p class="meta">시행일: 2026-09-20 · 주최 및 운영: Cheddar 운영팀</p>
+      </header>
+
+      <h2>1. 주최 및 운영 주체</h2>
+      <p>
+        본 챌린지는 <strong>Cheddar 운영팀</strong>이 주최하고 운영합니다. 보상의
+        지급과 관련한 모든 책임은 Cheddar 운영팀에 있습니다.
+      </p>
+
+      <h2>2. 참여 대상</h2>
+      <ul>
+        <li>Cheddar 앱에 가입하고 온보딩 설문을 완료한 이용자</li>
+        <li>1인 1계정에 한하며, 동일인이 여러 계정으로 참여할 수 없습니다</li>
+      </ul>
+
+      <h2>3. 보상 내용</h2>
+      <p>
+        자격 조건을 충족하면 <span class="amount">20,000원</span>의 현금 보상을
+        신청할 수 있습니다. <strong>1인 1회</strong>에 한합니다.
+      </p>
+      <p>
+        본 보상은 앱 안에서 사용하는 포인트(CP)와는 별개의 일회성 현금 보상이며,
+        앱 내 구매나 결제와는 관련이 없습니다.
+      </p>
+
+      <h2>4. 자격 조건</h2>
+      <p>
+        계정의 <strong>현재 레벨이 Lv.4 이상</strong>이 되면 자격이 생깁니다. 그
+        외의 조건은 없습니다.
+      </p>
+      <p>
+        레벨은 식단 기록, 운동 기록, 설문 참여로 쌓이는 누적 경험치(XP)에 따라
+        올라갑니다. Lv.4는 대체로 <strong>2주 정도 꾸준히 기록</strong>하면 도달하는
+        수준입니다. 현재 레벨과 목표까지 남은 정도는 앱의 포인트 탭에서 언제든
+        확인할 수 있습니다.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>레벨</th>
+            <th>도달에 필요한 누적 XP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Lv.2</td><td>50 XP</td></tr>
+          <tr><td>Lv.3</td><td>250 XP</td></tr>
+          <tr><td><strong>Lv.4 - 보상 자격</strong></td><td><strong>600 XP</strong></td></tr>
+          <tr><td>Lv.5</td><td>1,100 XP</td></tr>
+        </tbody>
+      </table>
+
+      <h2>5. 신청 및 지급 방법</h2>
+      <ul>
+        <li>자격을 충족하면 포인트 탭의 보상 카드에 신청 버튼이 나타납니다</li>
+        <li>신청하면 Cheddar 운영팀이 내용을 확인합니다</li>
+        <li>확인이 끝나면 운영팀이 직접 송금하며, 앱에 "지급 완료"로 표시됩니다</li>
+        <li>확인과 지급에는 영업일 기준 수일이 걸릴 수 있습니다</li>
+      </ul>
+      <div class="note">
+        지급에 필요한 계좌 정보는 신청 이후 운영팀이 별도로 요청합니다. 앱 안에서는
+        계좌나 결제 정보를 수집하지 않습니다.
+      </div>
+
+      <h2>6. 운영 기간</h2>
+      <p>
+        2026년 9월 20일부터 <strong>별도 종료 공지 시까지</strong> 운영합니다. 예산
+        소진이나 운영 사정에 따라 종료될 수 있으며, 종료하는 경우 앱 또는 이
+        페이지를 통해 미리 공지합니다.
+      </p>
+
+      <h2>7. 유의사항</h2>
+      <ul>
+        <li>
+          비정상적인 방법으로 경험치를 적립한 것으로 확인되는 경우, 지급이 제한되거나
+          취소될 수 있습니다
+        </li>
+        <li>동일인의 중복 계정으로 확인되는 경우 지급 대상에서 제외됩니다</li>
+        <li>지급 전 회원 탈퇴한 경우 신청은 소멸합니다</li>
+        <li>
+          보상 지급과 관련해 관계 법령에 따른 세금이 발생하는 경우 관련 법령을
+          따릅니다
+        </li>
+      </ul>
+
+      <h2>8. 개인정보 처리</h2>
+      <p>
+        보상 신청 및 지급 과정에서 수집하는 정보는
+        <a href="/privacy.html">개인정보처리방침</a>에 따라 처리합니다.
+      </p>
+
+      <h2>9. Apple 관련 고지</h2>
+      <div class="legal">
+        <p>
+          <strong>
+            본 챌린지는 Cheddar 운영팀이 단독으로 주최하고 운영합니다. Apple Inc.는
+            본 챌린지의 주최자가 아니며, 어떠한 방식으로도 본 챌린지에 관여하지
+            않습니다.
+          </strong>
+        </p>
+        <p class="en">
+          This challenge is sponsored and administered solely by the Cheddar team.
+          Apple Inc. is not a sponsor of, and is not involved in, this activity in
+          any manner.
+        </p>
+      </div>
+
+      <h2>10. 문의</h2>
+      <p>
+        앱의 [설정 &gt; 문의하기] 또는 아래 이메일로 문의해 주세요.
+      </p>
+      <ul>
+        <li>이메일: cmyanglab26@gmail.com</li>
+      </ul>
+
+      <footer>
+        <p>
+          시행일: 2026-09-20<br />
+          Cheddar · Cheddar 운영팀
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>

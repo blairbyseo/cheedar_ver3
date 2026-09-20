@@ -8,6 +8,7 @@ import {
   scheduleMealReminders,
   cancelMealReminders,
 } from "../notifications/mealReminders";
+import { PRIVACY_URL, openExternal } from "../openExternal";
 
 // 기본 프로필 사진 placeholder 로 사용
 const DEFAULT_PROFILE_IMAGE = "/cheese/cheese_profile.jpg";
@@ -535,6 +536,16 @@ function Settings() {
           onClick={handleOpenInquiry}
         >
           문의하기
+          <span className="settings-list-row-arrow">›</span>
+        </button>
+        {/* 개인정보처리방침 — App Store 심사 요건(5.1.1): 방침 URL 은 스토어
+            메타데이터뿐 아니라 앱 안에서도 쉽게 닿을 수 있어야 한다. 지우지 말 것. */}
+        <button
+          type="button"
+          className="settings-list-row"
+          onClick={() => openExternal(PRIVACY_URL)}
+        >
+          개인정보처리방침
           <span className="settings-list-row-arrow">›</span>
         </button>
         <button
