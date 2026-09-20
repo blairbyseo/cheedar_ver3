@@ -238,8 +238,8 @@ function Point() {
               보상 규정 보기
             </a>
             <p className="reward-card-legal">
-              Cheddar 운영팀이 주최·운영하며, Apple은 본 챌린지의 주최자가 아니고
-              어떠한 방식으로도 관여하지 않습니다.
+              WKUH Medical Center가 주최·운영하며, Apple은 본 챌린지의 주최자가
+              아니고 어떠한 방식으로도 관여하지 않습니다.
             </p>
           </section>
         );
