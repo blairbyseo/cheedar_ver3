@@ -20,31 +20,31 @@ App Store Connect 각 입력란에 **그대로 복사**해서 넣으면 되는 �
 | 스크린샷 6.5" (1284×2778) | ✅ `assets/appstore/6.5-inch/` 4장 |
 | 개인정보처리방침 URL | ✅ 라이브 (200) |
 | 광고·추적 SDK | ✅ 없음 → App Privacy 설문 단순 |
-| **App Store Connect 앱 레코드** | ⚠️ **미생성** |
-| **심사용 테스트 계정** | ⚠️ **미생성** |
-| **ASC provider 연결** | ⚠️ **문제 있음 — 1번 참고** |
+| App Store Connect 앱 레코드 | ✅ 생성됨 |
+| 유료 애플리케이션 계약 | ✅ 동의 완료 |
+| 가격(무료) · 사용 가능 여부 | ✅ 설정 완료 |
+| 연령 등급 | ✅ 완료 — **9+** |
+| App Privacy 설문 | ✅ 완료 |
+| **빌드 업로드 (1.0 / build 1)** | ✅ **Upload succeeded** (2026-09-20 23:15) |
+| **심사용 테스트 계정** | ⚠️ **미생성 — 제출 전 필수** |
+| 등록물 문구·스크린샷 입력 | ⚠️ 남음 (2~3번) |
 
 ---
 
-## 1. ⚠️ 먼저 해결해야 할 것 — ASC provider
+## 1. 참고 — "No provider" 경고는 무시해도 됩니다
 
-배포 서명 export 중 아래 경고가 나왔습니다.
+업로드할 때 아래 경고가 뜨지만 **업로드를 막지 않습니다.**
 
 ```
 IDEDistribution: App Store Connect request for store configuration failed
 for account (null) ... "No provider associated with App Store Connect user"
 ```
 
-IPA 자체는 정상이지만, **이 상태로는 업로드가 안 됩니다.** Xcode에 로그인된 Apple ID가
-App Store Connect의 provider(팀)에 연결돼 있지 않다는 뜻입니다. 보통 원인은 셋 중 하나:
+빌드 업로드와는 별개인 *스토어 설정 조회* 요청에서만 나는 경고입니다. 실제로 이
+경고가 뜬 채로 업로드가 정상 완료됐습니다(`Progress 69%: Upload succeeded`).
 
-1. **계약 미동의** — [App Store Connect](https://appstoreconnect.apple.com) → **계약, 세금 및 금융 거래**
-   에서 Account Holder가 **유료 애플리케이션 계약**(무료 앱이어도 필요)에 동의해야 함
-2. **Xcode에 다른 Apple ID가 로그인됨** — Xcode → Settings → Accounts에서 팀
-   `38CQS8VUC4` 가 보이는 계정인지 확인
-3. 멤버십 결제 직후라 ASC 프로비저닝이 아직 안 끝남 (몇 시간 대기)
-
-→ ASC에 로그인해서 **경고/할 일 배너가 뜨는지** 먼저 확인해 주세요. 1번인 경우가 가장 흔합니다.
+경고를 없애고 싶다면 Xcode → Settings → Accounts에서 팀 `38CQS8VUC4` 가 보이는
+Apple ID로 로그인돼 있는지 확인하면 됩니다. 필수는 아닙니다.
 
 ---
 
@@ -363,15 +363,17 @@ Mac App Store에서 **Transporter** 설치 → 생성된 `App.ipa` 를 드래그
 
 ## 10. 제출 전 최종 체크리스트
 
-- [ ] ASC 계약(유료 애플리케이션 계약) 동의 완료 → provider 경고 해소
-- [ ] App Store Connect에 앱 레코드 생성 (번들 ID `com.cheddar.care` 선택)
-- [ ] 심사용 테스트 계정 생성 + 온보딩 설문 완료해 두기
+- [x] ASC 계약(유료 애플리케이션 계약) 동의
+- [x] App Store Connect에 앱 레코드 생성 (번들 ID `com.cheddar.care`)
+- [x] 가격(무료)·사용 가능 여부(대한민국) 설정
+- [x] App Privacy 설문 완료 (5번)
+- [x] 연령 등급 설문 완료 (6번) → 9+
+- [x] 빌드 업로드 (1.0 / build 1)
+- [ ] **심사용 테스트 계정 생성 + 온보딩 설문 완료해 두기** ← 없으면 2.1 확정 반려
 - [ ] 2~3번의 등록물 전부 입력
 - [ ] 스크린샷 6.9인치 4장 업로드
-- [ ] App Privacy 설문 완료 (5번)
-- [ ] 연령 등급 설문 완료 (6번)
-- [ ] 빌드 업로드 후 버전에 빌드 연결
-- [ ] 가격·배포 국가 설정
+- [ ] 버전 정보에서 업로드된 빌드 선택
+- [ ] 심사 정보(테스트 계정·연락처·메모) 입력 — 4번
 - [ ] **심사 제출**
 
 ---
