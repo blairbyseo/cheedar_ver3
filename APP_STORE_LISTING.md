@@ -15,7 +15,8 @@ App Store Connect 각 입력란에 **그대로 복사**해서 넣으면 되는 �
 | 번들 ID `com.cheddar.care` | ✅ 등록됨 |
 | Release 아카이브 | ✅ ARCHIVE SUCCEEDED |
 | App Store 배포 서명 IPA | ✅ `Apple Distribution` 서명 완료, `get-task-allow: false` |
-| 앱 아이콘 1024×1024 | ✅ 알파채널 없음 (`AppIcon-512@2x.png`) |
+| 앱 아이콘 1024×1024 | ✅ 체다 기본 표정 마스코트, 알파 없음 — build 4부터. `node scripts/make_ios_assets.cjs` 로 재생성 (build 1~3 은 Capacitor 기본 아이콘이었음) |
+| 실행 화면(스플래시) | ✅ 같은 마스코트 — build 4부터 |
 | 스크린샷 6.9" (1320×2868) | ✅ `assets/appstore/6.9-inch/` 4장 |
 | 스크린샷 6.5" (1284×2778) | ✅ `assets/appstore/6.5-inch/` 4장 |
 | 개인정보처리방침 URL | ✅ 라이브 (200) |
@@ -25,9 +26,10 @@ App Store Connect 각 입력란에 **그대로 복사**해서 넣으면 되는 �
 | 가격(무료) · 사용 가능 여부 | ✅ 설정 완료 |
 | 연령 등급 | ✅ 완료 — **9+** |
 | App Privacy 설문 | ✅ 완료 |
-| **빌드 업로드 (1.0 / build 1)** | ✅ **Upload succeeded** (2026-09-20 23:15) |
-| **심사용 테스트 계정** | ⚠️ **미생성 — 제출 전 필수** |
-| 등록물 문구·스크린샷 입력 | ⚠️ 남음 (2~3번) |
+| **빌드 업로드** | ✅ **1.0 (4)** 업로드 (2026-09-21) — 심사에는 반드시 build 4 선택 |
+| 심사용 테스트 계정 | ✅ `test01` — 설문 완료·샘플 데이터·Lv.4 미만 |
+| 등록물 문구·스크린샷 입력 | ✅ 입력됨 (설명은 팀이 직접 쓴 버전 사용) |
+| 앱 내 의료 면책 문구 | ✅ build 3부터 — 기록 탭 분석 결과·대화 입력창 아래 |
 
 ---
 
@@ -194,63 +196,69 @@ https://cheddar-care.com/privacy.html
 
 ## 4. 심사 정보 (App Review Information)
 
-### 로그인 필요
+### 로그인 정보
 
 - **로그인이 필요합니다** 체크
+- 사용자 이름: `test01`
+- 비밀번호: ⚠️ 직접 입력 (이 문서에 적지 말 것)
 
-```
-사용자 이름: ⚠️ (심사용 계정 아이디 — 새로 하나 만들어서 적기)
-비밀번호:   ⚠️
-```
-
-> ⚠️ **이게 없으면 100% 반려됩니다.** 심사 전에 실제로 로그인되는 계정을 하나
-> 만들어서 온보딩 설문까지 완료해 두세요. 설문이 안 끝난 계정이면 심사자가
-> 탭들을 못 봅니다.
+> test01 은 레거시 데이터 이관 계정이다. 관리자 여부 N, 온보딩 설문 완료,
+> 식단·대화 샘플 데이터 있음, Lv.4 미만(현금 보상 신청 버튼 비활성)을 확인했다.
+> 심사자가 회원탈퇴를 직접 눌러볼 수 있으므로, **반려 후 재제출할 때는 계정이
+> 살아 있는지 먼저 확인**할 것.
 
 ### 연락처 정보
 
 ```
 이름:     ⚠️
-이메일:   ⚠️
+이메일:   cmyanglab26@gmail.com
 전화번호: ⚠️
 ```
 
-### 메모 (Notes)
+### 메모 (Notes) — 최종본
+
+심사자가 한국어를 못 읽을 수 있어 영어로 쓴다. 탭 이름은 앱 화면 표기 그대로 병기.
 
 ```
-안녕하세요. 식단 기록 및 건강 습관 형성을 돕는 앱입니다.
+Thank you for reviewing Cheddar.
 
-[로그인]
-제공된 아이디/비밀번호로 로그인해 주세요. 카카오 로그인 버튼도 있지만,
-심사에는 아이디 로그인을 사용해 주시면 됩니다.
+[About this app]
+Cheddar is a diet-logging and healthy-habit app developed by a research team at WKUH Medical Center. The developer account is held by a member of this research team. The app UI is Korean only.
 
-[첫 실행 시]
-최초 로그인 후 온보딩 설문이 표시됩니다. 제공된 계정은 설문이 이미
-완료된 상태이므로 바로 모든 탭을 이용하실 수 있습니다.
+[Demo account]
+Please sign in with the ID and password provided above. A Kakao login button is also shown, but please use the ID login for review.
+The demo account has already completed the onboarding survey and contains sample meal records and chat history, so all features are available immediately.
 
-[주요 기능 확인 방법]
-1. 식단 탭 → 사진 추가 → 음식 사진을 업로드하면 AI가 칼로리와
-   영양소를 분석합니다. (네트워크 응답에 5~10초 소요될 수 있습니다)
-2. 대화 탭 → AI와 대화할 수 있습니다.
-3. 설정 → 알림에서 식사 시간 로컬 알림을 켤 수 있습니다.
-4. 설정 → 회원탈퇴에서 계정 삭제가 가능합니다.
+[Navigation - bottom tab bar, left to right]
+- 홈 (Home): daily summary
+- 포인트 (Points): points, level, and the cash reward challenge
+- 기록 (Record, center button): meal logging
+- 대화 (Chat): AI conversation
+- 설정 (Settings): notifications, privacy policy, account deletion
 
-[의료 관련]
-이 앱은 의료기기가 아니며, 진단이나 치료를 목적으로 하지 않습니다.
-칼로리 및 영양 정보는 참고용 추정치이며, 앱 설명과 앱 내에 해당
-내용을 명시하고 있습니다.
+[How to test key features]
+1. Meal logging: tap 기록 (center) > upload a food photo > tap "업로드 후 AI분석" (Upload and analyze). The AI estimates calories and nutrients. This may take 5-10 seconds.
+2. AI chat: tap 대화 and send a message.
+3. Meal reminders: 설정 > turn on "식단 기록 알림". These are local notifications.
+4. Privacy policy: 설정 > 개인정보처리방침.
+5. Account deletion: 설정 > 회원탈퇴 (Delete account). Deletion is permanent. To keep the demo account available, you may test deletion with a new account created via 회원가입 (Sign up) on the login screen. No email verification is required.
 
-[데이터 수집]
-계정 정보, 식단 사진, 신체 정보(나이/키/몸무게), 대화 내용을 수집하며
-모두 앱 기능 제공을 위해서만 사용됩니다. 광고 및 추적 목적의 수집은
-없으며, 광고 SDK도 포함돼 있지 않습니다.
+[Cash reward challenge]
+The 포인트 tab shows a cash reward challenge. It is sponsored and administered solely by WKUH Medical Center. Apple is not a sponsor and is not involved in any manner. This is stated in the app and in the official rules:
+https://cheddar-care.com/reward-rules.html
+The rules are also reachable in the app via 포인트 > "보상 규정 보기" (View rules).
+Rewards are paid manually by the research team outside the app. There are no in-app purchases, and the app does not collect payment or bank information. The demo account is below the eligibility level, so the claim button is disabled.
 
-감사합니다.
+[Health disclaimer]
+Cheddar is not a medical device and does not provide diagnosis or treatment. Calorie and nutrition values are AI estimates for reference only. This is also stated within the app, below the meal analysis result and below the chat input.
+
+[Data]
+Collected data (account information, meal photos, body metrics, chat messages) is used only to provide app features. There is no advertising or tracking, and the app contains no advertising or analytics SDKs.
 ```
 
 ### 첨부 파일
 
-- 불필요 (데모 영상 등)
+- 불필요
 
 ---
 
@@ -302,7 +310,7 @@ https://cheddar-care.com/privacy.html
 | 폭력·성적 콘텐츠·약물·도박·공포 | 전부 **없음** |
 
 > ⚠️ **의료/치료 정보를 "없음"으로 하는 근거**: 이 앱은 칼로리 추정치를 제공할 뿐
-> 진단·치료·복약 정보를 다루지 않고, 앱 설명과 앱 내에 "의학적 진단을 대신하지
+> 진단·치료·복약 정보를 다루지 않고, 앱 설명과 앱 내(기록 탭 분석 결과·대화 입력창 아래)에 "의학적 진단을 대신하지
 > 않는다"고 명시하고 있습니다. 여기에 "있음"으로 답하면 등급이 12+ 이상으로
 > 올라가고 추가 심사 질문을 받을 수 있습니다.
 
@@ -368,7 +376,7 @@ Mac App Store에서 **Transporter** 설치 → 생성된 `App.ipa` 를 드래그
 - [x] 가격(무료)·사용 가능 여부(대한민국) 설정
 - [x] App Privacy 설문 완료 (5번)
 - [x] 연령 등급 설문 완료 (6번) → 9+
-- [x] 빌드 업로드 (1.0 / build 1)
+- [x] 빌드 업로드 — **1.0 (4)** (build 1~3 은 선택하지 말 것: 1·2 는 면책 문구 없음, 1~3 은 Capacitor 기본 아이콘)
 - [ ] **심사용 테스트 계정 생성 + 온보딩 설문 완료해 두기** ← 없으면 2.1 확정 반려
 - [ ] 2~3번의 등록물 전부 입력
 - [ ] 스크린샷 6.9인치 4장 업로드
@@ -385,6 +393,6 @@ Mac App Store에서 **Transporter** 설치 → 생성된 `App.ipa` 를 드래그
 | **4.8 Login Services** | **카카오 로그인이 있는데 Apple 로그인이 없음** | ⚠️ **가장 가능성 높음.** 반려 시 ① iOS에서 카카오 버튼 숨기기(1시간) 또는 ② Sign in with Apple 구현(1~2일) |
 | 5.1.1(v) Account Deletion | 계정 삭제 경로 없음 | ✅ 앱 내 회원탈퇴 + 웹 URL 모두 준비됨 |
 | 2.1 App Completeness | 심사자가 로그인 불가 | 심사 정보에 계정 반드시 등록 |
-| 1.4.1 Physical Harm | 의료 주장 | ✅ 설명·앱 내에 "진단 대체 아님" 명시됨 |
+| 1.4.1 Physical Harm | 의료 주장 | ✅ 설명 + 앱 내(build 3부터) "참고용·진단 대체 아님" 명시. 설명에서 "건강 고민을 물어보세요" 같은 상담 유도 문구는 피할 것 |
 | 5.1.1 Data Collection | App Privacy 신고와 실제 동작 불일치 | 5번 표대로 빠짐없이 신고 |
 | 2.3.3 Accurate Metadata | 스크린샷이 실제 앱과 다름 | ✅ 실제 화면 캡처 사용 |
