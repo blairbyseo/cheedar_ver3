@@ -669,6 +669,11 @@ function Diet() {
                       AI 인식 신뢰도 {Math.round(analysis.confidence * 100)}%
                     </p>
                   )}
+                  {/* 의료 면책 — 칼로리·영양소는 AI 추정치. 심사(1.4.1)·이용자 보호에
+                      필요하므로 분석 결과가 보일 때 항상 함께 보인다. 지우지 말 것. */}
+                  <p className="ai-plate-disclaimer">
+                    AI가 추정한 값이라 실제와 다를 수 있어요. 참고용으로만 활용해 주세요.
+                  </p>
 
                   <ul className="plate-list">
                     {items.map((it) => (
