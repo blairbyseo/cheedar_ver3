@@ -513,6 +513,15 @@
   margin: 0 0 10px;
 }
 
+/* 추정치 안내 — 신뢰도 줄과 같은 톤, 목록 위에 붙인다 */
+.ai-plate-disclaimer {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-sub);
+  margin: 0 0 10px;
+  word-break: keep-all;
+}
+
 .plate-list {
   list-style: none;
   margin: 0;

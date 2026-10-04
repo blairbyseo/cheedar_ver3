@@ -43,6 +43,13 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- 수출 규정 면제 선언. 이 앱이 쓰는 암호화는 HTTPS 통신뿐이고, 그 처리는
+	     WKWebView/URLSession 즉 iOS 내장 암호화가 한다. 자체 알고리즘을 구현하거나
+	     OS 암호화를 대체·병행하는 라이브러리를 번들하지 않으므로 면제 대상이다.
+	     이 키가 없으면 업로드할 때마다 App Store Connect 가 "앱 암호화 문서"
+	     설문을 다시 묻는다. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
