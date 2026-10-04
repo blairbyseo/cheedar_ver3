@@ -7,9 +7,10 @@
  *  - 칼로리 미리보기는 회원가입 때 입력한 체중을 쓰고, 서버가 저장 시 같은 공식으로 재계산.
  *  - 랭킹/리포트와 동일한 onBack 패턴.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { refreshPoints } from "../usePoints";
+import { dayWord, todayStr } from "../utils/recordDate";
 import {
   lookupKnownMet,
   estimateCalories,
@@ -20,14 +21,14 @@ import {
   KNOWN_EXERCISES,
 } from "../utils/exercise";
 
-function todayStr() {
-  const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${day}`;
-}
-
-function Exercise({ onBack, embedded = false }) {
+// date: 기록할 날짜("YYYY-MM-DD"). Diet 화면의 날짜 이동 바에서 내려온다. 없으면 오늘.
+function Exercise({ onBack, embedded = false, date }) {
+  const recordDate = date || todayStr();
+  const word = dayWord(recordDate); // "오늘" / "어제" / "9월 27일"
+  const wordTopic = word === "어제" ? "어제는" : `${word}은`; // 조사: 어제는 / 오늘은 / 27일은
+  // 저장 요청이 끝났을 때 날짜가 바뀌어 있으면 결과를 화면에 반영하지 않기 위한 최신 날짜
+  const recordDateRef = useRef(recordDate);
+  recordDateRef.current = recordDate;
   const { user } = useAuth();
   const weightKg = user?.weight_kg || 70; // 미리보기용. 서버가 저장 시 재계산.
 
@@ -38,7 +39,7 @@ function Exercise({ onBack, embedded = false }) {
   const [intensity, setIntensity] = useState(3);
 
   const [isSkipped, setIsSkipped] = useState(false);
-  const [savedForToday, setSavedForToday] = useState(false); // 오늘 이미 저장됨
+  const [savedForToday, setSavedForToday] = useState(false); // 선택한 날짜에 이미 저장됨
   const [isEditing, setIsEditing] = useState(false);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -47,21 +48,28 @@ function Exercise({ onBack, embedded = false }) {
   const [savedMessage, setSavedMessage] = useState("");
   const [status, setStatus] = useState("loading"); // loading | ready
 
-  // 첫 진입: 오늘 운동 기록이 있으면 불러와 표시.
+  // 진입 시·날짜를 바꿀 때마다: 화면을 비우고 그날 운동 기록이 있으면 불러와 표시.
   useEffect(() => {
     let cancelled = false;
+    setStatus("loading");
+    setItems([]);
+    setIsSkipped(false);
+    setSavedForToday(false);
+    setIsEditing(false);
+    setErrorText("");
+    setSavedMessage("");
     async function load() {
       try {
-        const res = await fetch(`/api/exercise?on=${todayStr()}`, {
+        const res = await fetch(`/api/exercise?on=${recordDate}`, {
           credentials: "include",
         });
         if (!res.ok) throw new Error(`exercise ${res.status}`);
         const rows = await res.json();
         if (cancelled) return;
-        const today = rows[0];
-        if (today) {
-          setItems(today.items ?? []);
-          setIsSkipped(today.is_skipped);
+        const log = rows[0];
+        if (log) {
+          setItems(log.items ?? []);
+          setIsSkipped(log.is_skipped);
           setSavedForToday(true);
         }
       } catch (err) {
@@ -72,7 +80,7 @@ function Exercise({ onBack, embedded = false }) {
     }
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [recordDate]);
 
   const totalKcal = sumItemCalories(items);
   const hasDuration = Number(hours) > 0 || Number(minutes) > 0;
@@ -149,8 +157,10 @@ function Exercise({ onBack, embedded = false }) {
     }
     setIsSaving(true);
     setErrorText("");
+    const savingDate = recordDate;
     try {
       const payload = {
+        done_on: savingDate,
         is_skipped: isSkipped,
         items: isSkipped
           ? []
@@ -172,11 +182,13 @@ function Exercise({ onBack, embedded = false }) {
       const saved = await res.json();
       // 적립된 포인트를 헤더에 바로 반영 (탭을 옮겨야 갱신되던 문제)
       refreshPoints();
+      // 저장하는 사이 날짜를 옮겼으면 새 날짜 화면을 덮어쓰지 않는다
+      if (recordDateRef.current !== savingDate) return;
       setItems(saved.items ?? []);
       setSavedForToday(true);
       setIsEditing(false);
       setSavedMessage(
-        isSkipped ? "오늘은 운동 안 함으로 기록했어요" : "운동 기록 완료!"
+        isSkipped ? `${wordTopic} 운동 안 함으로 기록했어요` : "운동 기록 완료!"
       );
       setTimeout(() => setSavedMessage(""), 2000);
     } catch (err) {
@@ -209,9 +221,9 @@ function Exercise({ onBack, embedded = false }) {
       {status === "loading" ? (
         <p className="exercise-state">불러오는 중…</p>
       ) : showSavedReadOnly ? (
-        // 오늘 이미 저장됨 — 읽기 전용 + 수정 버튼
+        // 선택한 날짜에 이미 저장됨 — 읽기 전용 + 수정 버튼
         <section className="exercise-card">
-          <h2 className="exercise-card-title">오늘의 운동</h2>
+          <h2 className="exercise-card-title">{word}의 운동</h2>
           <div className="exercise-item-list">
             {items.map((it, idx) => (
               <div className="exercise-item" key={idx}>
@@ -242,7 +254,7 @@ function Exercise({ onBack, embedded = false }) {
       ) : isSkipped ? (
         // "운동 안 함" 상태
         <section className="exercise-card">
-          <p className="exercise-skip-text">오늘은 운동 안 함으로 기록할게요</p>
+          <p className="exercise-skip-text">{wordTopic} 운동 안 함으로 기록할게요</p>
           <button
             type="button"
             className="exercise-skip-undo"
@@ -385,7 +397,7 @@ function Exercise({ onBack, embedded = false }) {
               className="exercise-skip-link"
               onClick={() => setIsSkipped(true)}
             >
-              오늘은 운동 안 함으로 기록
+              {wordTopic} 운동 안 함으로 기록
             </button>
           </section>
 

@@ -33,6 +33,80 @@
   box-shadow: var(--shadow-soft);
 }
 
+/* 기록 날짜 이동 바 — 식단/운동 공용 (RecordDateNav.jsx) */
+.record-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 6px;
+  background: var(--card-white);
+  border-radius: 14px;
+  box-shadow: var(--shadow-soft);
+}
+
+.record-date-arrow {
+  flex: 0 0 40px;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.record-date-arrow:disabled {
+  color: var(--text-muted);
+  opacity: 0.4;
+  cursor: default;
+}
+
+.record-date-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.record-date-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.record-date-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #F1ECDD;
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.record-date-chip.is-today {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.record-date-today {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 /* 헤더 — 뒤로가기 + 제목 (랭킹/리포트와 동일 패턴) */
 .exercise-header {
   display: flex;

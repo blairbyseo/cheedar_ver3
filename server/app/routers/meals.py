@@ -1,7 +1,6 @@
 import json
 import uuid
 from datetime import date as DateType
-from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -31,6 +30,7 @@ from app.services.openai_client import (
     apply_delta_to_items,
 )
 from app.services.points import award_points_for_meal
+from app.services.record_dates import kst_today, resolve_record_date
 from app.services.uploads import save_meal_image
 
 router = APIRouter(prefix="/api/meals", tags=["meals"])
@@ -190,7 +190,7 @@ def create_meal(
     meal = Meal(
         user_id=current_user.id,
         meal_type=payload.meal_type,
-        eaten_on=payload.eaten_on or datetime.now().date(),
+        eaten_on=resolve_record_date(payload.eaten_on),
         menu=payload.menu,
         calories=payload.calories,
         protein_g=payload.protein_g,
@@ -231,9 +231,25 @@ def today_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DailyStatusResponse:
-    today = datetime.now().date()
+    # 구버전 앱 호환용. 새 앱은 /status?on= 을 쓴다.
+    return _daily_status(kst_today(), db, current_user)
+
+
+# /{meal_id} 보다 먼저 선언해야 "status" 가 meal_id 로 잡히지 않는다.
+@router.get("/status", response_model=DailyStatusResponse)
+def daily_status(
+    on: DateType | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DailyStatusResponse:
+    return _daily_status(on or kst_today(), db, current_user)
+
+
+def _daily_status(
+    day: DateType, db: Session, current_user: User
+) -> DailyStatusResponse:
     stmt = select(Meal.meal_type).where(
-        Meal.user_id == current_user.id, Meal.eaten_on == today
+        Meal.user_id == current_user.id, Meal.eaten_on == day
     )
     done_types = {row for row in db.execute(stmt).scalars()}
 
@@ -245,7 +261,7 @@ def today_status(
         for t in MealType
     ]
     return DailyStatusResponse(
-        date=today,
+        date=day,
         recorded_count=len(done_types),
         total=len(items),
         items=items,

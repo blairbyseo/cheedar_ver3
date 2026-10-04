@@ -1,6 +1,5 @@
 import json
 from datetime import date as DateType
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -20,6 +19,7 @@ from app.schemas.exercise import (
 )
 from app.services.exercise import estimate_met, item_calories
 from app.services.points import award_points_for_exercise
+from app.services.record_dates import resolve_record_date
 
 router = APIRouter(prefix="/api/exercise", tags=["exercise"])
 settings = get_settings()
@@ -64,7 +64,7 @@ def upsert_exercise(
     if not payload.is_skipped and not payload.items:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "items_required")
 
-    done_on = payload.done_on or datetime.now().date()
+    done_on = resolve_record_date(payload.done_on)
     weight = _weight_kg(current_user)
 
     output_items: list[ExerciseItemOutput] = []

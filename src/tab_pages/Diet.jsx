@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import { usePoints, refreshPoints } from "../usePoints";
 import Exercise from "./Exercise";
+import RecordDateNav from "./RecordDateNav";
+import { dayWord, todayStr } from "../utils/recordDate";
 
 const MEAL_TYPES = [
   { id: "breakfast", label: "아침" },
@@ -30,7 +32,7 @@ function getInitialMealType() {
   return "snack";
 }
 
-// 첫 렌더용 placeholder — useEffect 안에서 GET /api/meals/today/status 로 즉시 갱신됨
+// 첫 렌더용 placeholder — useEffect 안에서 GET /api/meals/status?on= 로 즉시 갱신됨
 const INITIAL_TODAY_STATUS = MEAL_TYPES.map((t) => ({ ...t, state: "missing" }));
 
 // 끼니별 시간대 시작 시각 — 현재 시각이 이보다 이르면 아직 '예정'
@@ -112,14 +114,17 @@ function Diet() {
   const [isAdding, setIsAdding] = useState(false);
   // 기록 모드 — "diet"(식단) / "exercise"(운동). 한 화면에서 토글로 전환.
   const [mode, setMode] = useState("diet");
+  // 기록할 날짜("YYYY-MM-DD"). 식단/운동 공용 — 토글을 오가도 유지된다.
+  const [recordDate, setRecordDate] = useState(todayStr);
+  const isToday = recordDate === todayStr();
 
-  // 현재 선택된 끼니의 상태 라벨 — 기록했으면 '완료', 아직 그 시간대 전이면 '예정',
-  // 시간대가 지났는데 기록이 없으면 '미기록'.
+  // 현재 선택된 끼니의 상태 라벨 — 기록했으면 '완료', 오늘인데 아직 그 시간대 전이면 '예정',
+  // 그 외 기록이 없으면 '미기록'. (todayStatus 는 선택한 날짜의 현황)
   const nowHour = new Date().getHours();
   const mealStateLabel = (id) => {
     const state = todayStatus.find((s) => s.id === id)?.state;
     if (state === "done") return "완료";
-    if (nowHour < MEAL_SLOT_START[id]) return "예정";
+    if (isToday && nowHour < MEAL_SLOT_START[id]) return "예정";
     return "미기록";
   };
 
@@ -128,7 +133,6 @@ function Diet() {
   const selectedMealLabel = currentMealStatus?.label ?? "";
   const shouldShowUploadUI = !hasRecord || isAdding;
 
-  const didInitRef = useRef(false);
   const resultRef = useRef(null);
 
   const totals = sumItems(items);
@@ -143,37 +147,39 @@ function Diet() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length > 0]);
 
-  // 첫 진입: 오늘 식단 현황 불러오기.
+  // 진입 시·날짜를 바꿀 때마다 그날 식단 현황 불러오기.
   useEffect(() => {
-    if (didInitRef.current) return;
-    didInitRef.current = true;
+    let cancelled = false;
+    setTodayStatus(INITIAL_TODAY_STATUS);
 
-    async function init() {
+    async function loadStatus() {
       try {
-        const res = await fetch("/api/meals/today/status", {
+        const res = await fetch(`/api/meals/status?on=${recordDate}`, {
           credentials: "include",
         });
         if (!res.ok) throw new Error(`status ${res.status}`);
         const data = await res.json();
-        setTodayStatus((prev) =>
-          prev.map((s) => {
+        if (cancelled) return;
+        setTodayStatus(
+          INITIAL_TODAY_STATUS.map((s) => {
             const item = data.items.find((i) => i.meal_type === s.id);
             return item ? { ...s, state: item.state } : s;
           })
         );
       } catch (err) {
-        console.error("[Diet] init failed:", err);
+        console.error("[Diet] status load failed:", err);
       }
     }
-    init();
-  }, []);
+    loadStatus();
+    return () => { cancelled = true; };
+  }, [recordDate]);
 
-  // 끼니 탭을 바꾸면 화면 상태 초기화.
+  // 끼니 탭이나 날짜를 바꾸면 작성 중이던 내용 초기화.
   useEffect(() => {
     resetDraft();
     setIsAdding(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMealType]);
+  }, [selectedMealType, recordDate]);
 
   function resetDraft() {
     setUploadedImagePreview(null);
@@ -464,7 +470,8 @@ function Diet() {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      // 날짜는 항상 명시 — 서버 기본값(오늘)에 기대지 않는다.
+      body: JSON.stringify({ ...payload, eaten_on: recordDate }),
     });
     if (!res.ok) throw new Error(`save ${res.status}`);
 
@@ -510,8 +517,15 @@ function Diet() {
         </button>
       </div>
 
+      {/* 저장 중에는 날짜를 못 바꾸게 — 다른 날짜로 저장 결과가 섞이지 않도록 */}
+      <RecordDateNav
+        value={recordDate}
+        onChange={setRecordDate}
+        disabled={isSaving || showPointReward || isAnalyzing}
+      />
+
       {mode === "exercise" ? (
-        <Exercise embedded />
+        <Exercise embedded date={recordDate} />
       ) : (
         <>
           <section className="diet-page-title">
@@ -661,7 +675,7 @@ function Diet() {
               {hasItems && (
                 <section className="ai-plate" ref={resultRef}>
                   <div className="ai-plate-header">
-                    <h3 className="ai-plate-title">오늘의 식단표</h3>
+                    <h3 className="ai-plate-title">{dayWord(recordDate)}의 식단표</h3>
                     <span className="ai-plate-total">
                       총 {Math.round(totals.calories)} kcal
                     </span>
