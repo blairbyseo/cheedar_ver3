@@ -115,6 +115,17 @@ export default function OnboardingSurvey({ data, onDone }) {
   const answeredBefore = questionIdxs.filter((i) => i < idx).length;
   const progress = totalQ > 0 ? answeredBefore / totalQ : 0;
 
+  // 헤더의 "현재/전체" 문항 수. 분기로 숨겨지거나 사전입력으로 건너뛰는 문항은 빼고 센다
+  // (답에 따라 분기가 열리면 전체 수도 함께 바뀐다).
+  const qCount = useMemo(() => {
+    const shown = questionIdxs.filter((i) => {
+      const s = flow[i];
+      if (s.skipIfPrefilled && prefilledIds.has(s.id)) return false;
+      return shouldShowQuestion(s, answers);
+    });
+    return { current: shown.filter((i) => i <= idx).length, total: shown.length };
+  }, [questionIdxs, flow, prefilledIds, answers, idx]);
+
   const t = useMemo(() => theme(step?.tone === "calm" ? "calm" : "warm"), [step?.tone]);
 
   const setValue = useCallback((qid, value) => {
@@ -211,7 +222,7 @@ export default function OnboardingSurvey({ data, onDone }) {
       <QuestionScreen
         step={step} t={t} value={answers[step.id]} setValue={setValue}
         onNext={goNext} onBack={goPrev} progress={progress}
-        reward={rewardPoints}
+        count={qCount} reward={rewardPoints}
         onQuit={() => { tap(); setConfirmingQuit(true); }}
       />
     );

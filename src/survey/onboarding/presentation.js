@@ -89,7 +89,7 @@ export const PRESENTATION = {
     },
   },
   "F-2": {
-    card: true, help: "하나만 골라요",
+    card: true, help: "해당하는 걸 모두 골라요",
     optionIcons: {
       academic_stress: "solar:book-linear", family_conflict: "solar:home-linear",
       friend_loneliness: "solar:users-group-rounded-linear", medication_side_effect: "solar:pill-linear",

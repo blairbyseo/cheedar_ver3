@@ -90,7 +90,7 @@ function canProceed(step, value) {
 }
 
 // ── 문항 화면 ─────────────────────────────────────────────
-export function QuestionScreen({ step, t, value, setValue, onNext, onBack, progress, onQuit, reward = 0, autoAdvanceOn = true }) {
+export function QuestionScreen({ step, t, value, setValue, onNext, onBack, progress, count, onQuit, reward = 0, autoAdvanceOn = true }) {
   const advTimer = useRef(null);
   useEffect(() => () => clearTimeout(advTimer.current), []);
 
@@ -104,7 +104,8 @@ export function QuestionScreen({ step, t, value, setValue, onNext, onBack, progr
 
   const type = step.type;
   const isCard = step.card || type === "single-card";
-  const tapAdvance = TAP_ADVANCE.has(type) || isCard;
+  // 복수선택은 카드형이어도 여러 개 고른 뒤 '다음'으로 넘어가야 한다.
+  const tapAdvance = TAP_ADVANCE.has(type) || (isCard && type !== "multi_select");
   const showNext = !(tapAdvance && autoAdvanceOn);
 
   let control;
@@ -119,11 +120,18 @@ export function QuestionScreen({ step, t, value, setValue, onNext, onBack, progr
     );
   } else if (type === "multi_select") {
     const arr = Array.isArray(value) ? value : [];
-    const toggle = (v) => setValue(step.id, arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+    // exclusive 선택지('잘 모름' 등)는 단독 선택: 고르면 나머지 해제, 다른 걸 고르면 그것이 해제.
+    const exclusive = new Set((step.options || []).filter((o) => o.exclusive).map((o) => o.value));
+    const toggle = (v) => {
+      if (arr.includes(v)) return setValue(step.id, arr.filter((x) => x !== v));
+      setValue(step.id, exclusive.has(v) ? [v] : [...arr.filter((x) => !exclusive.has(x)), v]);
+    };
     control = (
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {(step.options || []).map((o) => (
-          <OptionRow key={o.value} option={o} t={t} multi selected={arr.includes(o.value)} onClick={() => toggle(o.value)} />
+          isCard
+            ? <OptionCard key={o.value} option={o} t={t} selected={arr.includes(o.value)} onClick={() => toggle(o.value)} />
+            : <OptionRow key={o.value} option={o} t={t} multi selected={arr.includes(o.value)} onClick={() => toggle(o.value)} />
         ))}
       </div>
     );
@@ -151,7 +159,7 @@ export function QuestionScreen({ step, t, value, setValue, onNext, onBack, progr
 
   return (
     <Shell t={t}>
-      <ProgressHeader t={t} progress={progress} onBack={onBack} stage={step.stage} reward={reward} />
+      <ProgressHeader t={t} progress={progress} count={count} onBack={onBack} stage={step.stage} reward={reward} />
       <Body style={{ paddingTop: 22 }}>
         <QTitle t={t} text={step.text} help={step.help} />
         {step.sleepMascot && (

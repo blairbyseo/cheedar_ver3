@@ -722,16 +722,16 @@
         },
         {
           "id": "F-2",
-          "text": "최근 한 달, 본인의 주된 관심사는 무엇인가요? (1개)",
-          "type": "single_select",
+          "text": "최근 한 달, 본인의 주된 관심사는 무엇인가요? (복수선택 가능)",
+          "type": "multi_select",
           "options": [
             {"value": "academic_stress", "label": "학업 스트레스"},
             {"value": "family_conflict", "label": "가족 갈등"},
             {"value": "friend_loneliness", "label": "친구·외로움"},
             {"value": "medication_side_effect", "label": "약 부작용"},
             {"value": "body_appearance", "label": "신체 변화·외모"},
-            {"value": "nothing_special", "label": "특별한 일 없음"},
-            {"value": "unknown", "label": "잘 모름"}
+            {"value": "nothing_special", "label": "특별한 일 없음", "exclusive": true},
+            {"value": "unknown", "label": "잘 모름", "exclusive": true}
           ]
         }
       ]

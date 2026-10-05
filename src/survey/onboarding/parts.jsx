@@ -40,7 +40,7 @@ export function Mascot({ variant = "happy", size = 132, float = true, style }) {
 }
 
 // 상단 헤더: 뒤로가기 원형 버튼 + 진행률 바 + 단계 라벨
-export function ProgressHeader({ progress = 0, onBack, showBack = true, t, stage, showStage = true, reward = 0 }) {
+export function ProgressHeader({ progress = 0, count, onBack, showBack = true, t, stage, showStage = true, reward = 0 }) {
   return (
     <div style={{ padding: "6px 22px 0", flexShrink: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 36 }}>
@@ -68,6 +68,11 @@ export function ProgressHeader({ progress = 0, onBack, showBack = true, t, stage
             }}
           />
         </div>
+        {count?.total > 0 && (
+          <span style={{ fontSize: 12, fontWeight: 600, color: t.sub, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+            {count.current}/{count.total}
+          </span>
+        )}
       </div>
       {showStage && (stage || reward > 0) && (
         <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
