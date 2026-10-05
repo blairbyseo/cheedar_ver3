@@ -13,6 +13,7 @@ from app.routers import emotion as emotion_router
 from app.routers import exercise as exercise_router
 from app.routers import inquiry as inquiry_router
 from app.routers import meals as meals_router
+from app.routers import motivation as motivation_router
 from app.routers import points as points_router
 from app.routers import reports as reports_router
 from app.routers import rewards as rewards_router
@@ -43,6 +44,7 @@ app.include_router(chat_router.router)
 app.include_router(emotion_router.router)
 app.include_router(points_router.router)
 app.include_router(reports_router.router)
+app.include_router(motivation_router.router)
 app.include_router(rewards_router.router)
 app.include_router(survey_router.router)
 app.include_router(telemetry_router.router)

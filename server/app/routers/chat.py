@@ -13,6 +13,7 @@ from app.schemas.chat import ChatMessageOut, ChatSendRequest
 from app.services.diet_context import build_diet_context
 from app.services.emotion_context import build_emotion_context
 from app.services.exercise_context import build_exercise_context
+from app.services.motivation import build_motivation_context
 from app.services.openai_client import (
     CHAT_MOCK_RESPONSE,
     CHAT_OPENER_MOCK_RESPONSE,
@@ -90,6 +91,10 @@ def send_message(
     emotion_context = build_emotion_context(db, current_user.id)
     # 설문 프로파일 → 오늘의 개인화 지시(렌즈/스레드/금기). 신호 없으면 빈 문자열.
     survey_context = build_survey_context(db, current_user.id)
+    # 최근 동기 점검(중요도·자신감 변화) → 같은 개인화 지시 덩어리에 덧붙인다.
+    survey_context = "\n\n".join(
+        c for c in (survey_context, build_motivation_context(db, current_user.id)) if c
+    )
 
     # event_stream() 은 이 함수가 응답을 반환한 *뒤에* 실행된다. 그때 요청
     # 스코프의 db 세션은 이미 닫혔을 수 있으므로, 넘길 값은 미리 평범한
@@ -160,6 +165,10 @@ def opener(
     exercise_context = build_exercise_context(db, current_user.id)
     emotion_context = build_emotion_context(db, current_user.id)
     survey_context = build_survey_context(db, current_user.id)
+    # 최근 동기 점검(중요도·자신감 변화) → 같은 개인화 지시 덩어리에 덧붙인다.
+    survey_context = "\n\n".join(
+        c for c in (survey_context, build_motivation_context(db, current_user.id)) if c
+    )
     user_id = current_user.id
 
     def event_stream():

@@ -33,6 +33,7 @@ import OAuthKakaoCallback from './auth/OAuthKakaoCallback';
 import ProtectedRoute from './auth/ProtectedRoute';
 import { KakaoDeepLinkHandler } from './auth/kakaoNative';
 import { syncMealReminders } from './notifications/mealReminders';
+import MotivationCheck from './MotivationCheck';
 
 /* 로그인 이후 보여줄 메인 화면 — 탭 5개 + 하단 TabBar */
 function MainShell() {
@@ -136,6 +137,8 @@ function MainShell() {
         {activeTab === "report"   && <WeeklyReport onBack={() => setActiveTab("home")} />}
       </div>
       <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
+      {/* 동기 점검 — 주 1회, 앱(홈) 진입 시. 띄울지는 서버가 정한다 */}
+      <MotivationCheck />
     </div>
   );
 }

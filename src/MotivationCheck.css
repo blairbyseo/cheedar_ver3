@@ -1,0 +1,213 @@
+/* 동기 점검 창 — 홈 진입 시 아래에서 올라오는 시트 */
+.mot-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(20, 22, 24, 0.32);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.mot-sheet {
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--card-white);
+  border-radius: 22px 22px 0 0;
+  padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.mot-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.mot-sub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.mot-question {
+  margin-top: 20px;
+}
+
+.mot-q-text {
+  display: block;
+  margin: 0 0 10px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.mot-q-text em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--text-sub);
+}
+
+/* 0~10 숫자 버튼 11개 — 좁은 화면에서도 한 줄 */
+.mot-scale {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.mot-dot {
+  height: 34px;
+  padding: 0;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.mot-dot.is-selected {
+  background: var(--primary);
+  border-color: var(--primary-strong);
+  font-weight: 800;
+}
+
+.mot-scale-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--text-sub);
+}
+
+.mot-prev {
+  color: var(--primary-strong);
+  font-weight: 700;
+}
+
+.mot-weight {
+  display: block;
+  margin-top: 20px;
+}
+
+.mot-weight-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mot-weight-input input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 15px;
+  background: var(--card);
+  color: var(--text-main);
+}
+
+.mot-weight-input span {
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.mot-weight-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--text-sub);
+}
+
+.mot-error {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #C8674F;
+  text-align: center;
+}
+
+.mot-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.mot-later,
+.mot-submit {
+  flex: 1;
+  height: 50px;
+  border-radius: 15px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mot-later {
+  border: 1.5px solid var(--line);
+  background: var(--card-white);
+  color: var(--text-sub);
+}
+
+.mot-submit {
+  border: none;
+  background: var(--primary);
+  color: var(--text-main);
+}
+
+.mot-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mot-result {
+  list-style: none;
+  margin: 16px 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mot-result li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+}
+
+.mot-result-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  flex-shrink: 0;
+}
+
+.mot-result-score {
+  font-size: 15px;
+  color: var(--text-sub);
+  flex-shrink: 0;
+}
+
+.mot-result-score strong {
+  color: var(--text-main);
+  font-size: 17px;
+}
+
+.mot-result-trend {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-sub);
+}

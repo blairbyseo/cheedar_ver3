@@ -4,6 +4,7 @@ from app.models.exercise import ExerciseLog
 from app.models.inquiry import Inquiry
 from app.models.invite_code import InviteCode, normalize_code
 from app.models.meal import Meal, MealType
+from app.models.motivation import MotivationCheck
 from app.models.points import PointHistory
 from app.models.reward import KIND_FINAL_LEVEL, RewardClaim, RewardClaimStatus
 from app.models.safety import RiskLevel, SafetyEvent
@@ -20,6 +21,7 @@ from app.models.weekly_feedback import WeeklyFeedback
 __all__ = [
     "User",
     "WeeklyFeedback",
+    "MotivationCheck",
     "Meal",
     "MealType",
     "ChatMessage",
