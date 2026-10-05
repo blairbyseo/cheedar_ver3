@@ -91,8 +91,8 @@ def build_emotion_context(db: Session, user_id: int) -> str:
     label = emotion.get("emotion_label") or ""
     hint = _EMOTION_HINT.get(emotion.get("score", 0), "")
     return (
-        f"[오늘의 기분] 사용자가 오늘 기분을 '{label}'(으)로 남겼다 — {hint}. "
-        "기분 점수(숫자)는 절대 입에 올리지 말고, 사용자가 먼저 꺼내지 않으면 "
-        "기분 이야기를 억지로 끌어내지도 마라. 다만 그 기분에 어울리도록 답변의 "
-        "온도(공감/가벼움)를 자연스럽게 맞춰라."
+        f"[오늘의 기분] 사용자가 오늘 기분을 '{label}'(으)로 남겼습니다 — {hint}. "
+        "기분 점수(숫자)는 말하지 말고, 사용자가 먼저 꺼내지 않으면 "
+        "기분 이야기를 억지로 끌어내지도 마세요. 다만 그 기분에 어울리도록 답변의 "
+        "온도(공감/가벼움)를 자연스럽게 맞춰 주세요."
     )

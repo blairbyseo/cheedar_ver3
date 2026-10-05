@@ -280,3 +280,139 @@
   color: var(--text-sub);
   margin: 2px 0 0;
 }
+
+/* ── 최근 4주 비교 ────────────────────────────────────────────────── */
+.cmp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11.5px;
+  color: var(--text-sub);
+  margin: 0 0 10px;
+}
+
+.cmp-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cmp-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+.cmp-subtitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 18px 0 8px;
+}
+
+.cmp-chart {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cmp-group {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cmp-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  height: 96px;
+}
+
+.cmp-bar-col {
+  flex: 1;
+  max-width: 22px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.cmp-val {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+
+.cmp-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.4s ease;
+}
+
+.cmp-label {
+  font-size: 11px;
+  color: var(--text-sub);
+  margin: 6px 0 4px;
+  white-space: nowrap;
+}
+
+.cmp-group.is-current .cmp-label {
+  color: var(--primary-strong);
+  font-weight: 700;
+}
+
+.cmp-bar.recorded, .cmp-dot.recorded { background: #E0B21F; }
+.cmp-bar.meals,    .cmp-dot.meals    { background: #8E9BEF; }
+.cmp-bar.exercise, .cmp-dot.exercise { background: #5E9F8A; }
+.cmp-bar.snack                       { background: #F2A65A; }
+.cmp-bar.kcal                        { background: #E58A5C; }
+
+/* ── 체다의 한마디 (주간 AI 피드백) ─────────────────────────────────── */
+.report-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--primary-soft);
+  border: 1px solid rgba(209, 169, 22, 0.25);
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.report-feedback-mascot {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.report-feedback-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.report-feedback-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-strong);
+}
+
+.report-feedback-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-main);
+}
+
+.report-feedback-text.is-loading {
+  color: var(--text-sub);
+}

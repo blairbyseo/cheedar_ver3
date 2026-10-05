@@ -40,6 +40,139 @@ function thisWeekDates() {
 
 const num = (v) => Number(v) || 0; // null/undefined/문자열 방어
 
+const weekLabel = (n) => (n === 0 ? "이번 주" : n === 1 ? "지난 주" : `${n}주 전`);
+
+// 막대 높이(%) — 0 이어도 바닥선이 보이게 최소 2%
+const barPct = (v, max) => (max > 0 ? Math.max(2, Math.round((v / max) * 100)) : 2);
+
+// 체다의 한마디 — 이번 주 기록에 대한 AI 피드백(GET /api/reports/weekly-feedback).
+// 서버가 하루 한 번만 만들어 저장해 두므로 화면을 여러 번 열어도 AI 를 다시 부르지 않는다.
+function WeeklyFeedback() {
+  const [message, setMessage] = useState("");
+  const [state, setState] = useState("loading"); // loading | ok | error
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/reports/weekly-feedback", { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`weekly-feedback ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setMessage(data.message);
+        setState("ok");
+      })
+      .catch((err) => {
+        console.error("[WeeklyReport] feedback load failed:", err);
+        if (!cancelled) setState("error");
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (state === "error") return null;
+
+  return (
+    <section className="report-feedback">
+      <img src="/cheese/happy_smile.svg" alt="" className="report-feedback-mascot" />
+      <div className="report-feedback-body">
+        <p className="report-feedback-title">체다의 한마디</p>
+        <p className={`report-feedback-text${state === "loading" ? " is-loading" : ""}`}>
+          {state === "loading" ? "체다가 이번 주를 돌아보는 중이에요…" : message}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// 최근 4주 비교 — 옛 웹의 '주간 비교 그래프' 이식. 집계는 서버(GET /api/reports/weekly-compare)가
+// 한 번에 해 준다. 그래프는 라이브러리 없이 CSS 막대로 그린다.
+function WeeklyCompare() {
+  const [weeks, setWeeks] = useState([]);
+  const [state, setState] = useState("loading"); // loading | ok | error
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/reports/weekly-compare?weeks=4", { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`weekly-compare ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setWeeks(data);
+        setState("ok");
+      })
+      .catch((err) => {
+        console.error("[WeeklyReport] compare load failed:", err);
+        if (!cancelled) setState("error");
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (state === "error") return null;
+
+  const maxSnack = Math.max(0, ...weeks.map((w) => w.snack_count));
+  const maxKcal = Math.max(0, ...weeks.map((w) => w.avg_calories));
+
+  // 한 주에 막대 여러 개(series) 를 나란히 그린다.
+  const chart = (series, max, unit) => (
+    <div className="cmp-chart">
+      {weeks.map((w) => (
+        <div className={`cmp-group${w.weeks_ago === 0 ? " is-current" : ""}`} key={w.week_start}>
+          <div className="cmp-bars">
+            {series.map(({ key, cls }) => (
+              <div className="cmp-bar-col" key={key}>
+                <span className="cmp-val">{w[key].toLocaleString()}</span>
+                <div
+                  className={`cmp-bar ${cls}`}
+                  style={{ height: `${barPct(w[key], max)}%` }}
+                  aria-label={`${weekLabel(w.weeks_ago)} ${w[key]}${unit}`}
+                />
+              </div>
+            ))}
+          </div>
+          <span className="cmp-label">{weekLabel(w.weeks_ago)}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <section className="report-section">
+      <h2 className="report-section-title">최근 4주 비교</h2>
+      {state === "loading" ? (
+        <p className="report-section-footer">불러오는 중…</p>
+      ) : (
+        <>
+          <div className="cmp-legend">
+            <span><i className="cmp-dot recorded" />기록한 날</span>
+            <span><i className="cmp-dot meals" />3끼 다 먹은 날</span>
+            <span><i className="cmp-dot exercise" />운동한 날</span>
+          </div>
+          {chart(
+            [
+              { key: "recorded_days", cls: "recorded" },
+              { key: "three_meal_days", cls: "meals" },
+              { key: "exercise_days", cls: "exercise" },
+            ],
+            7,
+            "일"
+          )}
+
+          <p className="cmp-subtitle">간식 횟수 (회/주)</p>
+          {chart([{ key: "snack_count", cls: "snack" }], maxSnack, "회")}
+
+          <p className="cmp-subtitle">기록한 날 평균 섭취 칼로리 (kcal)</p>
+          {chart([{ key: "avg_calories", cls: "kcal" }], maxKcal, "kcal")}
+
+          <p className="report-section-footer">이번 주는 오늘까지의 기록이에요</p>
+        </>
+      )}
+    </section>
+  );
+}
+
 function WeeklyReport({ onBack }) {
   // perDay: [{ date, label(월..), dateNum, meals: Set(meal_type), mealCount(주요 3끼), hasExercise }]
   const [perDay, setPerDay] = useState([]);
@@ -80,8 +213,10 @@ function WeeklyReport({ onBack }) {
         const exTotals = { burned: 0, minutes: 0, days: 0 };
         const rows = results.map(({ date, meals, exercise: exRows }) => {
           const types = new Set();
+          let dayKcal = 0;
           for (const m of meals) {
             types.add(m.meal_type);
+            dayKcal += num(m.calories);
             sums.kcal += num(m.calories);
             sums.carbs += num(m.carbs_g);
             sums.protein += num(m.protein_g);
@@ -110,6 +245,7 @@ function WeeklyReport({ onBack }) {
             types,
             mealCount,
             hasExercise,
+            dayKcal,
           };
         });
 
@@ -133,6 +269,11 @@ function WeeklyReport({ onBack }) {
     : 0;
 
   const todayStr = toLocalDateStr(new Date());
+
+  // 식단 일평균은 '기록한 날' 기준 — 7로 나누면 하루만 기록해도 평균이 낮게 보여
+  // "적게 먹었다"는 인상을 준다. 칼로리는 칼로리가 기록된 날로, 영양소는 식단을 기록한 날로 나눈다.
+  const kcalDays = perDay.filter((d) => d.dayKcal > 0).length || 1;
+  const foodDays = recordedDays || 1;
 
   return (
     <div className="report-page">
@@ -163,6 +304,8 @@ function WeeklyReport({ onBack }) {
 
       {status === "ok" && (
         <>
+          <WeeklyFeedback />
+
           {/* 총 섭취 칼로리 + 일평균 */}
           <section className="report-kcal-card">
             <p className="report-kcal-label">이번 주 총 섭취 칼로리</p>
@@ -171,7 +314,7 @@ function WeeklyReport({ onBack }) {
               <span className="report-kcal-unit">kcal</span>
             </p>
             <p className="report-kcal-avg">
-              일평균 {Math.round(totals.kcal / (perDay.length || 7)).toLocaleString()}kcal
+              기록한 날 평균 {Math.round(totals.kcal / kcalDays).toLocaleString()}kcal
             </p>
           </section>
 
@@ -232,21 +375,21 @@ function WeeklyReport({ onBack }) {
               <div className="report-nutri-avg">
                 <div>
                   <p className="report-nutri-avg-value">
-                    {Math.round(totals.carbs / (perDay.length || 7))}g
+                    {Math.round(totals.carbs / foodDays)}g
                   </p>
-                  <p className="report-nutri-avg-label">일평균</p>
+                  <p className="report-nutri-avg-label">기록한 날 평균</p>
                 </div>
                 <div>
                   <p className="report-nutri-avg-value">
-                    {Math.round(totals.protein / (perDay.length || 7))}g
+                    {Math.round(totals.protein / foodDays)}g
                   </p>
-                  <p className="report-nutri-avg-label">일평균</p>
+                  <p className="report-nutri-avg-label">기록한 날 평균</p>
                 </div>
                 <div>
                   <p className="report-nutri-avg-value">
-                    {Math.round(totals.fat / (perDay.length || 7))}g
+                    {Math.round(totals.fat / foodDays)}g
                   </p>
-                  <p className="report-nutri-avg-label">일평균</p>
+                  <p className="report-nutri-avg-label">기록한 날 평균</p>
                 </div>
               </div>
             </section>
@@ -292,6 +435,8 @@ function WeeklyReport({ onBack }) {
               이번 주 기록이 아직 없어요. 식단이나 운동을 기록하면 리포트가 채워져요!
             </p>
           )}
+
+          <WeeklyCompare />
         </>
       )}
     </div>

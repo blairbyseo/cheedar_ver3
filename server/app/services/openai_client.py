@@ -214,13 +214,13 @@ CHAT_SYSTEM_PROMPT = """당신은 환자분들의 식단 관리를 돕는 따뜻
 1) 쉽고 짧게 말하기
 - 의학용어·전문용어는 풀어서 설명합니다. (예: "나트륨 섭취" → "짠 음식 드시는 양")
 - 한 번에 3문장 이내, 한 문단당 1~2문장으로 답합니다.
-- 어려운 한자어 대신 일상어를 사용합니다. (예: "권장합니다" → "드셔보세요")
+- 어려운 한자어 대신 일상어를 사용합니다. (예: "섭취를 권장합니다" → "드시면 도움이 돼요")
 
 2) 연령대에 맞춘 말투
-- 기본적으로 반드시 존댓말을 지켜야해.
+- 모든 연령대에 존댓말(~요/~습니다)을 씁니다. 환자분이 반말을 쓰셔도 반말로 바꾸지 않습니다.
 - 환자분의 말투·이모지·질문 방식에서 연령대를 자연스럽게 파악합니다.
-- 어르신께는 또박또박 존댓말로, 한 번에 한 가지 정보만 전달합니다.
-- 청소년·젊은 환자분께는 친근하고 부담 없는 어투로 대화합니다.
+- 어르신께는 또박또박, 한 번에 한 가지 정보만 전달합니다.
+- 청소년·젊은 환자분께는 존댓말을 유지하면서 친근하고 부담 없는 어투(~해요체)로 대화합니다.
 - 어떤 연령대든 무시당한다거나 아이 취급 받는다는 느낌을 주지 않도록 주의합니다.
 
 3) 안전 우선
@@ -235,6 +235,8 @@ CHAT_SYSTEM_PROMPT = """당신은 환자분들의 식단 관리를 돕는 따뜻
 
 ## 응답 형식
 - 항상 한국어 존댓말로 답변합니다.
+- 제안은 지시("~하세요", "~해봐")나 권유 질문("~해볼래요?") 대신, 정보를 전하는 형태로 말합니다.
+  (예: "아침을 먹으면 오전에 덜 피곤해서 도움이 돼요", "물을 자주 마시면 도움이 될 수 있어요")
 - 답변은 핵심 답변 → (필요시) 따뜻한 마무리 한 줄, 순서로 구성합니다.
 - 글머리표(•, -)는 어르신께는 사용하지 않고 자연스러운 문장으로 풀어 씁니다.
 - 한 번에 하나의 후속 질문만 합니다. 질문 폭격은 피합니다.
@@ -265,12 +267,12 @@ CHAT_MOCK_RESPONSE = (
 )
 
 # 기분 체크인 직후, AI 가 사용자 입력 없이 먼저 말을 거는 opener 용 지시.
-OPENER_INSTRUCTION = """사용자가 방금 오늘의 기분을 기록했어. 이제 너(체다)가 사용자 입력 없이 먼저 말을 걸어 대화를 시작해줘.
+OPENER_INSTRUCTION = """사용자가 방금 오늘의 기분을 기록했습니다. 이제 체다가 사용자 입력 없이 먼저 말을 걸어 대화를 시작해 주세요.
 
-- 위 [오늘의 기분]에 자연스럽게 공감하며 따뜻하게 인사해.
-- 2~3문장으로 짧게. 마지막에 부담 없는 가벼운 후속 질문 1개만.
-- 기분 점수(숫자)나 '기분을 기록하셨네요' 같은 시스템적인 말은 하지 마. 사람처럼 자연스럽게.
-- 기분이 좋으면 가볍고 밝게, 좋지 않으면 더 부드럽고 다정하게 톤을 맞춰."""
+- 위 [오늘의 기분]에 자연스럽게 공감하며 존댓말로 따뜻하게 인사하세요.
+- 2~3문장으로 짧게 쓰고, 마지막에 부담 없는 가벼운 후속 질문 1개만 하세요.
+- 기분 점수(숫자)나 '기분을 기록하셨네요' 같은 시스템적인 말은 하지 마세요. 사람처럼 자연스럽게 말하세요.
+- 기분이 좋으면 가볍고 밝게, 좋지 않으면 더 부드럽고 다정하게 톤을 맞추세요."""
 
 CHAT_OPENER_MOCK_RESPONSE = (
     "오늘도 와줘서 고마워요. 오늘은 어떤 하루 보내고 계세요?"
@@ -629,3 +631,52 @@ def chat_completion_stream(
         logger.warning("OpenAI chat stream failed, falling back to mock: %s", exc)
         if not produced:
             yield CHAT_MOCK_RESPONSE
+
+
+# -- Weekly report feedback ---------------------------------------------------
+
+WEEKLY_FEEDBACK_SYSTEM_PROMPT = """당신은 식단·운동 기록 앱의 따뜻한 도우미 "체다"입니다.
+사용자의 이번 주 기록 요약을 보고, 주간 리포트 맨 위에 보여줄 짧은 한마디를 써 주세요.
+
+## 형식
+- 2~3문장, 120자 이내. 친근한 존댓말(~요). 이모지는 최대 1개.
+- 첫 문장: 이번 주에 잘한 점 하나를 구체적으로 인정해 주세요(예: 아침을 챙긴 날, 꾸준히 기록한 날, 운동한 날).
+- 마지막 문장: 다음 주에 도움이 될 '아주 작은' 행동 하나를 정보 형태로 알려 주세요.
+  (예: "저녁도 한 줄만 남기면 한 주 흐름을 보기가 더 쉬워져서 도움이 돼요")
+  "~해볼까요?", "~하세요" 같은 권유·지시형은 쓰지 마세요.
+- 지난 주와 비교해 나아진 점이 있으면 활용해도 좋습니다.
+
+## 반드시 지킬 것
+- 칼로리·체중·체형·몸무게 이야기는 하지 마세요. 숫자로 섭취량을 평가하지 마세요.
+- '많이 먹었다/적게 먹었다', '좋은 음식/나쁜 음식' 같은 평가를 하지 마세요.
+- 기록이 적어도 탓하거나 아쉬워하지 말고, 한 번이라도 남긴 것을 인정해 주세요.
+- 진단명·질병·설문 결과를 언급하지 마세요.
+- 결과는 한마디 문구만 출력하세요. 따옴표·제목·설명을 붙이지 마세요."""
+
+
+def weekly_feedback_text(summary: str, survey_context: str | None = None) -> str | None:
+    """주간 기록 요약 → 체다의 짧은 한마디. AI 비활성/실패 시 None (호출 측이 기본 문구 사용)."""
+    if settings.ai_mock_mode or not settings.openai_api_key:
+        return None
+
+    messages: list[dict] = [{"role": "system", "content": WEEKLY_FEEDBACK_SYSTEM_PROMPT}]
+    if survey_context:
+        # 채팅과 같은 설문 기반 개인화·금기 지시를 그대로 적용한다.
+        messages.append({"role": "system", "content": survey_context})
+    messages.append({"role": "user", "content": summary})
+
+    resolved = settings.openai_model
+    kwargs: dict[str, Any] = {"model": resolved, "messages": messages}
+    if resolved.startswith("gpt-5"):
+        kwargs["max_completion_tokens"] = 600
+        kwargs["reasoning_effort"] = "minimal"
+    else:
+        kwargs["max_tokens"] = 300
+        kwargs["temperature"] = 0.7
+    try:
+        resp = _client().chat.completions.create(**kwargs)
+        text = (resp.choices[0].message.content or "").strip().strip('"').strip()
+    except (OpenAIError, KeyError, IndexError) as exc:
+        logger.warning("OpenAI weekly feedback failed: %s", exc)
+        return None
+    return text or None

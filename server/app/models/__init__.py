@@ -15,9 +15,11 @@ from app.models.survey import (
     SurveySchema,
 )
 from app.models.user import User
+from app.models.weekly_feedback import WeeklyFeedback
 
 __all__ = [
     "User",
+    "WeeklyFeedback",
     "Meal",
     "MealType",
     "ChatMessage",
