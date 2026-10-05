@@ -178,6 +178,34 @@ def _emit_safety_events(
     return events
 
 
+def _num_in(value: Any, lo: float, hi: float) -> float | None:
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        return None
+    return n if lo <= n <= hi else None
+
+
+def _apply_profile_answers(user: User, answers: dict[str, Any]) -> None:
+    """설문에서 입력한 나이(A-1)·키·몸무게(B-1)를 프로필에도 반영한다.
+
+    카카오 가입자는 회원가입 폼을 거치지 않아 프로필이 비어 있고, 설문에서만
+    입력한다. 프로필이 비어 있으면 운동 칼로리를 70kg 가정으로 계산하게 되므로
+    여기서 채운다. 범위는 회원가입 검증(schemas/auth.py)과 같다.
+    """
+    age = _num_in(answers.get("A-1"), 1, 120)
+    if age is not None:
+        user.age = int(age)
+    body = answers.get("B-1")
+    if isinstance(body, dict):
+        height = _num_in(body.get("height"), 50, 250)
+        weight = _num_in(body.get("weight"), 20, 400)
+        if height is not None:
+            user.height_cm = height
+        if weight is not None:
+            user.weight_kg = weight
+
+
 def finalize_submission(
     db: Session, user: User, response: SurveyResponse
 ) -> SurveyResponse:
@@ -209,6 +237,7 @@ def finalize_submission(
     user.last_survey_at = now
     if response.kind == SurveyKind.ONBOARDING:
         user.onboarded = True
+    _apply_profile_answers(user, response.answers or {})
     db.add(user)
 
     _emit_safety_events(db, user, response, derived)
