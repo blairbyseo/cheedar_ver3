@@ -207,9 +207,10 @@ def create_meal(
     # flush 로 meal.id 를 먼저 확보한다 — 포인트 적립이 meal.id 를 중복 방지
     # 키로 쓰기 때문. 식단 저장과 XP/CP 적립을 한 트랜잭션으로 함께 커밋한다.
     db.flush()
-    award_points_for_meal(db, current_user, meal)
+    earned = award_points_for_meal(db, current_user, meal)
     db.commit()
     db.refresh(meal)
+    meal.points_earned = sum(e["amount"] for e in earned)
     return meal
 
 
@@ -294,7 +295,15 @@ def update_meal(
     current_user: User = Depends(get_current_user),
 ) -> Meal:
     meal = _get_owned_meal(meal_id, db, current_user)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    # items 는 DB 에 JSON 문자열로 저장한다(create_meal 과 동일).
+    if "items" in changes:
+        changes["items"] = (
+            json.dumps(changes["items"], ensure_ascii=False)
+            if changes["items"]
+            else None
+        )
+    for field, value in changes.items():
         setattr(meal, field, value)
     db.commit()
     db.refresh(meal)

@@ -505,3 +505,11 @@
   color: var(--primary-strong);
   margin: 12px 0 0;
 }
+
+/* 지난 날짜 선택 시 포인트 감액 안내 */
+.record-date-note {
+  margin: -10px 0 14px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-sub);
+}

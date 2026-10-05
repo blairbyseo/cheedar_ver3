@@ -116,10 +116,12 @@ def upsert_exercise(
     # (count_exercise_days_in_week) 가 방금 저장한 날까지 포함해서 세도록.
     # 운동 저장과 XP/CP 적립을 한 트랜잭션으로 함께 커밋한다.
     db.flush()
-    award_points_for_exercise(db, current_user, existing)
+    earned = award_points_for_exercise(db, current_user, existing)
     db.commit()
     db.refresh(existing)
-    return _row_to_out(existing)
+    out = _row_to_out(existing)
+    out.points_earned = sum(e["amount"] for e in earned)
+    return out
 
 
 @router.get("", response_model=list[ExerciseLogOut])

@@ -49,6 +49,7 @@ class MealUpdate(BaseModel):
     image_path: str | None = None
     ai_summary: str | None = None
     ai_comment: str | None = None
+    items: list[MealItem] | None = None  # 보내면 항목 전체를 교체 (null 이면 항목 삭제)
 
 
 class MealOut(BaseModel):
@@ -66,6 +67,7 @@ class MealOut(BaseModel):
     ai_notes: str | None = None
     ai_confidence: float | None = None
     items: str | None = None  # 항목 JSON 문자열 (프론트에서 JSON.parse)
+    points_earned: int = 0  # 이 요청으로 새로 적립된 포인트 (생성 응답에서만 채워짐)
     created_at: datetime
     updated_at: datetime
 

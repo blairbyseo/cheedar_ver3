@@ -9,6 +9,7 @@ import {
   addDays,
   dayWord,
   formatDateLabel,
+  isLateRecord,
   oldestRecordDateStr,
   todayStr,
 } from "../utils/recordDate";
@@ -21,6 +22,7 @@ function RecordDateNav({ value, onChange, disabled = false }) {
   const word = dayWord(value);
 
   return (
+    <>
     <div className="record-date-nav">
       <button
         type="button"
@@ -57,6 +59,10 @@ function RecordDateNav({ value, onChange, disabled = false }) {
         </button>
       )}
     </div>
+    {isLateRecord(value) && (
+      <p className="record-date-note">지난 기록은 포인트가 절반만 적립돼요</p>
+    )}
+    </>
   );
 }
 

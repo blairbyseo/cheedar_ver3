@@ -287,6 +287,8 @@ function Point() {
             {showPointInfo && (
               <div className="point-info-tooltip" role="tooltip">
                 포인트와 XP는 동시에 적립됩니다.
+                <br />
+                이틀 이상 지난 날짜의 식단·운동 기록은 절반만 적립돼요.
               </div>
             )}
           </div>

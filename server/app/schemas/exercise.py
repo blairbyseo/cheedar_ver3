@@ -40,6 +40,7 @@ class ExerciseLogOut(BaseModel):
     is_skipped: bool
     calories_burned: float | None = None
     items: list[ExerciseItemOutput] = []
+    points_earned: int = 0  # 이 요청으로 새로 적립된 포인트 (저장 응답에서만 채워짐)
 
 
 class ExerciseAnalyzeRequest(BaseModel):

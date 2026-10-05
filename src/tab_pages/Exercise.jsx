@@ -187,8 +187,11 @@ function Exercise({ onBack, embedded = false, date }) {
       setItems(saved.items ?? []);
       setSavedForToday(true);
       setIsEditing(false);
+      const pts = saved.points_earned ?? 0;
       setSavedMessage(
-        isSkipped ? `${wordTopic} 운동 안 함으로 기록했어요` : "운동 기록 완료!"
+        isSkipped
+          ? `${wordTopic} 운동 안 함으로 기록했어요`
+          : pts > 0 ? `운동 기록 완료! ${pts}P가 적립됐어요` : "운동 기록 완료!"
       );
       setTimeout(() => setSavedMessage(""), 2000);
     } catch (err) {

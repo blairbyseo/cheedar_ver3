@@ -17,6 +17,7 @@ dedup_key) 유니크 제약을 두고, 적립 전에 같은 키가 이미 있는
 from __future__ import annotations
 
 from datetime import date as DateType
+from datetime import timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,6 +27,7 @@ from app.models.meal import Meal, MealType
 from app.models.points import PointHistory
 from app.models.survey import SurveyResponse
 from app.models.user import User
+from app.services.record_dates import kst_today
 
 # ── 적립 규칙 ──────────────────────────────────────────────────────────
 # rule 키는 프론트(Point.jsx)의 icon-${id} CSS 클래스와 동일하게 유지할 것.
@@ -51,6 +53,25 @@ _POINT_BY_RULE: dict[str, int] = {r["id"]: r["point"] for r in POINT_RULES}
 
 # 설문 1건 완료 시 주는 포인트 — 진행 화면의 "완료하면 N P" 안내에서도 쓰도록 공개.
 SURVEY_REWARD_POINTS: int = _POINT_BY_RULE[RULE_SURVEY_DONE]
+
+# 지난 날짜 기록 감액 — 기록 1건당 포인트(식단·운동)만 대상이고 보너스는 그대로.
+# 어제까지는 제때 기록으로 본다(자정 넘겨 저녁을 기록하는 경우 등).
+LATE_RECORD_GRACE_DAYS = 1
+
+
+def _record_amount(rule: str, day: DateType) -> int:
+    """기록 1건 포인트. 이틀 전 이전 날짜의 기록이면 절반."""
+    full = _POINT_BY_RULE[rule]
+    if day < kst_today() - timedelta(days=LATE_RECORD_GRACE_DAYS):
+        return full // 2
+    return full
+
+
+def _late_suffix(day: DateType) -> str:
+    if day < kst_today() - timedelta(days=LATE_RECORD_GRACE_DAYS):
+        return " (지난 기록)"
+    return ""
+
 
 # 하루 '3끼'로 인정하는 끼니 — 간식(snack)은 제외.
 _MAIN_MEALS = {MealType.breakfast, MealType.lunch, MealType.dinner}
@@ -158,6 +179,7 @@ def _grant(
     dedup_key: str,
     label: str,
     earned: list[dict],
+    amount: int | None = None,
 ) -> None:
     """규칙 1건을 적립한다.
 
@@ -177,7 +199,8 @@ def _grant(
     if already_granted is not None:
         return
 
-    amount = _POINT_BY_RULE[rule]
+    if amount is None:
+        amount = _POINT_BY_RULE[rule]
     db.add(
         PointHistory(
             user_id=user.id,
@@ -207,8 +230,9 @@ def award_points_for_meal(db: Session, user: User, meal: Meal) -> list[dict]:
     _grant(
         db, user, RULE_MEAL_CHECK,
         dedup_key=f"meal:{meal.id}",
-        label=f"{_MEAL_LABEL.get(meal.meal_type, '식단')} 기록 완료",
+        label=f"{_MEAL_LABEL.get(meal.meal_type, '식단')} 기록 완료{_late_suffix(day)}",
         earned=earned,
+        amount=_record_amount(RULE_MEAL_CHECK, day),
     )
 
     # 2) 하루 3끼 완료 — 그날 아침·점심·저녁이 모두 기록됐을 때 하루 한 번.
@@ -264,8 +288,9 @@ def award_points_for_exercise(
     _grant(
         db, user, RULE_EXERCISE_LOG,
         dedup_key=f"day:{day.isoformat()}",
-        label="운동 기록 완료",
+        label=f"운동 기록 완료{_late_suffix(day)}",
         earned=earned,
+        amount=_record_amount(RULE_EXERCISE_LOG, day),
     )
 
     # 2) 주 3일 운동 보너스 — 그 주에 운동한 '서로 다른 날'이 기준 이상일 때 1회.

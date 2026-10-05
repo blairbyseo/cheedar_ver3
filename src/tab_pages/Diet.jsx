@@ -71,6 +71,17 @@ function toApiItem(it) {
   };
 }
 
+// 저장된 식단의 items(JSON 문자열) → 배열. 비었거나 깨졌으면 빈 배열.
+function parseSavedItems(raw) {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
 // 항목들의 영양소 합계
 function sumItems(items) {
   return items.reduce(
@@ -108,10 +119,16 @@ function Diet() {
   const [analyzeError, setAnalyzeError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [showPointReward, setShowPointReward] = useState(false);
+  const [earnedPoints, setEarnedPoints] = useState(0);       // 방금 저장으로 적립된 포인트
   const [savedMessage, setSavedMessage] = useState("");
   const [todayStatus, setTodayStatus] = useState(INITIAL_TODAY_STATUS);
   // 이미 기록된 끼니에서 "추가하기"를 눌러 업로드 UI를 다시 연 상태인지
   const [isAdding, setIsAdding] = useState(false);
+  // 선택한 날짜에 저장된 식단 목록, 지금 수정 중인 식단(없으면 null)
+  const [savedMeals, setSavedMeals] = useState([]);
+  const [editingMeal, setEditingMeal] = useState(null);
+  // 저장·삭제 후 그날 현황/목록을 다시 불러오기 위한 카운터
+  const [dayVersion, setDayVersion] = useState(0);
   // 기록 모드 — "diet"(식단) / "exercise"(운동). 한 화면에서 토글로 전환.
   const [mode, setMode] = useState("diet");
   // 기록할 날짜("YYYY-MM-DD"). 식단/운동 공용 — 토글을 오가도 유지된다.
@@ -131,7 +148,8 @@ function Diet() {
   const currentMealStatus = todayStatus.find((s) => s.id === selectedMealType);
   const hasRecord = currentMealStatus?.state === "done";
   const selectedMealLabel = currentMealStatus?.label ?? "";
-  const shouldShowUploadUI = !hasRecord || isAdding;
+  const shouldShowUploadUI = !hasRecord || isAdding || editingMeal != null;
+  const mealsOfType = savedMeals.filter((m) => m.meal_type === selectedMealType);
 
   const resultRef = useRef(null);
 
@@ -147,10 +165,26 @@ function Diet() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length > 0]);
 
-  // 진입 시·날짜를 바꿀 때마다 그날 식단 현황 불러오기.
+  // 날짜를 바꾸면 이전 날짜의 현황/목록을 먼저 비운다.
+  useEffect(() => {
+    setTodayStatus(INITIAL_TODAY_STATUS);
+    setSavedMeals([]);
+  }, [recordDate]);
+
+  // 진입 시·날짜를 바꿀 때·저장/삭제 후 그날 식단 현황과 목록 불러오기.
   useEffect(() => {
     let cancelled = false;
-    setTodayStatus(INITIAL_TODAY_STATUS);
+
+    async function loadMeals() {
+      try {
+        const res = await fetch(`/api/meals?on=${recordDate}`, { credentials: "include" });
+        if (!res.ok) throw new Error(`meals ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setSavedMeals(data);
+      } catch (err) {
+        console.error("[Diet] meals load failed:", err);
+      }
+    }
 
     async function loadStatus() {
       try {
@@ -171,13 +205,15 @@ function Diet() {
       }
     }
     loadStatus();
+    loadMeals();
     return () => { cancelled = true; };
-  }, [recordDate]);
+  }, [recordDate, dayVersion]);
 
   // 끼니 탭이나 날짜를 바꾸면 작성 중이던 내용 초기화.
   useEffect(() => {
     resetDraft();
     setIsAdding(false);
+    setEditingMeal(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMealType, recordDate]);
 
@@ -193,6 +229,55 @@ function Diet() {
     setManualEntry({ menu: "", calories: "", protein: "", carbs: "", fat: "" });
     setShowPointReward(false);
     setSavedMessage("");
+  }
+
+  // --- 저장된 식단 수정/삭제 ------------------------------------------------
+
+  // 저장된 식단을 편집 화면으로 불러온다. 항목이 있으면 항목 편집, 없으면 직접 입력 칸에 채운다.
+  function startEdit(meal) {
+    resetDraft();
+    setIsAdding(false);
+    setEditingMeal(meal);
+    setAnalysis({
+      image_path: meal.image_path,
+      suggested_description: meal.ai_summary,
+      notes: meal.ai_notes,
+      confidence: meal.ai_confidence,
+    });
+    const saved = parseSavedItems(meal.items);
+    if (saved.length > 0) {
+      setItems(saved.map(toLocalItem));
+    } else {
+      const v = (x) => (x == null ? "" : String(x));
+      setManualEntry({
+        menu: meal.menu || "",
+        calories: v(meal.calories),
+        protein: v(meal.protein_g),
+        carbs: v(meal.carbs_g),
+        fat: v(meal.fat_g),
+      });
+    }
+  }
+
+  function cancelEdit() {
+    resetDraft();
+    setEditingMeal(null);
+  }
+
+  async function handleDeleteMeal(meal) {
+    if (!window.confirm(`이 ${selectedMealLabel} 기록을 삭제할까요?`)) return;
+    try {
+      const res = await fetch(`/api/meals/${meal.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok && res.status !== 404) throw new Error(`delete ${res.status}`);
+      setSavedMeals((prev) => prev.filter((m) => m.id !== meal.id));
+      setDayVersion((v) => v + 1);
+    } catch (err) {
+      console.error("[Diet] delete failed:", err);
+      alert("삭제에 실패했어요. 다시 시도해주세요.");
+    }
   }
 
   function handleImageUpload(e) {
@@ -418,7 +503,7 @@ function Diet() {
         items: working.map(toApiItem),
       };
 
-      await postMeal(payload);
+      await submitMeal(payload);
     } catch (err) {
       console.error("[Diet] save failed:", err);
       alert("저장에 실패했어요. 다시 시도해주세요.");
@@ -450,6 +535,7 @@ function Diet() {
       image_path: analysis?.image_path || null,
       ai_summary: null,
       ai_comment: null,
+      items: null,
     };
     if (!payload.menu && payload.calories == null) {
       alert("사진을 분석하거나 직접 입력해주세요.");
@@ -457,7 +543,7 @@ function Diet() {
     }
     setIsSaving(true);
     try {
-      await postMeal(payload);
+      await submitMeal(payload);
     } catch (err) {
       console.error("[Diet] save failed:", err);
       alert("저장에 실패했어요. 다시 시도해주세요.");
@@ -465,7 +551,27 @@ function Diet() {
     }
   }
 
-  async function postMeal(payload) {
+  // 새 기록이면 POST, 수정 중이면 PATCH. 수정은 포인트 적립이 없다.
+  async function submitMeal(payload) {
+    if (editingMeal) {
+      const res = await fetch(`/api/meals/${editingMeal.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`update ${res.status}`);
+      setShowPointReward(true);
+      setSavedMessage(`${selectedMealLabel} 기록을 수정했어요`);
+      setTimeout(() => {
+        resetDraft();
+        setEditingMeal(null);
+        setIsSaving(false);
+        setDayVersion((v) => v + 1);
+      }, 1200);
+      return;
+    }
+
     const res = await fetch("/api/meals", {
       method: "POST",
       credentials: "include",
@@ -474,12 +580,17 @@ function Diet() {
       body: JSON.stringify({ ...payload, eaten_on: recordDate }),
     });
     if (!res.ok) throw new Error(`save ${res.status}`);
+    const saved = await res.json();
+    const pts = saved.points_earned ?? 0;
 
     // 적립된 포인트를 헤더에 바로 반영 (탭을 옮겨야 갱신되던 문제)
     refreshPoints();
 
+    setEarnedPoints(pts);
     setShowPointReward(true);
-    setSavedMessage(`${selectedMealLabel} 기록 완료! 10P가 적립됐어요`);
+    setSavedMessage(
+      pts > 0 ? `${selectedMealLabel} 기록 완료! ${pts}P가 적립됐어요` : `${selectedMealLabel} 기록 완료!`
+    );
     setTodayStatus((prev) =>
       prev.map((s) => (s.id === selectedMealType ? { ...s, state: "done" } : s))
     );
@@ -487,6 +598,7 @@ function Diet() {
       resetDraft();
       setIsAdding(false);
       setIsSaving(false);
+      setDayVersion((v) => v + 1);
     }, 1700);
   }
 
@@ -557,9 +669,57 @@ function Diet() {
 
           {/* 2. 사진 업로드 카드 */}
           <section className="meal-photo-card">
-            {!shouldShowUploadUI ? (
+            {editingMeal ? (
+              <div className="meal-upload-area">
+                {editingMeal.image_path && (
+                  <img src={editingMeal.image_path} alt="" className="meal-edit-image" />
+                )}
+                <p className="meal-upload-title">{selectedMealLabel} 기록 수정 중</p>
+                <p className="meal-upload-sub">아래에서 내용을 고친 뒤 저장하세요</p>
+                <button
+                  type="button"
+                  className="meal-upload-button"
+                  onClick={cancelEdit}
+                  disabled={isSaving}
+                >
+                  수정 취소
+                </button>
+              </div>
+            ) : !shouldShowUploadUI ? (
               <div className="meal-upload-area">
                 <p className="meal-upload-title">✓ {selectedMealLabel} 기록 완료</p>
+                {mealsOfType.length > 0 && (
+                  <ul className="saved-meal-list">
+                    {mealsOfType.map((m) => (
+                      <li key={m.id} className="saved-meal">
+                        {m.image_path && (
+                          <img src={m.image_path} alt="" className="saved-meal-thumb" />
+                        )}
+                        <div className="saved-meal-body">
+                          <p className="saved-meal-menu">{m.menu || "메뉴 이름 없음"}</p>
+                          {m.calories != null && (
+                            <p className="saved-meal-macros">
+                              {m.calories}kcal · 탄 {round1(m.carbs_g)}g · 단 {round1(m.protein_g)}g · 지{" "}
+                              {round1(m.fat_g)}g
+                            </p>
+                          )}
+                        </div>
+                        <div className="saved-meal-actions">
+                          <button type="button" onClick={() => startEdit(m)}>
+                            수정
+                          </button>
+                          <button
+                            type="button"
+                            className="is-danger"
+                            onClick={() => handleDeleteMeal(m)}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <p className="meal-upload-sub">추가 기록하려면 아래 버튼을 누르세요</p>
                 <button
                   type="button"
@@ -880,12 +1040,14 @@ function Diet() {
                   onClick={handleSaveMeal}
                   disabled={isSaving || showPointReward}
                 >
-                  {isSaving ? "저장 중..." : showPointReward ? "기록 완료!" : "식단 기록 저장"}
+                  {showPointReward
+                    ? editingMeal ? "수정 완료!" : "기록 완료!"
+                    : isSaving ? "저장 중..." : editingMeal ? "수정 내용 저장" : "식단 기록 저장"}
                 </button>
 
-                {showPointReward && (
+                {showPointReward && !editingMeal && earnedPoints > 0 && (
                   <>
-                    <span className="point-reward-badge">+10P</span>
+                    <span className="point-reward-badge">+{earnedPoints}P</span>
                     <span className="reward-sparkle reward-sparkle-1">✨</span>
                     <span className="reward-sparkle reward-sparkle-2">✨</span>
                     <span className="reward-sparkle reward-sparkle-3">✨</span>

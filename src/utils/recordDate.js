@@ -31,6 +31,11 @@ export function addDays(s, n) {
   return toDateStr(d);
 }
 
+// 포인트가 절반만 적립되는 지난 기록인지 (어제까지는 제때 기록). 서버 points.py 와 맞춘다.
+export function isLateRecord(s) {
+  return s < addDays(todayStr(), -1);
+}
+
 export function oldestRecordDateStr() {
   return addDays(todayStr(), -BACKFILL_DAYS);
 }
