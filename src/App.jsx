@@ -34,6 +34,7 @@ import ProtectedRoute from './auth/ProtectedRoute';
 import { KakaoDeepLinkHandler } from './auth/kakaoNative';
 import { syncMealReminders } from './notifications/mealReminders';
 import MotivationCheck from './MotivationCheck';
+import { AiConsentProvider } from './notice/AiConsent';
 
 /* 로그인 이후 보여줄 메인 화면 — 탭 5개 + 하단 TabBar */
 function MainShell() {
@@ -157,7 +158,10 @@ function App() {
           element={
             /* 로그인한 사용자만 메인 앱 사용 가능. 비로그인 시 /login 으로 이동. */
             <ProtectedRoute>
-              <MainShell />
+              {/* AI 기능 전에 외부 AI 데이터 전송 동의를 받는 모달 (App Store 5.1.2) */}
+              <AiConsentProvider>
+                <MainShell />
+              </AiConsentProvider>
             </ProtectedRoute>
           }
         />

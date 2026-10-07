@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { usePoints } from "../usePoints";
 import MoodOpener from "./MoodOpener";
+import { useAiConsent } from "../notice/AiConsent";
+import { HealthSourcesLink } from "../notice/HealthSources";
 
 // 첫 진입 안내 메시지 (DB에 저장되진 않고 화면에만 보이는 인삿말)
 // 채팅 상태는 부모(MainShell)로 끌어올렸으므로, 초기값으로 쓰기 위해 export 한다.
@@ -27,6 +29,7 @@ function Chat({
   // 헤더 우상단 포인트 — 현재 로그인한 환자의 CP
   const point = usePoints()?.cp ?? 0;
 
+  const { ensureAiConsent } = useAiConsent();
   const bottomRef = useRef(null);
   const initialScrollPendingRef = useRef(true);
 
@@ -161,6 +164,8 @@ function paintFrame() {
   // 기분 체크인 직후, AI 가 먼저 인사하도록 opener 스트림을 받아 화면에 흘린다.
   // 유저 메시지 없이 AI 버블만 생긴다(서버 /api/chat/opener 는 "user" 이벤트를 안 보냄).
   async function triggerOpener() {
+    // 외부 AI 로 기록 요약을 보내므로 먼저 동의를 받는다(거절하면 인사 생략)
+    if (!(await ensureAiConsent())) return;
     setIsSending(true);
     setErrorText("");
     await paintFrame(); // 입력중 표시를 먼저 그린다 (handleSubmit 과 같은 이유)
@@ -190,6 +195,8 @@ function paintFrame() {
     e.preventDefault();
     const text = draft.trim();
     if (!text || isSending) return;
+    // 외부 AI(OpenAI)로 메시지를 보내기 전 동의 확인 — 거절하면 입력 내용은 그대로 둔다
+    if (!(await ensureAiConsent())) return;
 
     // 사용자 메시지를 먼저 화면에 그려 즉시 피드백
     const optimisticUser = { role: "user", text, _pending: true };
@@ -235,12 +242,12 @@ function paintFrame() {
 
       <section className="chat-title-section">
         <h2 className="chat-title">체다 AI</h2>
-        <p className="chat-subtitle">건강 고민을 편하게 물어보세요</p>
+        <p className="chat-subtitle">식사와 하루 이야기를 편하게 나눠보세요</p>
       </section>
 
       <section className="chat-info-card">
         <span className="chat-info-card-text">
-          고민이 있다면 체다에게 물어보세요
+          오늘 식사나 기분을 체다와 이야기해 보세요
         </span>
         <button
           type="button"
@@ -320,6 +327,8 @@ function paintFrame() {
             입력창 바로 아래에 두어 대화할 때 항상 보이게 한다. 지우지 말 것. */}
         <p className="chat-disclaimer">
           AI의 답변은 참고용이며 의학적 진단이나 조언을 대신하지 않아요.
+          {/* 건강 정보 참고 자료 — App Store 1.4.1. 입력창 아래라 항상 쉽게 찾을 수 있다. */}
+          <HealthSourcesLink />
         </p>
       </form>
     </div>

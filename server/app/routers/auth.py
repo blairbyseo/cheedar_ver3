@@ -17,6 +17,8 @@ from app.models.user import User
 from app.schemas.auth import (
     InviteCodeCheckRequest,
     InviteCodeCheckResponse,
+    AiConsentRequest,
+    AppleLoginRequest,
     KakaoLoginRequest,
     LoginRequest,
     LoginResponse,
@@ -25,6 +27,7 @@ from app.schemas.auth import (
     UserOut,
     WithdrawRequest,
 )
+from app.services import apple as apple_service
 from app.services import kakao as kakao_service
 from app.services.uploads import (
     delete_meal_image,
@@ -259,6 +262,59 @@ def check_invite_code(
     return InviteCodeCheckResponse(code=invite.code, label=invite.label)
 
 
+@router.post("/apple", response_model=LoginResponse, status_code=status.HTTP_200_OK)
+def apple_login(
+    payload: AppleLoginRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> LoginResponse:
+    """Sign in with Apple (iOS 앱 전용, App Store 4.8).
+
+    identity token 의 sub 로 계정을 찾고, 없으면 새로 만든다. 이메일은 받지
+    않는다 — 앱 기능에 필요 없고, 카카오 계정 이메일과 unique 충돌할 수 있다.
+    신규 가입은 카카오·아이디 가입과 똑같이 초대코드가 필요하다(없으면 403).
+    """
+    claims = apple_service.verify_identity_token(payload.identity_token, payload.nonce)
+    apple_sub = claims["sub"]
+
+    user = db.execute(
+        select(User).where(User.apple_sub == apple_sub)
+    ).scalar_one_or_none()
+    if user is None:
+        # 처음 보는 Apple 계정 = 신규 가입. 초대코드 없이는 만들지 않는다(뒷문 방지).
+        invite = _consume_invite_code(db, payload.invite_code)
+        name = " ".join(
+            part.strip()
+            for part in (payload.family_name, payload.given_name)
+            if part and part.strip()
+        )
+        # sub 는 길어서(44자 안팎) 앞부분만 쓴다. 드물게 겹치면 더 길게 쓴다.
+        compact = apple_sub.replace(".", "")
+        display_id = f"apple_{compact[:12]}"
+        if _user_id_taken(db, display_id):
+            display_id = f"apple_{compact[:30]}"
+        user = User(
+            apple_sub=apple_sub,
+            user_id=display_id,
+            nickname=name or None,
+            invite_code_id=invite.id,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # 계정이 확정된 뒤에만 Apple 토큰을 받는다 (초대코드로 막힌 요청은 여기까지 안 옴)
+    refresh_token = apple_service.exchange_code(payload.authorization_code or "")
+    if refresh_token:
+        user.apple_refresh_token = refresh_token
+        db.commit()
+        db.refresh(user)
+
+    jwt_token = create_access_token(user.id)
+    _set_auth_cookie(response, jwt_token)
+    return LoginResponse(user=UserOut.model_validate(user))
+
+
 @router.post(
     "/signup",
     response_model=LoginResponse,
@@ -375,7 +431,8 @@ def withdraw(
     행을 지우지 않는 이유: 식단·설문·채팅은 연구 데이터라 통계로는 남겨야 한다.
     대신 **누구의 기록인지 알 수 없게** 만든다.
 
-    - 즉시 제거: 카카오ID, 이메일, 비밀번호, 닉네임, 프로필 사진(파일까지),
+    - 즉시 제거: 카카오ID, Apple ID(토큰 revoke 포함), AI 동의, 이메일, 비밀번호,
+      닉네임, 프로필 사진(파일까지),
       식단 사진 파일(S3 객체까지), 관리자 권한
     - 익명으로 유지: 식단 영양수치, 운동, 설문 응답, 감정, 채팅, 포인트
     - user_id 는 `deleted#{id}` 로 치환 — '#' 는 아이디 규칙상 쓸 수 없는
@@ -396,6 +453,7 @@ def withdraw(
 
     # 2) 지울 파일 경로를 먼저 모아둔다 (commit 후 실제 삭제)
     old_profile_image = current_user.profile_image_path
+    apple_refresh_token = current_user.apple_refresh_token
     meal_images = [
         path
         for (path,) in db.execute(
@@ -413,6 +471,9 @@ def withdraw(
         .values(image_path=None)
     )
     current_user.kakao_id = None
+    current_user.apple_sub = None
+    current_user.apple_refresh_token = None
+    current_user.ai_consent_at = None
     current_user.email = None
     current_user.password_hash = None
     current_user.nickname = None
@@ -422,7 +483,8 @@ def withdraw(
     current_user.deleted_at = datetime.now(timezone.utc)
     db.commit()
 
-    # 4) 실제 파일 삭제 (best-effort — 실패해도 탈퇴는 이미 확정)
+    # 4) 실제 파일 삭제·Apple 토큰 폐기 (best-effort — 실패해도 탈퇴는 이미 확정)
+    apple_service.revoke_token(apple_refresh_token)
     delete_profile_image(old_profile_image)
     for image_url in meal_images:
         delete_meal_image(image_url)
@@ -435,6 +497,22 @@ def withdraw(
 
 @router.get("/me", response_model=UserOut)
 def get_me(current_user: User = Depends(get_current_user)) -> User:
+    return current_user
+
+
+@router.post("/me/ai-consent", response_model=UserOut)
+def set_ai_consent(
+    payload: AiConsentRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """외부 AI(OpenAI) 데이터 전송 동의/철회 (App Store 5.1.2(i)).
+
+    앱이 AI 기능을 처음 쓸 때 동의 화면을 띄우고, 설정에서 철회할 수 있다.
+    """
+    current_user.ai_consent_at = datetime.now(timezone.utc) if payload.agree else None
+    db.commit()
+    db.refresh(current_user)
     return current_user
 
 

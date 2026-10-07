@@ -4,6 +4,8 @@ import { usePoints, refreshPoints } from "../usePoints";
 import Exercise from "./Exercise";
 import RecordDateNav from "./RecordDateNav";
 import { dayWord, todayStr } from "../utils/recordDate";
+import { useAiConsent } from "../notice/AiConsent";
+import { HealthSourcesLink } from "../notice/HealthSources";
 
 const MEAL_TYPES = [
   { id: "breakfast", label: "아침" },
@@ -98,6 +100,7 @@ function sumItems(items) {
 function Diet() {
   // 헤더 우상단 포인트 — 현재 로그인한 환자의 CP
   const point = usePoints()?.cp ?? 0;
+  const { ensureAiConsent } = useAiConsent();
 
   const [selectedMealType, setSelectedMealType] = useState(getInitialMealType);
   const [uploadedImagePreview, setUploadedImagePreview] = useState(null);
@@ -294,6 +297,8 @@ function Diet() {
 
   async function handleAnalyzeMeal() {
     if (!imageFile || isAnalyzing) return;
+    // 사진을 외부 AI(OpenAI)로 보내기 전 동의 확인 (App Store 5.1.2)
+    if (!(await ensureAiConsent())) return;
     setIsAnalyzing(true);
     setAnalyzeError("");
     setItems([]);
@@ -403,6 +408,7 @@ function Diet() {
   async function handleApplyDelta() {
     const t = deltaText.trim();
     if (!t || isApplyingDelta) return;
+    if (!(await ensureAiConsent())) return;
     setIsApplyingDelta(true);
     try {
       const res = await fetch("/api/meals/apply-delta", {
@@ -443,12 +449,15 @@ function Diet() {
       return;
     }
 
+    // 재추정은 음식 이름을 외부 AI 로 보낸다 — 동의하지 않으면 입력한 값 그대로 저장
+    const need = valid.filter((it) => it.needsReestimation);
+    const canUseAi = need.length > 0 && (await ensureAiConsent());
+
     setIsSaving(true);
     try {
       // 이름/단위가 바뀌었거나 새로 추가된 항목은 저장 직전에 영양소 재추정.
-      let working = valid;
-      const need = valid.filter((it) => it.needsReestimation);
-      if (need.length > 0) {
+      let working = valid.map((it) => ({ ...it, needsReestimation: false }));
+      if (canUseAi) {
         const results = await Promise.all(
           need.map(async (it) => {
             try {
@@ -850,6 +859,8 @@ function Diet() {
                       필요하므로 분석 결과가 보일 때 항상 함께 보인다. 지우지 말 것. */}
                   <p className="ai-plate-disclaimer">
                     AI가 추정한 값이라 실제와 다를 수 있어요. 참고용으로만 활용해 주세요.
+                    {/* 영양 정보 출처 — App Store 1.4.1 */}
+                    <HealthSourcesLink />
                   </p>
 
                   <ul className="plate-list">

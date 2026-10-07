@@ -70,6 +70,35 @@
   font-size: 18px;
 }
 
+/* Apple 로그인 — Apple HIG 의 검은 버튼. 카카오 버튼과 같은 크기. */
+.login-apple-btn {
+  width: 100%;
+  margin-top: 12px;
+  height: 52px;
+  border-radius: 12px;
+  border: none;
+  background: #000;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+}
+
+.login-apple-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-apple-icon {
+  font-size: 19px;
+  margin-top: -2px;
+}
+
 .login-error {
   color: #c0392b;
   font-size: 13px;

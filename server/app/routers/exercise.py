@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_ai_consented_user, get_current_user
 from app.models.exercise import ExerciseLog
 from app.models.user import User
 from app.schemas.exercise import (
@@ -141,7 +141,7 @@ def list_exercise(
 @router.post("/analyze", response_model=ExerciseAnalyzeResponse)
 def analyze_exercise(
     payload: ExerciseAnalyzeRequest,
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_ai_consented_user),
 ) -> ExerciseAnalyzeResponse:
     """사전 MET DB에 없는 운동명의 MET 을 AI로 추정한다."""
     result = estimate_met(payload.exercise_name)

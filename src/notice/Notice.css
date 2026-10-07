@@ -1,0 +1,145 @@
+/* 출처(HealthSources)·AI 동의(AiConsent) 모달 공용 스타일.
+ * 설정 탭 문의/탈퇴 모달(.inquiry-modal)과 같은 톤으로 맞췄다. */
+
+.notice-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(46, 42, 36, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px 16px;
+  animation: notice-fade-in 0.18s ease-out;
+}
+
+@keyframes notice-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.notice-modal {
+  width: 100%;
+  max-width: 380px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
+  border-radius: 22px;
+  padding: 22px 20px 18px;
+  box-shadow: 0 20px 50px rgba(46, 42, 36, 0.2);
+  box-sizing: border-box;
+}
+
+.notice-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+  margin: 0 0 6px;
+}
+
+.notice-desc {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-sub);
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+
+.notice-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notice-list li {
+  background: var(--card-white, #fff);
+  border: 1px solid var(--line, #eee6d2);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-main);
+}
+
+.notice-list-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-sub);
+  margin-bottom: 2px;
+}
+
+.notice-source-link {
+  display: block;
+  font-weight: 700;
+  color: var(--text-main);
+  text-decoration: none;
+}
+
+.notice-source-link::after {
+  content: " ↗";
+  color: #c99a12;
+}
+
+.notice-source-use {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-sub);
+  margin-top: 2px;
+}
+
+.notice-foot {
+  font-size: 11.5px;
+  color: var(--text-sub);
+  line-height: 1.5;
+  margin: 12px 0 0;
+}
+
+.notice-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.notice-buttons button {
+  background: var(--card-white, #fff);
+  border: 1px solid var(--line, #eee6d2);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-sub);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.notice-buttons button.is-primary {
+  background: #FFF0B8;
+  color: var(--text-main);
+  border-color: rgba(209, 169, 22, 0.28);
+}
+
+.notice-buttons button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 면책 문구 옆 '참고 자료' 같은 인라인 텍스트 버튼 */
+.notice-inline-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 4px;
+  font: inherit;
+  font-weight: 700;
+  color: #b8890f;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}

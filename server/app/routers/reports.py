@@ -136,6 +136,12 @@ def weekly_compare(
 _EMPTY_WEEK_MESSAGE = (
     "이번 주는 아직 기록이 없어요. 오늘 한 끼만 가볍게 남겨볼까요? 체다가 같이 볼게요 🧀"
 )
+# 외부 AI(OpenAI) 데이터 전송에 동의하지 않은 사용자 — AI 를 부르지 않고 이 문구를 준다
+# (App Store 5.1.2(i)). 동의는 AI 기능을 처음 쓸 때 또는 설정에서 할 수 있다.
+_NO_CONSENT_MESSAGE = (
+    "이번 주도 기록을 남겨줘서 고마워요. 체다의 맞춤 한마디는 "
+    "[설정 → AI 데이터 제공 동의]를 켜면 볼 수 있어요."
+)
 # AI 비활성/실패 시 기본 문구 — 저장하지 않아 다음에 다시 시도한다.
 _FALLBACK_MESSAGE = (
     "이번 주도 기록을 남겨줘서 고마워요. 다음 주에도 지금처럼 한 끼씩 함께 채워가요!"
@@ -170,6 +176,8 @@ def weekly_feedback(
 
     if this_week.recorded_days == 0 and this_week.exercise_days == 0:
         return WeeklyFeedbackOut(week_start=this_week.week_start, message=_EMPTY_WEEK_MESSAGE)
+    if current_user.ai_consent_at is None:
+        return WeeklyFeedbackOut(week_start=this_week.week_start, message=_NO_CONSENT_MESSAGE)
 
     cached = db.execute(
         select(WeeklyFeedback).where(

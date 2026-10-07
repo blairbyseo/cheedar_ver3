@@ -234,7 +234,8 @@
 
 .chat-disclaimer {
   flex-basis: 100%;
-  margin: 0;
+  /* 탭바 가운데 '기록' 버튼이 위로 튀어나와 있어, 문구가 가려지지 않게 띄운다 */
+  margin: 0 0 18px;
   font-size: 11px;
   line-height: 1.4;
   text-align: center;

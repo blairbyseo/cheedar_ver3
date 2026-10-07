@@ -11,6 +11,8 @@ import {
   NOTIF_MEAL_KEY,
 } from "../notifications/mealReminders";
 import { PRIVACY_URL, openExternal } from "../openExternal";
+import { useAiConsent } from "../notice/AiConsent";
+import { HealthSourcesModal } from "../notice/HealthSources";
 
 // 기본 프로필 사진 placeholder 로 사용
 const DEFAULT_PROFILE_IMAGE = "/cheese/cheese_profile.jpg";
@@ -58,6 +60,32 @@ function getUserIdChangeInfo(windowStartRaw, count) {
 
 function Settings() {
   const { user, setUser, logout } = useAuth();
+  const { ensureAiConsent, setAiConsent } = useAiConsent();
+  const [isSavingAiConsent, setIsSavingAiConsent] = useState(false);
+  const [isSourcesOpen, setIsSourcesOpen] = useState(false);
+
+  // AI 데이터 제공 동의 토글 — 켜면 동의 모달(무엇을/누구에게)을 거치고,
+  // 끄면 바로 철회한다. 철회 후에는 AI 기능을 쓸 때 다시 동의를 묻는다.
+  async function handleToggleAiConsent() {
+    if (isSavingAiConsent) return;
+    if (!user?.ai_consented) {
+      await ensureAiConsent();
+      return;
+    }
+    const ok = window.confirm(
+      "AI 데이터 제공 동의를 철회할까요?\n철회하면 식단 사진 분석과 체다 AI 대화를 쓸 수 없어요."
+    );
+    if (!ok) return;
+    setIsSavingAiConsent(true);
+    try {
+      await setAiConsent(false);
+    } catch (err) {
+      console.error("[Settings] ai consent revoke failed:", err);
+      alert("동의 철회에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setIsSavingAiConsent(false);
+    }
+  }
   const navigate = useNavigate();
 
   // 헤더 우상단 포인트 — 현재 로그인한 환자의 CP
@@ -518,6 +546,36 @@ function Settings() {
         </div>
         </div>
       </section>
+
+      {/* ───────── AI·건강 정보 카드 (App Store 5.1.2 동의 철회 · 1.4.1 출처) ───────── */}
+      <section className="settings-card">
+        <h3 className="settings-card-title">AI·건강 정보</h3>
+        <div className="notification-row">
+          <div className="notification-row-info">
+            <p className="notification-row-title">AI 데이터 제공 동의</p>
+            <p className="notification-row-desc">
+              식단 사진·대화 내용을 AI 분석을 위해 OpenAI(미국)로 보내요
+            </p>
+          </div>
+          <ToggleSwitch
+            isOn={!!user?.ai_consented}
+            onClick={handleToggleAiConsent}
+            disabled={isSavingAiConsent}
+            label="AI 데이터 제공 동의"
+          />
+        </div>
+        <button
+          type="button"
+          className="settings-list-row"
+          onClick={() => setIsSourcesOpen(true)}
+        >
+          건강 정보 참고 자료
+          <span className="settings-list-row-arrow">›</span>
+        </button>
+      </section>
+      {isSourcesOpen && (
+        <HealthSourcesModal onClose={() => setIsSourcesOpen(false)} />
+      )}
 
       {/* ───────── 3. 계정/앱 설정 카드 ───────── */}
       <section className="settings-card settings-account-card">

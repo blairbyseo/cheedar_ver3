@@ -50,3 +50,16 @@ def get_current_admin(
     if not current_user.is_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin only")
     return current_user
+
+
+def get_ai_consented_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """외부 AI(OpenAI)를 부르는 엔드포인트 가드 (App Store 5.1.2(i)).
+
+    사용자가 앱에서 'AI 데이터 전송'에 동의하기 전에는 데이터를 보내지 않는다.
+    프론트는 detail == "AI_CONSENT_REQUIRED" 를 보고 동의 화면을 띄운다.
+    """
+    if current_user.ai_consent_at is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "AI_CONSENT_REQUIRED")
+    return current_user

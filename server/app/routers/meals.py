@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_ai_consented_user, get_current_user
 from app.models.meal import Meal, MealType
 from app.models.user import User
 from app.schemas.meal import (
@@ -88,7 +88,7 @@ def analyze_image(
     file: UploadFile | None = File(default=None),
     meal_time: str = Form(default=""),
     description: str = Form(default=""),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_ai_consented_user),
 ) -> AIAnalysisResult:
     if file is None and not (description or "").strip():
         raise HTTPException(
@@ -123,7 +123,7 @@ def analyze_image(
 @router.post("/analyze-item", response_model=AnalyzeItemResponse)
 def analyze_item(
     payload: AnalyzeItemRequest,
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_ai_consented_user),
 ) -> AnalyzeItemResponse:
     name = (payload.name or "").strip()
     if not name:
@@ -155,7 +155,7 @@ def analyze_item(
 @router.post("/apply-delta", response_model=ApplyDeltaResponse)
 def apply_delta(
     payload: ApplyDeltaRequest,
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_ai_consented_user),
 ) -> ApplyDeltaResponse:
     delta = (payload.delta_text or "").strip()
     if not delta:

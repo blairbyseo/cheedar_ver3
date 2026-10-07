@@ -26,6 +26,16 @@ class User(Base):
         String(40), unique=True, index=True, nullable=True
     )
 
+    # Sign in with Apple 고유 식별자(identity token 의 sub). 다른 가입자는 None.
+    apple_sub: Mapped[str | None] = mapped_column(
+        String(255), unique=True, index=True, nullable=True
+    )
+    # 탈퇴 시 Apple 토큰 revoke(App Store 5.1.1(v))에 쓰는 refresh token.
+    # 서버에 Apple 키가 설정돼 있을 때만 채워진다.
+    apple_refresh_token: Mapped[str | None] = mapped_column(
+        String(512), nullable=True
+    )
+
     # 카카오가 제공한 이메일(있을 때만). 아이디/비밀번호 가입자는 None.
     email: Mapped[str | None] = mapped_column(
         String(255), unique=True, index=True, nullable=True
@@ -108,6 +118,16 @@ class User(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    # 외부 AI(OpenAI)로 데이터를 보내는 데 동의한 시각 (App Store 5.1.2(i)).
+    # None 이면 미동의 → AI 분석·대화 엔드포인트가 403 AI_CONSENT_REQUIRED.
+    ai_consent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    @property
+    def ai_consented(self) -> bool:
+        return self.ai_consent_at is not None
 
     @property
     def has_password(self) -> bool:

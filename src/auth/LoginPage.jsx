@@ -1,14 +1,17 @@
-/* 로그인 화면 — 아이디/비밀번호 로그인 + 카카오 로그인.
+/* 로그인 화면 — 아이디/비밀번호 로그인 + 카카오 로그인 + (iOS) Apple 로그인.
  * 회원가입은 별도 /signup 페이지에서 처리. */
 import { useState } from "react";
+import { FaApple } from "react-icons/fa";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+
+import { isAppleSignInAvailable, requestAppleCredential } from "./appleNative";
 
 import { useAuth } from "./AuthContext";
 import InviteGate from "./InviteGate";
 import { isNativeApp, openKakaoNative } from "./kakaoNative";
 
 function LoginPage() {
-  const { user, idLogin } = useAuth();
+  const { user, idLogin, appleLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -16,11 +19,15 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [isKakaoLoading, setIsKakaoLoading] = useState(false); // 카카오로 이동 중
   const [isLoggingIn, setIsLoggingIn] = useState(false); // 아이디 로그인 처리 중
+  const [isAppleLoading, setIsAppleLoading] = useState(false); // Apple 로그인 처리 중
   const [errorText, setErrorText] = useState("");
   // 카카오 신규 가입이라 초대코드가 필요한 상태 — 콜백에서 넘겨준다
   const [needsInvite, setNeedsInvite] = useState(
     () => location.state?.needsInviteCode === true,
   );
+  // 초대코드를 요구한 쪽 — 통과 후 안내 문구를 고르는 데 쓴다 ("kakao" | "apple")
+  const [inviteFor, setInviteFor] = useState("kakao");
+  const [inviteMessage, setInviteMessage] = useState("");
   const [noticeText, setNoticeText] = useState("");
 
   // 이미 로그인된 상태로 /login 에 들어오면 메인으로 보냄
@@ -34,19 +41,24 @@ function LoginPage() {
       <InviteGate
         title="회원가입"
         hint={
+          inviteMessage ||
           location.state?.inviteMessage ||
           "초대받은 분만 가입할 수 있어요.\n받으신 코드를 입력해 주세요."
         }
         onPass={() => {
           setNeedsInvite(false);
-          setNoticeText("초대코드를 확인했어요. 카카오 로그인을 한 번 더 눌러 주세요.");
+          setNoticeText(
+            inviteFor === "apple"
+              ? "초대코드를 확인했어요. Apple로 로그인을 한 번 더 눌러 주세요."
+              : "초대코드를 확인했어요. 카카오 로그인을 한 번 더 눌러 주세요.",
+          );
         }}
         onCancel={() => setNeedsInvite(false)}
       />
     );
   }
 
-  const busy = isKakaoLoading || isLoggingIn;
+  const busy = isKakaoLoading || isLoggingIn || isAppleLoading;
 
   // 아이디/비밀번호 로그인
   async function handleLogin(e) {
@@ -92,12 +104,37 @@ function LoginPage() {
     }
   }
 
+  // Apple 로그인 (iOS 앱 전용) — 사용자가 창을 닫으면 조용히 원래 상태로 돌아간다
+  async function handleAppleLogin() {
+    if (busy) return;
+    setIsAppleLoading(true);
+    setErrorText("");
+    try {
+      const credential = await requestAppleCredential();
+      if (!credential) return;
+      await appleLogin(credential);
+      navigate("/", { replace: true });
+    } catch (err) {
+      // 처음 보는 Apple 계정 = 신규 가입 → 카카오와 똑같이 초대코드를 먼저 받는다
+      if (err.needsInviteCode) {
+        setInviteFor("apple");
+        setInviteMessage(err.message);
+        setNeedsInvite(true);
+        return;
+      }
+      console.error("[Login] apple login failed:", err);
+      setErrorText("Apple 로그인에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setIsAppleLoading(false);
+    }
+  }
+
   return (
     <div className="login-page">
       <div className="login-card">
         <h1 className="login-logo">Cheddar</h1>
         <p className="login-tagline">
-          식단을 기록하고<br />정신건강을 관리해요
+          식단을 기록하고<br />하루의 기분도 함께 남겨요
         </p>
 
         <form className="login-form" onSubmit={handleLogin}>
@@ -149,6 +186,20 @@ function LoginPage() {
           <span className="login-kakao-icon" aria-hidden="true"></span>
           {isKakaoLoading ? "카카오로 이동 중..." : "카카오톡으로 시작하기"}
         </button>
+
+        {/* App Store 4.8: 카카오 같은 외부 로그인이 있으면 Apple 로그인을 같은 크기로
+            함께 제공해야 한다. iOS 앱에서만 보인다. */}
+        {isAppleSignInAvailable() && (
+          <button
+            type="button"
+            className="login-apple-btn"
+            onClick={handleAppleLogin}
+            disabled={busy}
+          >
+            <FaApple className="login-apple-icon" aria-hidden="true" />
+            {isAppleLoading ? "Apple 로그인 중..." : "Apple로 로그인"}
+          </button>
+        )}
       </div>
     </div>
   );

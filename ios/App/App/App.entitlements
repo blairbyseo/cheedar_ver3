@@ -9,5 +9,11 @@
 	<array>
 		<string>applinks:cheddar-care.com</string>
 	</array>
+	<!-- Sign in with Apple (App Store 4.8 — 카카오 로그인과 동등한 선택지).
+	     Apple Developer 의 App ID(com.cheddar.care)에도 같은 기능이 켜져 있어야 한다. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 </dict>
 </plist>

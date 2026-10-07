@@ -82,6 +82,16 @@ class Settings(BaseSettings):
     kakao_client_secret: str | None = None
     kakao_redirect_uri: str = "http://localhost:3000/oauth/kakao/callback"
 
+    # --- Sign in with Apple -------------------------------------------------
+    # apple_client_id: iOS 앱 번들 ID. identity token 의 aud 와 일치해야 한다.
+    # 아래 세 값은 탈퇴 시 Apple 토큰 revoke(App Store 5.1.1(v))에 쓴다.
+    # Apple Developer → Keys 에서 'Sign in with Apple' 키(.p8)를 만들어 채운다.
+    # 비어 있으면 로그인은 되지만 refresh token 을 받지 않고 revoke 도 건너뛴다.
+    apple_client_id: str = "com.cheddar.care"
+    apple_team_id: str | None = None
+    apple_key_id: str | None = None
+    apple_private_key: str | None = None  # .p8 내용. 한 줄로 넣을 땐 줄바꿈을 \n 으로
+
     # --- OpenAI ------------------------------------------------------------
     openai_api_key: str | None = None
     openai_model: str = "gpt-5-mini"

@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal, get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_ai_consented_user, get_current_user
 from app.models.chat import ChatMessage, ChatRole
 from app.models.user import User
 from app.schemas.chat import ChatMessageOut, ChatSendRequest
@@ -56,7 +56,7 @@ def list_messages(
 def send_message(
     payload: ChatSendRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_ai_consented_user),
 ) -> StreamingResponse:
     """유저 메시지를 저장한 뒤, AI 답변을 토큰 단위 NDJSON 스트림으로 흘려보낸다.
 
@@ -148,7 +148,7 @@ def send_message(
 @router.post("/opener")
 def opener(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_ai_consented_user),
 ) -> StreamingResponse:
     """기분 체크인 직후, AI 가 먼저 건네는 인사를 NDJSON 스트림으로 흘려보낸다.
 

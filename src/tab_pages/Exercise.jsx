@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { refreshPoints } from "../usePoints";
 import { dayWord, todayStr } from "../utils/recordDate";
+import { useAiConsent } from "../notice/AiConsent";
 import {
   lookupKnownMet,
   estimateCalories,
@@ -21,8 +22,12 @@ import {
   KNOWN_EXERCISES,
 } from "../utils/exercise";
 
+// AI 추정을 쓰지 않을 때의 MET — Compendium 기준 '보통 강도' 운동의 대표값
+const DEFAULT_MET_WITHOUT_AI = 4.0;
+
 // date: 기록할 날짜("YYYY-MM-DD"). Diet 화면의 날짜 이동 바에서 내려온다. 없으면 오늘.
 function Exercise({ onBack, embedded = false, date }) {
+  const { ensureAiConsent } = useAiConsent();
   const recordDate = date || todayStr();
   const word = dayWord(recordDate); // "오늘" / "어제" / "9월 27일"
   const wordTopic = word === "어제" ? "어제는" : `${word}은`; // 조사: 어제는 / 오늘은 / 27일은
@@ -96,7 +101,11 @@ function Exercise({ onBack, embedded = false, date }) {
     let met = lookupKnownMet(trimmed);
     let normalizedName = trimmed;
 
-    // 사전 MET 에 없으면 AI 로 추정
+    // 사전 MET 에 없으면 AI 로 추정. 외부 AI 전송에 동의하지 않으면
+    // 보통 강도 운동의 대표값(MET 4.0)으로 계산한다.
+    if (met == null && !(await ensureAiConsent())) {
+      met = DEFAULT_MET_WITHOUT_AI;
+    }
     if (met == null) {
       try {
         setIsAnalyzing(true);

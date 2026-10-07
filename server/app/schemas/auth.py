@@ -25,6 +25,28 @@ class InviteCodeCheckResponse(BaseModel):
     label: str | None = None
 
 
+class AppleLoginRequest(BaseModel):
+    """앱(iOS)의 Sign in with Apple 결과.
+
+    nonce 는 앱이 만든 원본 값 — Apple 에는 SHA-256 해시를 넘겼다.
+    이름은 Apple 이 '첫 로그인'에만 주므로 있을 때만 온다.
+    """
+
+    identity_token: str
+    authorization_code: str | None = None
+    nonce: str = Field(min_length=16)
+    given_name: str | None = None
+    family_name: str | None = None
+    # 신규 가입일 때만 필요 (카카오 가입과 같은 규칙)
+    invite_code: str | None = None
+
+
+class AiConsentRequest(BaseModel):
+    """외부 AI(OpenAI) 데이터 전송 동의(True) 또는 철회(False)."""
+
+    agree: bool
+
+
 class UserOut(BaseModel):
     id: int
     user_id: str
@@ -44,6 +66,8 @@ class UserOut(BaseModel):
     # 아이디/비밀번호 계정인지(카카오 전용 계정이면 False).
     # 회원탈퇴 시 비밀번호 확인란을 띄울지 판단하는 데 쓴다.
     has_password: bool = False
+    # 외부 AI(OpenAI) 데이터 전송 동의 여부. False 면 앱이 AI 기능 전에 동의를 받는다.
+    ai_consented: bool = False
 
     class Config:
         from_attributes = True

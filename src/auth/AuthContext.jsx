@@ -60,6 +60,30 @@ export function AuthProvider({ children }) {
     return data.user;
   }
 
+  // iOS Sign in with Apple — appleNative.requestAppleCredential() 결과를 그대로 넘긴다
+  // 처음 보는 Apple 계정이면 카카오와 같이 서버가 초대코드를 요구하며 403 을 준다.
+  async function appleLogin(credential) {
+    const res = await fetch("/api/auth/apple", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...credential, invite_code: loadInviteCode() }),
+    });
+    if (res.status === 403) {
+      const data = await res.json().catch(() => ({}));
+      const err = new Error(data.detail || "초대코드가 필요해요.");
+      err.needsInviteCode = true;
+      throw err;
+    }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `Apple 로그인에 실패했어요 (${res.status})`);
+    }
+    const data = await res.json();
+    setUser(data.user);
+    return data.user;
+  }
+
   // 아이디/비밀번호 로그인 — 성공하면 백엔드가 쿠키를 심고 user 객체를 돌려줌
   async function idLogin(userId, password) {
     const res = await fetch("/api/auth/login", {
@@ -120,7 +144,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, idLogin, signup, logout, setUser }}
+      value={{ user, loading, login, appleLogin, idLogin, signup, logout, setUser }}
     >
       {children}
     </AuthContext.Provider>
