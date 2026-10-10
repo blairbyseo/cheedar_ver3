@@ -6,6 +6,7 @@ import RecordDateNav from "./RecordDateNav";
 import { dayWord, todayStr } from "../utils/recordDate";
 import { useAiConsent } from "../notice/AiConsent";
 import { HealthSourcesLink } from "../notice/HealthSources";
+import { assetUrl } from "../api/base";
 
 const MEAL_TYPES = [
   { id: "breakfast", label: "아침" },
@@ -681,7 +682,7 @@ function Diet() {
             {editingMeal ? (
               <div className="meal-upload-area">
                 {editingMeal.image_path && (
-                  <img src={editingMeal.image_path} alt="" className="meal-edit-image" />
+                  <img src={assetUrl(editingMeal.image_path)} alt="" className="meal-edit-image" />
                 )}
                 <p className="meal-upload-title">{selectedMealLabel} 기록 수정 중</p>
                 <p className="meal-upload-sub">아래에서 내용을 고친 뒤 저장하세요</p>
@@ -702,7 +703,7 @@ function Diet() {
                     {mealsOfType.map((m) => (
                       <li key={m.id} className="saved-meal">
                         {m.image_path && (
-                          <img src={m.image_path} alt="" className="saved-meal-thumb" />
+                          <img src={assetUrl(m.image_path)} alt="" className="saved-meal-thumb" />
                         )}
                         <div className="saved-meal-body">
                           <p className="saved-meal-menu">{m.menu || "메뉴 이름 없음"}</p>

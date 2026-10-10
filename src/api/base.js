@@ -15,6 +15,17 @@
 // 웹에서는 "" (Vite 가 정의 안 된 env 를 undefined 로 치환 → || "" 로 흡수).
 export const API_BASE = import.meta.env.VITE_API_BASE || "";
 
+/** <img src> 용 — 백엔드가 준 "/uploads/..." 상대경로를 앱에서는 절대주소로.
+ *
+ * fetch 는 installApiBaseFetch 가 감싸주지만 <img src> 는 fetch 를 거치지 않아
+ * 앱 안에서 폰 자기 자신(localhost)을 가리켜 깨진 이미지(alt 텍스트)로 보인다.
+ * 웹(API_BASE="")이나 이미 절대주소(카카오 CDN·S3)면 그대로 돌려준다.
+ */
+export function assetUrl(path) {
+  if (!path) return path;
+  return API_BASE && path.startsWith("/") ? API_BASE + path : path;
+}
+
 /** API_BASE 가 설정된 앱 빌드에서만 fetch 를 감싼다. 웹(API_BASE="")에서는 no-op. */
 export function installApiBaseFetch() {
   if (!API_BASE) return; // 웹: 아무 것도 안 함 → 기존과 동일

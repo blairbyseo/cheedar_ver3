@@ -13,6 +13,7 @@ import {
 import { PRIVACY_URL, openExternal } from "../openExternal";
 import { useAiConsent } from "../notice/AiConsent";
 import { HealthSourcesModal } from "../notice/HealthSources";
+import { assetUrl } from "../api/base";
 
 // 기본 프로필 사진 placeholder 로 사용
 const DEFAULT_PROFILE_IMAGE = "/cheese/cheese_profile.jpg";
@@ -380,7 +381,7 @@ function Settings() {
           {/* label 로 input 을 감싸 클릭 시 파일 선택 다이얼로그가 뜨게 함 */}
           <label className="profile-image-upload" aria-label="프로필 사진 변경">
             <img
-              src={user?.profile_image_path || DEFAULT_PROFILE_IMAGE}
+              src={assetUrl(user?.profile_image_path) || DEFAULT_PROFILE_IMAGE}
               alt="프로필"
               className="profile-image"
             />

@@ -3,6 +3,7 @@
  * 화면에는 XP를 "경험치"라는 이름으로 표시한다(순위 산정 근거이므로 노출).
  */
 import { useEffect, useState } from "react";
+import { assetUrl } from "../api/base";
 
 // 상위 3명 메달 — 1·2·3위 순서.
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -112,7 +113,7 @@ function Ranking({ onBack }) {
                       <span className="podium-avatar podium-avatar--photo">
                         <img
                           className="podium-avatar-img"
-                          src={entry.profile_image_path}
+                          src={assetUrl(entry.profile_image_path)}
                           alt={`${entry.user_id} 프로필 사진`}
                         />
                       </span>
