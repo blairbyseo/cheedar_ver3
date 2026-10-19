@@ -43,6 +43,15 @@ function snooze() {
   }
 }
 
+// 수면 분 → '6시간 30분' (서버 sleep_context.fmt_minutes 와 같은 표기)
+function formatSleep(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h && m) return `${h}시간 ${m}분`;
+  if (h) return `${h}시간`;
+  return `${m}분`;
+}
+
 // 지난 점수 대비 변화 문구 (존댓말·비판단)
 function trendText(prev, now) {
   if (prev == null) return "처음 기록했어요";
@@ -123,6 +132,19 @@ function MotivationCheck() {
           <>
             <p className="mot-title">이번 주 동기 점검</p>
             <p className="mot-sub">지난 일주일을 떠올리며 편하게 답해 주세요</p>
+            {/* 스마트폰 걸음수(연동한 사용자만, 고위험군 제외). 평가 없이 사실만 — 점수와 무관 */}
+            {status.recent_avg_steps != null && (
+              <p className="mot-steps">
+                지난 7일 하루 평균 약{" "}
+                {Number(status.recent_avg_steps).toLocaleString()}걸음을 걸었어요
+              </p>
+            )}
+            {status.recent_avg_sleep_minutes != null && (
+              <p className="mot-steps">
+                지난 7일 밤 평균 약{" "}
+                {formatSleep(status.recent_avg_sleep_minutes)} 주무셨어요
+              </p>
+            )}
 
             {QUESTIONS.map((q) => {
               const value = scores[q.key];

@@ -26,6 +26,9 @@ class MotivationStatus(BaseModel):
     show_weight: bool
     previous: PreviousScores | None = None
     last_weight_kg: float | None = None
+    # 최근 7일 일평균 걸음수(스마트폰 건강 데이터). 없거나 고위험군이면 None.
+    recent_avg_steps: int | None = None
+    recent_avg_sleep_minutes: int | None = None
 
 
 class MotivationCheckIn(BaseModel):

@@ -4,4 +4,6 @@
     <string name="title_activity_main">Cheddar</string>
     <string name="package_name">com.cheddar.care</string>
     <string name="custom_url_scheme">com.cheddar.care</string>
+    <!-- Health Connect 권한 화면의 '개인정보처리방침' 링크 (@capgo/capacitor-health 가 읽음) -->
+    <string name="health_connect_privacy_policy_url">https://cheddar-care.com/privacy.html</string>
 </resources>

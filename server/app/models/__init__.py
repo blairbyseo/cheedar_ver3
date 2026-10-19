@@ -1,4 +1,6 @@
 from app.models.chat import ChatMessage, ChatRole
+from app.models.daily_sleep import DailySleep
+from app.models.daily_steps import DailySteps
 from app.models.emotion import EmotionLog
 from app.models.exercise import ExerciseLog
 from app.models.inquiry import Inquiry
@@ -22,6 +24,8 @@ __all__ = [
     "User",
     "WeeklyFeedback",
     "MotivationCheck",
+    "DailySteps",
+    "DailySleep",
     "Meal",
     "MealType",
     "ChatMessage",

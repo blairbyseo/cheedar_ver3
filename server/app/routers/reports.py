@@ -21,7 +21,10 @@ from app.models.meal import Meal, MealType
 from app.models.user import User
 from app.models.weekly_feedback import WeeklyFeedback
 from app.services.openai_client import weekly_feedback_text
+from app.services.motivation import eating_high_risk, latest_completed_survey
 from app.services.record_dates import kst_today
+from app.services.sleep_context import fmt_minutes, weekly_avg_sleep_minutes
+from app.services.steps_context import weekly_avg_steps
 from app.services.survey_context import build_survey_context
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -37,6 +40,8 @@ class WeekStat(BaseModel):
     exercise_days: int  # 운동을 기록한 날('안 함' 제외)
     snack_count: int  # 간식 기록 횟수
     avg_calories: int  # 칼로리가 기록된 날 기준 일평균 섭취 칼로리
+    avg_steps: int | None = None  # 스마트폰 걸음수 일평균(기록된 날 기준). 연동 안 했으면 None
+    avg_sleep_minutes: int | None = None  # 스마트폰 수면 밤 평균(분). 연동 안 했으면 None
 
 
 class _WeekDetail(WeekStat):
@@ -112,6 +117,8 @@ def _week_details(db: Session, user_id: int, weeks: int) -> list[_WeekDetail]:
                 breakfast_days=sum(1 for t in day_types if MealType.breakfast in t),
                 lunch_days=sum(1 for t in day_types if MealType.lunch in t),
                 dinner_days=sum(1 for t in day_types if MealType.dinner in t),
+                avg_steps=weekly_avg_steps(db, user_id, monday),
+                avg_sleep_minutes=weekly_avg_sleep_minutes(db, user_id, monday),
             )
         )
     return details
@@ -148,20 +155,52 @@ _FALLBACK_MESSAGE = (
 )
 
 
-def _summary_for_ai(this_week: _WeekDetail, last_week: _WeekDetail, today: DateType) -> str:
-    """AI 에 넘길 요약. 칼로리 수치는 일부러 넣지 않는다(평가 문구 방지)."""
+def _steps_line(detail: _WeekDetail) -> str:
+    if detail.avg_steps is None:
+        return ""
+    return f"\n- 하루 평균 걸음수: 약 {detail.avg_steps:,}걸음"
+
+
+def _sleep_line(detail: _WeekDetail) -> str:
+    if detail.avg_sleep_minutes is None:
+        return ""
+    return f"\n- 밤 평균 수면: 약 {fmt_minutes(detail.avg_sleep_minutes)}"
+
+
+def _summary_for_ai(
+    this_week: _WeekDetail,
+    last_week: _WeekDetail,
+    today: DateType,
+    *,
+    include_steps: bool = True,
+) -> str:
+    """AI 에 넘길 요약. 칼로리 수치는 일부러 넣지 않는다(평가 문구 방지).
+
+    걸음수는 연동한 사용자에게만 붙고, 섭식 고위험군(include_steps=False)에게는
+    숫자를 넣지 않는다. 걸음을 칼로리·음식과 엮지 말라는 금기도 함께 넘긴다.
+    """
     days_so_far = (today - this_week.week_start).days + 1
+    this_steps = (_steps_line(this_week) if include_steps else "") + _sleep_line(this_week)
+    last_steps = (_steps_line(last_week) if include_steps else "") + _sleep_line(last_week)
+    steps_note = (
+        "\n(걸음수·수면은 건강 앱에서 자동으로 가져온 참고 수치입니다. 어디서 쟀는지 언급하지 말고, 목표를 제시하거나 "
+        "부족하다/많다고 평가하지 말고, 칼로리·음식과 연결하지 마세요.)"
+        if this_steps or last_steps
+        else ""
+    )
     return (
         f"[이번 주 — 월요일부터 오늘까지 {days_so_far}일]\n"
         f"- 식단을 기록한 날: {this_week.recorded_days}일\n"
         f"- 아침 기록한 날: {this_week.breakfast_days}일, 점심: {this_week.lunch_days}일, "
         f"저녁: {this_week.dinner_days}일\n"
         f"- 세 끼를 모두 기록한 날: {this_week.three_meal_days}일\n"
-        f"- 운동을 기록한 날: {this_week.exercise_days}일\n"
+        f"- 운동을 기록한 날: {this_week.exercise_days}일"
+        f"{this_steps}\n"
         f"[지난 주 — 7일]\n"
         f"- 식단을 기록한 날: {last_week.recorded_days}일\n"
         f"- 세 끼를 모두 기록한 날: {last_week.three_meal_days}일\n"
         f"- 운동을 기록한 날: {last_week.exercise_days}일"
+        f"{last_steps}{steps_note}"
     )
 
 
@@ -188,8 +227,9 @@ def weekly_feedback(
     if cached and cached.generated_on == today:
         return WeeklyFeedbackOut(week_start=cached.week_start, message=cached.message)
 
+    high_risk = eating_high_risk(latest_completed_survey(db, current_user.id))
     message = weekly_feedback_text(
-        _summary_for_ai(this_week, last_week, today),
+        _summary_for_ai(this_week, last_week, today, include_steps=not high_risk),
         build_survey_context(db, current_user.id) or None,
     )
     if not message:

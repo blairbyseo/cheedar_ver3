@@ -13,13 +13,19 @@ from app.schemas.chat import ChatMessageOut, ChatSendRequest
 from app.services.diet_context import build_diet_context
 from app.services.emotion_context import build_emotion_context
 from app.services.exercise_context import build_exercise_context
-from app.services.motivation import build_motivation_context
+from app.services.motivation import (
+    build_motivation_context,
+    eating_high_risk,
+    latest_completed_survey,
+)
 from app.services.openai_client import (
     CHAT_MOCK_RESPONSE,
     CHAT_OPENER_MOCK_RESPONSE,
     chat_completion_stream,
     chat_opener_stream,
 )
+from app.services.sleep_context import build_sleep_context
+from app.services.steps_context import build_steps_context
 from app.services.survey_context import build_survey_context
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -32,6 +38,22 @@ CONTEXT_WINDOW = 20
 def _ndjson(payload: dict) -> str:
     """스트리밍 이벤트 1건을 NDJSON 한 줄(끝에 개행)로 직렬화."""
     return json.dumps(payload, ensure_ascii=False) + "\n"
+
+
+
+def _exercise_with_health(db: Session, user: User) -> str:
+    """운동 스냅샷 뒤에 스마트폰 건강 데이터(걸음수·수면) 맥락을 덧붙인다.
+
+    별도 system 메시지가 아니라 운동 스냅샷과 한 덩어리로 넘긴다
+    (openai_client 시그니처 불변). 섭식 고위험군에게는 걸음 숫자를 넣지 않는다
+    (수면은 섭식과 직접 엮이지 않아 모두에게 간다).
+    """
+    exercise = build_exercise_context(db, user.id)
+    steps = build_steps_context(
+        db, user.id, high_risk=eating_high_risk(latest_completed_survey(db, user.id))
+    )
+    sleep = build_sleep_context(db, user.id)
+    return "\n\n".join(c for c in (exercise, steps, sleep) if c)
 
 
 @router.get("/messages", response_model=list[ChatMessageOut])
@@ -86,7 +108,7 @@ def send_message(
     # 끼울 준비. 요청 스코프의 db 세션이 살아있는 동안 미리 string 으로
     # 떠둔다(event_stream 안에서는 이미 닫혀 있을 수 있음).
     diet_context = build_diet_context(db, current_user.id)
-    exercise_context = build_exercise_context(db, current_user.id)
+    exercise_context = _exercise_with_health(db, current_user)
     # 오늘 남긴 기분 → 응답 톤 조정 지시. 최근 24h 기록 없으면 빈 문자열.
     emotion_context = build_emotion_context(db, current_user.id)
     # 설문 프로파일 → 오늘의 개인화 지시(렌즈/스레드/금기). 신호 없으면 빈 문자열.
@@ -162,7 +184,7 @@ def opener(
     # 컨텍스트는 요청 스코프 db 가 살아있을 때 미리 문자열로 떠둔다(event_stream
     # 안에서는 세션이 닫혀 있을 수 있음).
     diet_context = build_diet_context(db, current_user.id)
-    exercise_context = build_exercise_context(db, current_user.id)
+    exercise_context = _exercise_with_health(db, current_user)
     emotion_context = build_emotion_context(db, current_user.id)
     survey_context = build_survey_context(db, current_user.id)
     # 최근 동기 점검(중요도·자신감 변화) → 같은 개인화 지시 덩어리에 덧붙인다.

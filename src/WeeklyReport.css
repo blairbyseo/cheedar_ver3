@@ -227,6 +227,10 @@
 .report-nutri-item.burn { background: #FBE0DC; }
 .report-nutri-item.time { background: #E3ECFB; }
 .report-nutri-item.days { background: #E8F5EE; }
+/* 걸음수·수면 카드 톤 — 둘뿐이라 2열. 하나만 있으면 그 하나가 가득 찬다 */
+.report-health-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.report-nutri-item.steps { background: #E6F2EC; }
+.report-nutri-item.sleep { background: #E9E6F7; }
 
 /* 운동 시간 값 안의 작은 단위 (3시간20분) */
 .report-nutri-sub {
@@ -375,6 +379,8 @@
 .cmp-bar.exercise, .cmp-dot.exercise { background: #5E9F8A; }
 .cmp-bar.snack                       { background: #F2A65A; }
 .cmp-bar.kcal                        { background: #E58A5C; }
+.cmp-bar.steps                       { background: #5E9F8A; }
+.cmp-bar.sleep                       { background: #8C7FD6; }
 
 /* ── 체다의 한마디 (주간 AI 피드백) ─────────────────────────────────── */
 .report-feedback {

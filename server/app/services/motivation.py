@@ -17,13 +17,16 @@ from sqlalchemy.orm import Session
 from app.models.motivation import MotivationCheck
 from app.models.survey import SurveyResponse, SurveyResponseStatus
 from app.models.user import User
+from app.services.sleep_context import recent_avg_sleep_minutes
+from app.services.steps_context import recent_avg_steps
 
 CHECK_INTERVAL_DAYS = 7
 # 채팅에 반영하는 점검 결과의 유효 기간 — 너무 오래된 점수로 대하지 않기.
 CONTEXT_MAX_AGE_DAYS = 30
 
 
-def _latest_survey(db: Session, user_id: int) -> SurveyResponse | None:
+def latest_completed_survey(db: Session, user_id: int) -> SurveyResponse | None:
+    """가장 최근 완료한 설문. 고위험군 판정(eating_high_risk) 재료."""
     return db.execute(
         select(SurveyResponse)
         .where(
@@ -83,7 +86,7 @@ def _previous(last: MotivationCheck | None, survey: SurveyResponse | None) -> di
 
 
 def checkin_status(db: Session, user: User) -> dict:
-    survey = _latest_survey(db, user.id)
+    survey = latest_completed_survey(db, user.id)
     last = next(iter(_last_checks(db, user.id, 1)), None)
     show_weight = not eating_high_risk(survey)
 
@@ -95,11 +98,17 @@ def checkin_status(db: Session, user: User) -> dict:
     last_weight = None
     if show_weight:
         last_weight = (last.weight_kg if last and last.weight_kg else None) or user.weight_kg
+    # 스마트폰 걸음수(최근 7일 일평균) — 참고 문구용. 점수 비교·적립과 무관하고,
+    # 고위험군(show_weight=False 와 같은 기준)에게는 숫자를 내려주지 않는다.
+    recent_steps = recent_avg_steps(db, user.id) if show_weight else None
     return {
         "due": due,
         "show_weight": show_weight,
         "previous": _previous(last, survey),
         "last_weight_kg": last_weight,
+        "recent_avg_steps": recent_steps,
+        # 최근 7일 밤 평균 수면(분). 수면은 섭식 위험과 직접 엮이지 않아 게이트 없음.
+        "recent_avg_sleep_minutes": recent_avg_sleep_minutes(db, user.id),
     }
 
 
@@ -110,7 +119,7 @@ def record_check(
     confidence: int,
     weight_kg: float | None,
 ) -> dict:
-    survey = _latest_survey(db, user.id)
+    survey = latest_completed_survey(db, user.id)
     last = next(iter(_last_checks(db, user.id, 1)), None)
     previous = _previous(last, survey)
 
@@ -152,7 +161,7 @@ def build_motivation_context(db: Session, user_id: int) -> str:
     prev = (
         {"importance": checks[1].importance, "confidence": checks[1].confidence}
         if len(checks) > 1
-        else _survey_baseline(_latest_survey(db, user_id))
+        else _survey_baseline(latest_completed_survey(db, user_id))
     )
 
     imp, conf = latest.importance, latest.confidence

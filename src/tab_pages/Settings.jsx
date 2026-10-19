@@ -11,6 +11,15 @@ import {
   NOTIF_MEAL_KEY,
 } from "../notifications/mealReminders";
 import { PRIVACY_URL, openExternal } from "../openExternal";
+import {
+  isNativeApp,
+  isHealthSyncEnabled,
+  setHealthSyncEnabled,
+  checkHealthAvailable,
+  requestHealthPermissions,
+  syncHealthIfEnabled,
+  openHealthSettings,
+} from "../health/healthData";
 import { useAiConsent } from "../notice/AiConsent";
 import { HealthSourcesModal } from "../notice/HealthSources";
 import { assetUrl } from "../api/base";
@@ -135,6 +144,86 @@ function Settings() {
       cancelMealReminders();
     }
   }, [allNotificationsOn, mealReminderOn]);
+
+  // 5-1) 건강 데이터(걸음수·수면) 연동 — 앱에서만 보이는 카드. 기본 꺼짐(선택 기능).
+  //      켜는 순간 Health Connect 권한 창(걸음수·수면)을 띄우고, 허용된 것만 최근 7일치를
+  //      바로 올린다. 포인트와 무관하고 채팅·주간 리포트·동기 점검의 참고 문구에만 쓰인다.
+  const [healthOn, setHealthOn] = useState(() => isHealthSyncEnabled());
+  const [healthBusy, setHealthBusy] = useState(false);
+  const [healthMessage, setHealthMessage] = useState("");
+  // 서버가 기억하는 마지막 동기화: {latest_day, latest_steps, sleep_latest_day, sleep_latest_minutes}
+  const [healthStatus, setHealthStatus] = useState(null);
+
+  async function refreshHealthStatus() {
+    try {
+      const res = await fetch("/api/health/status", { credentials: "include" });
+      if (res.ok) setHealthStatus(await res.json());
+    } catch {
+      // 못 불러오면 '마지막 동기화' 줄만 안 보인다
+    }
+  }
+
+  useEffect(() => {
+    if (!isNativeApp() || !healthOn) return undefined;
+    let cancelled = false;
+    fetch("/api/health/status", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setHealthStatus(data);
+      })
+      .catch(() => {}); // 못 불러오면 '마지막 동기화' 줄만 안 보인다
+    return () => {
+      cancelled = true;
+    };
+  }, [healthOn]);
+
+  async function handleToggleHealth() {
+    if (healthBusy) return;
+    if (healthOn) {
+      // 끄기: 서버에 더 올리지 않는다. 이미 준 권한은 Health Connect 에서 직접 회수 가능.
+      setHealthSyncEnabled(false);
+      setHealthOn(false);
+      setHealthMessage("");
+      return;
+    }
+    setHealthBusy(true);
+    setHealthMessage("");
+    try {
+      const avail = await checkHealthAvailable();
+      if (!avail.available) {
+        setHealthMessage(
+          "이 기기에서는 Health Connect를 쓸 수 없어요. Android 14 이상이거나 Play 스토어에서 'Health Connect' 앱을 설치해 주세요.",
+        );
+        return;
+      }
+      const perm = await requestHealthPermissions();
+      if (!perm.any) {
+        setHealthMessage(
+          "걸음수·수면 읽기 권한이 허용되지 않았어요. 아래 'Health Connect 설정 열기'에서 Cheddar의 권한을 켜 주세요.",
+        );
+        return;
+      }
+      setHealthSyncEnabled(true);
+      setHealthOn(true);
+      const result = await syncHealthIfEnabled({ force: true });
+      const gotSteps = !!result?.steps?.latest_day;
+      const gotSleep = !!result?.sleep?.latest_day;
+      if (gotSteps || gotSleep) {
+        await refreshHealthStatus();
+        const what = [gotSteps && "걸음수", gotSleep && "수면"].filter(Boolean).join("·");
+        setHealthMessage(`${what} 연동됐어요. 포인트와 관계없이 체다가 대화할 때 참고만 해요.`);
+      } else {
+        setHealthMessage(
+          "연동은 됐지만 아직 데이터가 없어요. 갤럭시라면 삼성 헬스 → 설정 → Health Connect에서 걸음수·수면 공유를 켜 주세요.",
+        );
+      }
+    } catch (err) {
+      console.error("[Settings] 건강 데이터 연동 실패:", err);
+      setHealthMessage("연동에 실패했어요. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setHealthBusy(false);
+    }
+  }
 
   // 6) 문의하기 — 관리자 쪽지 모달 표시 여부 + 입력 버퍼 + 전송 중 여부.
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
@@ -548,6 +637,63 @@ function Settings() {
         </div>
       </section>
 
+      {/* ───────── 건강 데이터 연동 카드 — 앱(안드로이드/iOS)에서만 표시 ─────────
+          걸음수·수면을 Health Connect/HealthKit 에서 읽어 참고 문구로만 쓴다(포인트 X).
+          웹에서는 읽을 방법이 없으므로 카드 자체를 그리지 않는다. */}
+      {isNativeApp() && (
+        <section className="settings-card">
+          <h3 className="settings-card-title">건강 데이터</h3>
+          <div className="notification-row">
+            <div className="notification-row-info">
+              <p className="notification-row-title">걸음수·수면 연동</p>
+              <p className="notification-row-desc">
+                걸음수와 수면을 체다가 대화·주간 리포트에서 참고해요. 포인트와는 관계없어요
+              </p>
+              {healthOn && healthStatus?.latest_day && (
+                <p className="notification-row-desc">
+                  걸음수 마지막 동기화: {healthStatus.latest_day}
+                  {healthStatus.latest_steps != null
+                    ? ` · ${Number(healthStatus.latest_steps).toLocaleString()}걸음`
+                    : ""}
+                </p>
+              )}
+              {healthOn && healthStatus?.sleep_latest_day && (
+                <p className="notification-row-desc">
+                  수면 마지막 동기화: {healthStatus.sleep_latest_day}
+                  {healthStatus.sleep_latest_minutes != null
+                    ? ` · ${formatSleep(healthStatus.sleep_latest_minutes)}`
+                    : ""}
+                </p>
+              )}
+              {healthMessage && (
+                <p className="notification-row-desc" style={{ color: "#7A756B", marginTop: 6 }}>
+                  {healthMessage}
+                </p>
+              )}
+            </div>
+            <ToggleSwitch
+              isOn={healthOn}
+              onClick={handleToggleHealth}
+              disabled={healthBusy}
+              label="걸음수·수면 연동"
+            />
+          </div>
+          <div className="notification-row">
+            <div className="notification-row-info">
+              <p className="notification-row-title">데이터가 안 보일 때</p>
+              <p className="notification-row-desc">
+                갤럭시: 삼성 헬스 → 설정 → Health Connect → 걸음수·수면 공유 켜기. 삼성 헬스의
+                배터리 사용을 '제한 없음'으로 두면 동기화가 끊기지 않아요
+              </p>
+            </div>
+          </div>
+          <button type="button" className="settings-list-row" onClick={openHealthSettings}>
+            Health Connect 설정 열기
+            <span className="settings-list-row-arrow">›</span>
+          </button>
+        </section>
+      )}
+
       {/* ───────── AI·건강 정보 카드 (App Store 5.1.2 동의 철회 · 1.4.1 출처) ───────── */}
       <section className="settings-card">
         <h3 className="settings-card-title">AI·건강 정보</h3>
@@ -733,6 +879,15 @@ function Settings() {
       )}
     </div>
   );
+}
+
+// 수면 분 → '6시간 30분'. 서버(sleep_context.fmt_minutes)와 같은 표기.
+function formatSleep(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h && m) return `${h}시간 ${m}분`;
+  if (h) return `${h}시간`;
+  return `${m}분`;
 }
 
 // ────────────────────────────────────────────────────────

@@ -33,6 +33,8 @@ import OAuthKakaoCallback from './auth/OAuthKakaoCallback';
 import ProtectedRoute from './auth/ProtectedRoute';
 import { KakaoDeepLinkHandler } from './auth/kakaoNative';
 import { syncMealReminders } from './notifications/mealReminders';
+import { syncHealthIfEnabled, isNativeApp } from './health/healthData';
+import { App as CapApp } from '@capacitor/app';
 import MotivationCheck from './MotivationCheck';
 import { AiConsentProvider } from './notice/AiConsent';
 
@@ -82,6 +84,20 @@ function MainShell() {
     syncMealReminders().catch((err) =>
       console.error("[Notif] 식단 알림 동기화 실패:", err),
     );
+  }, []);
+
+  // 건강 데이터(걸음수·수면) 동기화 — 설정에서 연동을 켠 사용자만. 앱 진입 시 한 번,
+  // 그리고 백그라운드에서 돌아올 때마다(10분 간격 제한은 모듈 안에서). 웹은 no-op.
+  // 채팅·리포트가 "오늘 걸음수·어젯밤 수면"을 최대한 최신으로 보게 하기 위해 복귀 때도 올린다.
+  useEffect(() => {
+    if (!isNativeApp()) return undefined;
+    syncHealthIfEnabled();
+    const sub = CapApp.addListener("appStateChange", ({ isActive }) => {
+      if (isActive) syncHealthIfEnabled();
+    });
+    return () => {
+      sub.then((h) => h.remove()).catch(() => {});
+    };
   }, []);
 
   // 설문 게이트: 로그인 후 첫 진입 시 띄워야 할 설문(온보딩/주기)이 있는지 확인.

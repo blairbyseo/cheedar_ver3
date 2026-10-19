@@ -45,6 +45,54 @@ const weekLabel = (n) => (n === 0 ? "이번 주" : n === 1 ? "지난 주" : `${n
 // 막대 높이(%) — 0 이어도 바닥선이 보이게 최소 2%
 const barPct = (v, max) => (max > 0 ? Math.max(2, Math.round((v / max) * 100)) : 2);
 
+// 수면 분 → '6시간 30분' (서버 sleep_context.fmt_minutes · 설정 화면과 같은 표기)
+function formatSleep(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h && m) return `${h}시간 ${m}분`;
+  if (h) return `${h}시간`;
+  return `${m}분`;
+}
+
+// 걸음수·수면 — 앱에서 건강 데이터를 연동한 사용자만 값이 온다(아니면 null).
+// 포인트·평가와 무관한 '정보 표현'이라 숫자만 보여주고 목표·비교 문구는 두지 않는다.
+function WeeklyHealth({ week }) {
+  const hasSteps = week?.avg_steps != null;
+  const hasSleep = week?.avg_sleep_minutes != null;
+  if (!hasSteps && !hasSleep) return null;
+  return (
+    <section className="report-section">
+      <h2 className="report-section-title">걸음수 · 수면</h2>
+      <div className="report-nutri-grid report-health-grid">
+        {hasSteps && (
+          <div className="report-nutri-item steps">
+            <p className="report-nutri-label">걸음수</p>
+            <p className="report-nutri-value">{week.avg_steps.toLocaleString()}</p>
+            <p className="report-nutri-unit">걸음 (하루 평균)</p>
+          </div>
+        )}
+        {hasSleep && (
+          <div className="report-nutri-item sleep">
+            <p className="report-nutri-label">수면</p>
+            <p className="report-nutri-value">
+              {Math.floor(week.avg_sleep_minutes / 60)}
+              <span className="report-nutri-sub">시간</span>
+              {week.avg_sleep_minutes % 60 > 0 && (
+                <>
+                  {week.avg_sleep_minutes % 60}
+                  <span className="report-nutri-sub">분</span>
+                </>
+              )}
+            </p>
+            <p className="report-nutri-unit">(밤 평균)</p>
+          </div>
+        )}
+      </div>
+      <p className="report-section-footer">건강 앱에서 가져온 참고 수치예요</p>
+    </section>
+  );
+}
+
 // 체다의 한마디 — 이번 주 기록에 대한 AI 피드백(GET /api/reports/weekly-feedback).
 // 서버가 하루 한 번만 만들어 저장해 두므로 화면을 여러 번 열어도 AI 를 다시 부르지 않는다.
 function WeeklyFeedback() {
@@ -86,51 +134,37 @@ function WeeklyFeedback() {
 }
 
 // 최근 4주 비교 — 옛 웹의 '주간 비교 그래프' 이식. 집계는 서버(GET /api/reports/weekly-compare)가
-// 한 번에 해 준다. 그래프는 라이브러리 없이 CSS 막대로 그린다.
-function WeeklyCompare() {
-  const [weeks, setWeeks] = useState([]);
-  const [state, setState] = useState("loading"); // loading | ok | error
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/reports/weekly-compare?weeks=4", { credentials: "include" })
-      .then((res) => {
-        if (!res.ok) throw new Error(`weekly-compare ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        if (cancelled) return;
-        setWeeks(data);
-        setState("ok");
-      })
-      .catch((err) => {
-        console.error("[WeeklyReport] compare load failed:", err);
-        if (!cancelled) setState("error");
-      });
-    return () => { cancelled = true; };
-  }, []);
-
+// 한 번에 해 준다(조회는 부모 WeeklyReport 가 하고 weeks 로 넘긴다). 그래프는 라이브러리 없이 CSS 막대.
+function WeeklyCompare({ weeks, state }) {
   if (state === "error") return null;
 
   const maxSnack = Math.max(0, ...weeks.map((w) => w.snack_count));
   const maxKcal = Math.max(0, ...weeks.map((w) => w.avg_calories));
+  // 걸음·수면은 연동 안 한 주가 null — 하나라도 값이 있는 경우에만 차트를 그린다.
+  const stepsWeeks = weeks.filter((w) => w.avg_steps != null);
+  const sleepWeeks = weeks.filter((w) => w.avg_sleep_minutes != null);
+  const maxSteps = Math.max(0, ...stepsWeeks.map((w) => w.avg_steps));
+  const maxSleep = Math.max(0, ...sleepWeeks.map((w) => w.avg_sleep_minutes));
 
-  // 한 주에 막대 여러 개(series) 를 나란히 그린다.
-  const chart = (series, max, unit) => (
+  // 한 주에 막대 여러 개(series) 를 나란히 그린다. fmt 는 값 라벨 표기(기본 숫자), null 은 '-'.
+  const chart = (series, max, unit, fmt = (v) => v.toLocaleString()) => (
     <div className="cmp-chart">
       {weeks.map((w) => (
         <div className={`cmp-group${w.weeks_ago === 0 ? " is-current" : ""}`} key={w.week_start}>
           <div className="cmp-bars">
-            {series.map(({ key, cls }) => (
-              <div className="cmp-bar-col" key={key}>
-                <span className="cmp-val">{w[key].toLocaleString()}</span>
-                <div
-                  className={`cmp-bar ${cls}`}
-                  style={{ height: `${barPct(w[key], max)}%` }}
-                  aria-label={`${weekLabel(w.weeks_ago)} ${w[key]}${unit}`}
-                />
-              </div>
-            ))}
+            {series.map(({ key, cls }) => {
+              const v = w[key];
+              return (
+                <div className="cmp-bar-col" key={key}>
+                  <span className="cmp-val">{v == null ? "-" : fmt(v)}</span>
+                  <div
+                    className={`cmp-bar ${cls}`}
+                    style={{ height: `${barPct(v ?? 0, max)}%` }}
+                    aria-label={`${weekLabel(w.weeks_ago)} ${v == null ? "기록 없음" : `${fmt(v)}${unit}`}`}
+                  />
+                </div>
+              );
+            })}
           </div>
           <span className="cmp-label">{weekLabel(w.weeks_ago)}</span>
         </div>
@@ -166,6 +200,20 @@ function WeeklyCompare() {
           <p className="cmp-subtitle">기록한 날 평균 섭취 칼로리 (kcal)</p>
           {chart([{ key: "avg_calories", cls: "kcal" }], maxKcal, "kcal")}
 
+          {stepsWeeks.length > 0 && (
+            <>
+              <p className="cmp-subtitle">하루 평균 걸음수 (걸음)</p>
+              {chart([{ key: "avg_steps", cls: "steps" }], maxSteps, "걸음")}
+            </>
+          )}
+
+          {sleepWeeks.length > 0 && (
+            <>
+              <p className="cmp-subtitle">밤 평균 수면</p>
+              {chart([{ key: "avg_sleep_minutes", cls: "sleep" }], maxSleep, "", formatSleep)}
+            </>
+          )}
+
           <p className="report-section-footer">이번 주는 오늘까지의 기록이에요</p>
         </>
       )}
@@ -180,6 +228,29 @@ function WeeklyReport({ onBack }) {
   // 운동 합계 — 총 소모 칼로리, 총 운동 시간(분), 운동한 날 수
   const [exercise, setExercise] = useState({ burned: 0, minutes: 0, days: 0 });
   const [status, setStatus] = useState("loading"); // loading | ok | error
+  // 최근 4주 집계(서버) — 4주 비교 그래프와 이번 주 걸음·수면 카드가 함께 쓴다.
+  const [weeks, setWeeks] = useState([]);
+  const [weeksState, setWeeksState] = useState("loading"); // loading | ok | error
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/reports/weekly-compare?weeks=4", { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`weekly-compare ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setWeeks(data);
+        setWeeksState("ok");
+      })
+      .catch((err) => {
+        console.error("[WeeklyReport] compare load failed:", err);
+        if (!cancelled) setWeeksState("error");
+      });
+    return () => { cancelled = true; };
+  }, []);
+  const thisWeek = weeks.find((w) => w.weeks_ago === 0);
 
   const dates = thisWeekDates();
   const rangeStart = dates[0];
@@ -429,6 +500,9 @@ function WeeklyReport({ onBack }) {
             </section>
           )}
 
+          {/* 걸음수·수면 — 앱에서 건강 데이터를 연동한 사용자만 보인다 */}
+          <WeeklyHealth week={thisWeek} />
+
           {/* 아무 기록도 없을 때 안내 */}
           {recordedDays === 0 && exercise.days === 0 && (
             <p className="report-state">
@@ -436,7 +510,7 @@ function WeeklyReport({ onBack }) {
             </p>
           )}
 
-          <WeeklyCompare />
+          <WeeklyCompare weeks={weeks} state={weeksState} />
         </>
       )}
     </div>
