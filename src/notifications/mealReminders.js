@@ -60,8 +60,9 @@ export async function scheduleMealReminders() {
       id: m.id,
       title: m.title,
       body: m.body,
-      // on: { hour, minute } 만 지정하면 매일 그 시각에 반복
-      schedule: { on: { hour: m.hour, minute: m.minute }, allowWhileIdle: true },
+      // on: { hour, minute } 이면 매일 그 시각에 반복. second 를 비우면 예약한 순간의 초가
+      // 그대로 붙어 08:00:47 처럼 울리므로(실기기 확인) 0 으로 고정한다.
+      schedule: { on: { hour: m.hour, minute: m.minute, second: 0 }, allowWhileIdle: true },
     })),
   });
   return true;
