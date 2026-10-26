@@ -37,6 +37,7 @@ import { syncWeeklyReportReminder } from './notifications/reportReminder';
 import { checkRankUp, setRankOwner } from './notifications/rankAlert';
 import { subscribePointsChanged } from './usePoints';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { checkAppUpdate } from './appUpdate';
 import { syncHealthIfEnabled, isNativeApp } from './health/healthData';
 import { App as CapApp } from '@capacitor/app';
 import MotivationCheck from './MotivationCheck';
@@ -110,6 +111,18 @@ function MainShell() {
       sub?.then((h) => h.remove()).catch(() => {});
     };
   }, [user?.id]);
+
+  // 새 버전 안내(Play 인앱 업데이트) — 앱 진입·복귀 때 확인. '나중에'면 하루 쉰다(appUpdate.js).
+  useEffect(() => {
+    if (!isNativeApp()) return undefined;
+    checkAppUpdate();
+    const sub = CapApp.addListener("appStateChange", ({ isActive }) => {
+      if (isActive) checkAppUpdate();
+    });
+    return () => {
+      sub.then((h) => h.remove()).catch(() => {});
+    };
+  }, []);
 
   // 알림을 누르면 해당 탭으로 — 주간 리포트(report)·랭킹(ranking). 식단 알림은 extra 가 없어 홈 그대로.
   useEffect(() => {
