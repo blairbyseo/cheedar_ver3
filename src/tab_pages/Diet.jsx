@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePoints, refreshPoints } from "../usePoints";
 import Exercise from "./Exercise";
 import RecordDateNav from "./RecordDateNav";
-import { dayWord, todayStr } from "../utils/recordDate";
+import { dayWord, isViewOnlyDate, todayStr } from "../utils/recordDate";
 import { useAiConsent } from "../notice/AiConsent";
 import { HealthSourcesLink } from "../notice/HealthSources";
 import { assetUrl } from "../api/base";
@@ -138,6 +138,8 @@ function Diet() {
   // 기록할 날짜("YYYY-MM-DD"). 식단/운동 공용 — 토글을 오가도 유지된다.
   const [recordDate, setRecordDate] = useState(todayStr);
   const isToday = recordDate === todayStr();
+  // 7일이 지난 날 — 지난 식단을 보기만 한다(추가·수정·삭제 없음). 서버도 추가는 7일까지만 받는다.
+  const viewOnly = isViewOnlyDate(recordDate);
 
   // 현재 선택된 끼니의 상태 라벨 — 기록했으면 '완료', 오늘인데 아직 그 시간대 전이면 '예정',
   // 그 외 기록이 없으면 '미기록'. (todayStatus 는 선택한 날짜의 현황)
@@ -152,7 +154,7 @@ function Diet() {
   const currentMealStatus = todayStatus.find((s) => s.id === selectedMealType);
   const hasRecord = currentMealStatus?.state === "done";
   const selectedMealLabel = currentMealStatus?.label ?? "";
-  const shouldShowUploadUI = !hasRecord || isAdding || editingMeal != null;
+  const shouldShowUploadUI = !viewOnly && (!hasRecord || isAdding || editingMeal != null);
   const mealsOfType = savedMeals.filter((m) => m.meal_type === selectedMealType);
 
   const resultRef = useRef(null);
@@ -697,7 +699,11 @@ function Diet() {
               </div>
             ) : !shouldShowUploadUI ? (
               <div className="meal-upload-area">
-                <p className="meal-upload-title">✓ {selectedMealLabel} 기록 완료</p>
+                <p className="meal-upload-title">
+                  {hasRecord
+                    ? `✓ ${selectedMealLabel} 기록 완료`
+                    : `이 날은 ${selectedMealLabel} 기록이 없어요`}
+                </p>
                 {mealsOfType.length > 0 && (
                   <ul className="saved-meal-list">
                     {mealsOfType.map((m) => (
@@ -714,30 +720,36 @@ function Diet() {
                             </p>
                           )}
                         </div>
-                        <div className="saved-meal-actions">
-                          <button type="button" onClick={() => startEdit(m)}>
-                            수정
-                          </button>
-                          <button
-                            type="button"
-                            className="is-danger"
-                            onClick={() => handleDeleteMeal(m)}
-                          >
-                            삭제
-                          </button>
-                        </div>
+                        {!viewOnly && (
+                          <div className="saved-meal-actions">
+                            <button type="button" onClick={() => startEdit(m)}>
+                              수정
+                            </button>
+                            <button
+                              type="button"
+                              className="is-danger"
+                              onClick={() => handleDeleteMeal(m)}
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
                 )}
-                <p className="meal-upload-sub">추가 기록하려면 아래 버튼을 누르세요</p>
-                <button
-                  type="button"
-                  className="meal-upload-button"
-                  onClick={() => setIsAdding(true)}
-                >
-                  추가하기
-                </button>
+                {!viewOnly && (
+                  <>
+                    <p className="meal-upload-sub">추가 기록하려면 아래 버튼을 누르세요</p>
+                    <button
+                      type="button"
+                      className="meal-upload-button"
+                      onClick={() => setIsAdding(true)}
+                    >
+                      추가하기
+                    </button>
+                  </>
+                )}
               </div>
             ) : uploadedImagePreview ? (
               <>

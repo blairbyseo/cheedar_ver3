@@ -40,6 +40,11 @@ export function oldestRecordDateStr() {
   return addDays(todayStr(), -BACKFILL_DAYS);
 }
 
+// 기록(추가·수정·삭제)은 최근 BACKFILL_DAYS 일까지만, 그보다 지난 날은 보기만 한다.
+export function isViewOnlyDate(s) {
+  return s < oldestRecordDateStr();
+}
+
 // 화면 표시용: "9월 27일 (토)"
 export function formatDateLabel(s) {
   const d = parseDateStr(s);

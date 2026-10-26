@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { refreshPoints } from "../usePoints";
-import { dayWord, todayStr } from "../utils/recordDate";
+import { dayWord, isViewOnlyDate, todayStr } from "../utils/recordDate";
 import { useAiConsent } from "../notice/AiConsent";
 import {
   lookupKnownMet,
@@ -91,6 +91,8 @@ function Exercise({ onBack, embedded = false, date }) {
   const hasDuration = Number(hours) > 0 || Number(minutes) > 0;
   // 저장된 기록을 읽기 전용으로 보여줄지 (편집 중이 아니고, 안함 기록도 아닐 때)
   const showSavedReadOnly = savedForToday && !isEditing && !isSkipped;
+  // 7일이 지난 날 — 보기만 한다(입력 폼·수정 버튼 없음). 서버도 기록은 7일까지만 받는다.
+  const viewOnly = isViewOnlyDate(recordDate);
 
   async function handleAddExercise() {
     const trimmed = name.trim();
@@ -255,13 +257,24 @@ function Exercise({ onBack, embedded = false, date }) {
             <span>총 소모 칼로리</span>
             <strong>{Math.round(totalKcal)} kcal</strong>
           </div>
-          <button
-            type="button"
-            className="exercise-edit-button"
-            onClick={() => setIsEditing(true)}
-          >
-            수정하기
-          </button>
+          {!viewOnly && (
+            <button
+              type="button"
+              className="exercise-edit-button"
+              onClick={() => setIsEditing(true)}
+            >
+              수정하기
+            </button>
+          )}
+        </section>
+      ) : viewOnly ? (
+        // 7일이 지난 날 — 운동 안 함 기록이거나 기록이 없을 때
+        <section className="exercise-card">
+          <p className="exercise-skip-text">
+            {savedForToday && isSkipped
+              ? `${wordTopic} 운동 안 함으로 기록했어요`
+              : `${wordTopic} 운동 기록이 없어요`}
+          </p>
         </section>
       ) : isSkipped ? (
         // "운동 안 함" 상태

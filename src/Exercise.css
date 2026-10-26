@@ -67,19 +67,45 @@
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
+  flex-direction: column; /* 1줄: 날짜(정가운데) / 2줄: 오늘·어제 표시 + 오늘로 */
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
+  padding: 2px 0;
+  min-height: 50px; /* '오늘로' 줄이 없는 오늘도 같은 높이 — 날짜를 오갈 때 바가 출렁이지 않게 */
+  position: relative; /* 투명 날짜 입력(.record-date-picker)을 이 영역 위에 겹친다 */
+  align-self: stretch; /* 화살표 높이만큼 — 날짜를 누르는 영역이 글자 높이(18px)로 좁아지지 않게 */
 }
 
 .record-date-label {
+  display: inline-flex;
+  align-items: center;
   font-size: 15px;
   font-weight: 700;
   color: var(--text-main);
   white-space: nowrap;
 }
 
+/* 날짜를 누를 수 있다는 표시(달력이 열림) */
+.record-date-caret {
+  margin-left: 4px;
+  color: var(--text-sub);
+  flex-shrink: 0;
+}
+
+/* 가운데 영역 전체를 덮는 투명 date 입력 — 누르면 기기 달력이 뜬다 */
+.record-date-picker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  cursor: pointer;
+}
+
 .record-date-chip {
+  margin-left: 6px;
   padding: 2px 8px;
   border-radius: 999px;
   background: #F1ECDD;
@@ -94,14 +120,22 @@
   color: var(--primary-strong);
 }
 
+/* 날짜 아래 작은 줄 — 투명 달력 입력보다 위에 둬야 '오늘로'가 눌린다 */
+.record-date-sub {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .record-date-today {
-  flex: 0 0 auto;
-  padding: 8px 10px;
+  padding: 2px 10px;
   border: none;
-  border-radius: 10px;
+  border-radius: 999px;
   background: var(--primary-soft);
   color: var(--primary-strong);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
