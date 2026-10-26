@@ -13,7 +13,9 @@
  * - 읽기는 steps·sleep 두 가지만 요청한다(매니페스트도 READ_STEPS·READ_SLEEP 만 남김).
  *
  * 갤럭시 주의: 삼성 헬스가 Health Connect 에 데이터를 넘겨주려면 사용자가
- * 삼성 헬스 → 설정 → Health Connect 에서 동기화를 켜야 한다(기본 꺼짐인 경우 있음).
+ * 삼성 헬스 → 설정 → 연결된 앱 및 서비스 → "헬스 커넥트"(한글 표기)에서 삼성 헬스의
+ * 걸음수·수면 '쓰기'를 허용해야 한다(기본 꺼짐). Cheddar 쪽 읽기 권한만 있고 이게 꺼져
+ * 있으면 오류 없이 빈 결과만 온다. 허용 직후에도 삼성 헬스가 몰아서 보내 바로 안 보일 수 있다.
  */
 import { Capacitor } from "@capacitor/core";
 import { Health } from "@capgo/capacitor-health";
@@ -90,13 +92,36 @@ export async function checkHealthPermissions() {
   }
 }
 
-/** Health Connect 설정 화면(권한·연결된 앱)을 연다. 안드로이드 전용. */
+// Android 13 이하는 Health Connect 가 기본 탑재가 아니라 Play 스토어에서 따로 받아야 한다.
+// url=healthconnect://onboarding 은 Google 이 안내하는 설치 링크 형식 — 설치 후 온보딩으로 이어진다.
+// https 링크라 Capacitor 가 WebView 밖(Play 스토어 앱)으로 넘긴다.
+const HEALTH_CONNECT_INSTALL_URL =
+  "https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata&url=healthconnect%3A%2F%2Fonboarding";
+
+/** 플러그인의 isAvailable reason 으로 "설치(또는 업데이트)하면 쓸 수 있는" 상태인지 판단. */
+export function healthConnectNeedsInstall(reason) {
+  return Capacitor.getPlatform() === "android" && /needs an update/i.test(reason || "");
+}
+
+/** Play 스토어의 Health Connect 설치 페이지를 연다. 안드로이드 전용. */
+export function openHealthConnectInstall() {
+  if (Capacitor.getPlatform() !== "android") return;
+  window.location.href = HEALTH_CONNECT_INSTALL_URL;
+}
+
+/**
+ * Health Connect 설정 화면(권한·연결된 앱)을 연다. 안드로이드 전용.
+ * 설치가 안 된 기기에선 설정 화면이 없어 열기가 실패하므로 설치 페이지로 보낸다
+ * (2026-10-26 Galaxy A9 Pro/Android 10 실기기에서 아무 반응 없던 문제).
+ */
 export async function openHealthSettings() {
   if (!isNativeApp()) return;
   try {
     await Health.openHealthConnectSettings();
   } catch (err) {
     console.error("[Health] 설정 열기 실패:", err);
+    const avail = await checkHealthAvailable();
+    if (healthConnectNeedsInstall(avail.reason)) openHealthConnectInstall();
   }
 }
 

@@ -19,6 +19,8 @@ import {
   requestHealthPermissions,
   syncHealthIfEnabled,
   openHealthSettings,
+  openHealthConnectInstall,
+  healthConnectNeedsInstall,
 } from "../health/healthData";
 import { useAiConsent } from "../notice/AiConsent";
 import { HealthSourcesModal } from "../notice/HealthSources";
@@ -153,6 +155,19 @@ function Settings() {
   const [healthMessage, setHealthMessage] = useState("");
   // 서버가 기억하는 마지막 동기화: {latest_day, latest_steps, sleep_latest_day, sleep_latest_minutes}
   const [healthStatus, setHealthStatus] = useState(null);
+  // Health Connect 미설치(Android 13 이하) — 아래 행을 '설정 열기' 대신 '설치하기'로 바꾼다.
+  const [healthNeedsInstall, setHealthNeedsInstall] = useState(false);
+
+  useEffect(() => {
+    if (!isNativeApp()) return undefined;
+    let cancelled = false;
+    checkHealthAvailable().then((avail) => {
+      if (!cancelled) setHealthNeedsInstall(healthConnectNeedsInstall(avail.reason));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function refreshHealthStatus() {
     try {
@@ -191,11 +206,16 @@ function Settings() {
     try {
       const avail = await checkHealthAvailable();
       if (!avail.available) {
+        const needsInstall = healthConnectNeedsInstall(avail.reason);
+        setHealthNeedsInstall(needsInstall);
         setHealthMessage(
-          "이 기기에서는 Health Connect를 쓸 수 없어요. Android 14 이상이거나 Play 스토어에서 'Health Connect' 앱을 설치해 주세요.",
+          needsInstall
+            ? "먼저 Health Connect 앱이 필요해요. 아래 'Health Connect 설치하기'를 눌러 설치한 뒤 다시 켜 주세요."
+            : "이 기기에서는 Health Connect를 쓸 수 없어요.",
         );
         return;
       }
+      setHealthNeedsInstall(false);
       const perm = await requestHealthPermissions();
       if (!perm.any) {
         setHealthMessage(
@@ -214,7 +234,7 @@ function Settings() {
         setHealthMessage(`${what} 연동됐어요. 포인트와 관계없이 체다가 대화할 때 참고만 해요.`);
       } else {
         setHealthMessage(
-          "연동은 됐지만 아직 데이터가 없어요. 갤럭시라면 삼성 헬스 → 설정 → Health Connect에서 걸음수·수면 공유를 켜 주세요.",
+          "연동은 됐지만 아직 데이터가 없어요. 갤럭시라면 삼성 헬스 → 설정 → 연결된 앱 및 서비스 → 헬스 커넥트에서 걸음수·수면을 허용해 주세요. 허용 후 데이터가 넘어오기까지 시간이 걸릴 수 있어요.",
         );
       }
     } catch (err) {
@@ -682,15 +702,22 @@ function Settings() {
             <div className="notification-row-info">
               <p className="notification-row-title">데이터가 안 보일 때</p>
               <p className="notification-row-desc">
-                갤럭시: 삼성 헬스 → 설정 → Health Connect → 걸음수·수면 공유 켜기. 삼성 헬스의
-                배터리 사용을 '제한 없음'으로 두면 동기화가 끊기지 않아요
+                갤럭시: 삼성 헬스 → 설정 → 연결된 앱 및 서비스 → 헬스 커넥트에서 걸음수·수면
+                허용하기. 삼성 헬스의 배터리 사용을 '제한 없음'으로 두면 동기화가 끊기지 않아요
               </p>
             </div>
           </div>
-          <button type="button" className="settings-list-row" onClick={openHealthSettings}>
-            Health Connect 설정 열기
-            <span className="settings-list-row-arrow">›</span>
-          </button>
+          {healthNeedsInstall ? (
+            <button type="button" className="settings-list-row" onClick={openHealthConnectInstall}>
+              Health Connect 설치하기
+              <span className="settings-list-row-arrow">›</span>
+            </button>
+          ) : (
+            <button type="button" className="settings-list-row" onClick={openHealthSettings}>
+              Health Connect 설정 열기
+              <span className="settings-list-row-arrow">›</span>
+            </button>
+          )}
         </section>
       )}
 
