@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,8 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.security import create_access_token, hash_password, verify_password
+from app.models.daily_sleep import DailySleep
+from app.models.daily_steps import DailySteps
 from app.models.invite_code import InviteCode, normalize_code
 from app.models.meal import Meal
 from app.models.user import User
@@ -434,6 +436,7 @@ def withdraw(
     - 즉시 제거: 카카오ID, Apple ID(토큰 revoke 포함), AI 동의, 이메일, 비밀번호,
       닉네임, 프로필 사진(파일까지),
       식단 사진 파일(S3 객체까지), 관리자 권한
+      스마트폰 건강 데이터(걸음수·수면 행 자체)
     - 익명으로 유지: 식단 영양수치, 운동, 설문 응답, 감정, 채팅, 포인트
     - user_id 는 `deleted#{id}` 로 치환 — '#' 는 아이디 규칙상 쓸 수 없는
       문자라 다른 사람이 이 아이디로 가입해 겹칠 일이 없다.
@@ -470,6 +473,10 @@ def withdraw(
         .where(Meal.user_id == current_user.id)
         .values(image_path=None)
     )
+    # 스마트폰 건강 데이터(Health Connect/HealthKit 걸음수·수면)는 통계로도 남기지 않고 지운다.
+    # Health Connect 정책상 사용자가 삭제를 요청할 수 있어야 하고, 연구 데이터도 아니다.
+    db.execute(delete(DailySteps).where(DailySteps.user_id == current_user.id))
+    db.execute(delete(DailySleep).where(DailySleep.user_id == current_user.id))
     current_user.kakao_id = None
     current_user.apple_sub = None
     current_user.apple_refresh_token = None
