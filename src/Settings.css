@@ -388,6 +388,13 @@
   padding-top: 0;
 }
 
+/* 토글 행 아래에 붙은 링크 칸(건강 데이터 'Health Connect 설정 열기', AI·건강 정보
+   '건강 정보 참고 자료')은 카드의 첫 버튼이자 마지막 칸이라 위 규칙들로 위아래 여백이
+   모두 0 이 돼 구분선에 글씨가 붙었다. 위 여백만 목록 칸과 같게 되살린다. */
+.notification-row + .settings-list-row {
+  padding-top: 12px;
+}
+
 .settings-list-row-arrow {
   font-size: 14px;
   color: var(--text-muted);
