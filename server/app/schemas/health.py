@@ -43,3 +43,9 @@ class HealthStatusOut(BaseModel):
     updated_at: datetime | None = None
     sleep_latest_day: DateType | None = None
     sleep_latest_minutes: int | None = None
+
+
+class HealthGreetingOut(BaseModel):
+    """홈 인삿말 한 줄. 쓸 건강 데이터가 없으면 text=None → 홈은 기존 인사말 사용."""
+
+    text: str | None = None

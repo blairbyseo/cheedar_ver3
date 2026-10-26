@@ -1,4 +1,5 @@
 /*5-1. Home.jsx: App.jsx 파일에 걸림*/
+import { useEffect, useState } from "react";
 import TalkingCharacter from "../TalkingCharacter";
 import {RankingIcon} from "../charticons/RankingIcon";
 import {BadgeIcon} from "../charticons/BadgeIcon";
@@ -100,7 +101,22 @@ function Home({setActiveTab}) {
   const userName = authUser?.nickname || points?.user_id;
   // 지금 시간대의 인사말 후보 중 오늘 날짜로 하나 선택 (매일 조금씩 바뀜).
   const greetingPool = GREETINGS[currentMeal];
-  const greeting = greetingPool[date % greetingPool.length];
+  // 스마트폰 건강 데이터(어젯밤 잠·오늘 걸음)가 있으면 그 안부를 먼저 건넨다.
+  // 문구·고위험군 제외 판단은 서버(GET /api/health/greeting)가 하고, 없으면 위 인사말을 쓴다.
+  const [healthGreeting, setHealthGreeting] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/health/greeting", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.text) setHealthGreeting(data.text);
+      })
+      .catch(() => {}); // 못 불러오면 기존 인사말 그대로
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const greeting = healthGreeting || greetingPool[date % greetingPool.length];
 
   // 끼니별 상태 라벨 — 기록했으면 '완료', 아직 그 시간대 전이면 '예정',
   // 시간대가 지났는데 기록이 없으면 '미기록'.

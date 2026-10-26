@@ -3,11 +3,12 @@
 - POST /api/health/steps  : 앱이 읽은 일별 걸음수를 올린다(같은 날은 덮어씀)
 - POST /api/health/sleep  : 앱이 조각을 합쳐 만든 하룻밤 수면을 올린다(같은 날은 덮어씀)
 - GET  /api/health/status : 마지막으로 동기화된 날/값(설정 화면 표시용)
+- GET  /api/health/greeting : 홈 인삿말 한 줄(services/health_greeting.py)
 
 둘 다 포인트 적립에 쓰지 않는다. 저장만 하고, 맥락 변환은
 services/steps_context.py · services/sleep_context.py 가 맡는다.
 """
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -18,8 +19,16 @@ from app.core.deps import get_current_user
 from app.models.daily_sleep import DailySleep
 from app.models.daily_steps import DailySteps
 from app.models.user import User
-from app.schemas.health import HealthStatusOut, SleepSyncIn, StepsSyncIn, StepsSyncOut
-from app.services.record_dates import kst_today
+from app.schemas.health import (
+    HealthGreetingOut,
+    HealthStatusOut,
+    SleepSyncIn,
+    StepsSyncIn,
+    StepsSyncOut,
+)
+from app.services.health_greeting import build_home_greeting
+from app.services.motivation import eating_high_risk, latest_completed_survey
+from app.services.record_dates import KST, kst_today
 
 router = APIRouter(prefix="/api/health", tags=["health"])
 
@@ -129,3 +138,16 @@ def health_status(
     if sleep is not None:
         out.sleep_latest_day, out.sleep_latest_minutes = sleep.day, sleep.asleep_minutes
     return out
+
+
+@router.get("/greeting", response_model=HealthGreetingOut)
+def health_greeting(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> HealthGreetingOut:
+    high_risk = eating_high_risk(latest_completed_survey(db, current_user.id))
+    return HealthGreetingOut(
+        text=build_home_greeting(
+            db, current_user.id, hour=datetime.now(KST).hour, high_risk=high_risk
+        )
+    )
