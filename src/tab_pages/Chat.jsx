@@ -159,6 +159,13 @@ function paintFrame() {
         if (line) applyStreamEvent(JSON.parse(line));
       }
     }
+
+    // 줄바꿈 없이 끝난 마지막 줄도 처리한다. 앱(CapacitorHttp)은 응답을 줄 단위로 읽어
+    // 다시 이으면서 맨 끝 줄바꿈을 버리므로, 마지막 "done" 이벤트가 여기 남는다.
+    // 이걸 버리면 AI 버블의 _streaming 표시가 영영 안 지워져 다음 전송부터 입력중(●●●)이
+    // 안 뜬다 — 앱을 새로 켠 뒤 첫 질문에서만 보이던 원인 (2026-10-26 실기기 확인).
+    const rest = (buffer + decoder.decode()).trim();
+    if (rest) applyStreamEvent(JSON.parse(rest));
   }
 
   // 기분 체크인 직후, AI 가 먼저 인사하도록 opener 스트림을 받아 화면에 흘린다.
