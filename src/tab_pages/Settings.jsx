@@ -10,6 +10,12 @@ import {
   NOTIF_ALL_KEY,
   NOTIF_MEAL_KEY,
 } from "../notifications/mealReminders";
+import {
+  scheduleWeeklyReportReminder,
+  cancelWeeklyReportReminder,
+  NOTIF_WEEKLY_KEY,
+} from "../notifications/reportReminder";
+import { NOTIF_RANKING_KEY } from "../notifications/rankAlert";
 import { PRIVACY_URL, openExternal } from "../openExternal";
 import {
   isNativeApp,
@@ -133,8 +139,16 @@ function Settings() {
   const [mealReminderOn, setMealReminderOn] = useState(
     () => localStorage.getItem(NOTIF_MEAL_KEY) !== "off",
   );
-  // 랭킹·주간 리포트 알림은 서버 푸시(FCM)가 필요해 아직 못 만들었다.
-  // 화면에서는 '준비 중'으로 잠가두므로 켜고 끌 상태 자체가 없다.
+  // 랭킹·주간 리포트 알림도 서버 푸시 없이 로컬 알림으로 만든다(2026-10-26).
+  //   주간 리포트: 매주 일요일 20시 예약(notifications/reportReminder.js)
+  //   랭킹: 포인트가 바뀐 뒤 순위가 오르면 바로 알림(notifications/rankAlert.js) — 예약할 게
+  //         없으므로 토글은 저장만 하고, 알릴지 말지는 rankAlert 가 그때 저장값을 본다.
+  const [weeklyReportOn, setWeeklyReportOn] = useState(
+    () => localStorage.getItem(NOTIF_WEEKLY_KEY) !== "off",
+  );
+  const [rankingAlertOn, setRankingAlertOn] = useState(
+    () => localStorage.getItem(NOTIF_RANKING_KEY) !== "off",
+  );
 
   // 식단 기록 알림 토글(+마스터) → 실제 로컬 알림 예약/취소 동기화. 앱에서만 동작, 웹은 no-op.
   useEffect(() => {
@@ -146,6 +160,19 @@ function Settings() {
       cancelMealReminders();
     }
   }, [allNotificationsOn, mealReminderOn]);
+
+  useEffect(() => {
+    localStorage.setItem(NOTIF_WEEKLY_KEY, weeklyReportOn ? "on" : "off");
+    if (allNotificationsOn && weeklyReportOn) {
+      scheduleWeeklyReportReminder();
+    } else {
+      cancelWeeklyReportReminder();
+    }
+  }, [allNotificationsOn, weeklyReportOn]);
+
+  useEffect(() => {
+    localStorage.setItem(NOTIF_RANKING_KEY, rankingAlertOn ? "on" : "off");
+  }, [rankingAlertOn]);
 
   // 5-1) 건강 데이터(걸음수·수면) 연동 — 앱에서만 보이는 카드. 기본 꺼짐(선택 기능).
   //      켜는 순간 Health Connect 권한 창(걸음수·수면)을 띄우고, 허용된 것만 최근 7일치를
@@ -462,8 +489,7 @@ function Settings() {
     }
   }
 
-  // 식단 기록 알림 = 로컬 알림으로 구현됨(위 useEffect + notifications/mealReminders.js).
-  // 랭킹/주간 리포트 알림은 서버 푸시(FCM)가 필요해 아직 UI 토글만 있음(TODO: 추후 푸시 연동).
+  // 식단·주간 리포트·랭킹 알림 = 모두 로컬 알림(위 useEffect + notifications/*.js).
 
   return (
     <div className="settings-page">
@@ -622,36 +648,41 @@ function Settings() {
           />
         </div>
 
-        {/* 랭킹 알림 — 서버 푸시(FCM) 미구현이라 켜도 오지 않는다.
-            켜지는데 안 오면 고장으로 보이므로 '준비 중'으로 잠가둔다. */}
-        <div className="notification-row notification-row-soon">
+        {/* 랭킹 알림 — 포인트를 받아 순위가 오르면 바로 알림 */}
+        <div
+          className={`notification-row ${
+            !allNotificationsOn ? "notification-row-disabled" : ""
+          }`}
+        >
           <div className="notification-row-info">
-            <p className="notification-row-title">
-              랭킹 알림
-              <span className="notification-soon-badge">준비 중</span>
-            </p>
-            <p className="notification-row-desc">
-              랭킹이 올라가면 알려드릴게요. 곧 제공할 예정이에요
-            </p>
+            <p className="notification-row-title">랭킹 알림</p>
+            <p className="notification-row-desc">랭킹이 올라가면 알려드릴게요</p>
           </div>
-          <ToggleSwitch isOn={false} disabled label="랭킹 알림 (준비 중)" />
+          <ToggleSwitch
+            isOn={rankingAlertOn && allNotificationsOn}
+            onClick={makeNotificationToggle(setRankingAlertOn)}
+            disabled={!allNotificationsOn}
+            label="랭킹 알림"
+          />
         </div>
 
-        {/* 주간 리포트 알림 — 위와 같은 이유로 준비 중 */}
-        <div className="notification-row notification-row-soon">
+        {/* 주간 리포트 알림 — 매주 일요일 저녁 8시 */}
+        <div
+          className={`notification-row ${
+            !allNotificationsOn ? "notification-row-disabled" : ""
+          }`}
+        >
           <div className="notification-row-info">
-            <p className="notification-row-title">
-              주간 리포트 알림
-              <span className="notification-soon-badge">준비 중</span>
-            </p>
+            <p className="notification-row-title">주간 리포트 알림</p>
             <p className="notification-row-desc">
-              주간 피드백 리포트가 준비되면 알려드릴게요. 곧 제공할 예정이에요
+              매주 일요일 저녁 8시에 이번 주 리포트를 알려드려요
             </p>
           </div>
           <ToggleSwitch
-            isOn={false}
-            disabled
-            label="주간 리포트 알림 (준비 중)"
+            isOn={weeklyReportOn && allNotificationsOn}
+            onClick={makeNotificationToggle(setWeeklyReportOn)}
+            disabled={!allNotificationsOn}
+            label="주간 리포트 알림"
           />
         </div>
         </div>

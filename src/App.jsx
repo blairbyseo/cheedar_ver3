@@ -33,6 +33,10 @@ import OAuthKakaoCallback from './auth/OAuthKakaoCallback';
 import ProtectedRoute from './auth/ProtectedRoute';
 import { KakaoDeepLinkHandler } from './auth/kakaoNative';
 import { syncMealReminders } from './notifications/mealReminders';
+import { syncWeeklyReportReminder } from './notifications/reportReminder';
+import { checkRankUp, setRankOwner } from './notifications/rankAlert';
+import { subscribePointsChanged } from './usePoints';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { syncHealthIfEnabled, isNativeApp } from './health/healthData';
 import { App as CapApp } from '@capacitor/app';
 import MotivationCheck from './MotivationCheck';
@@ -84,6 +88,42 @@ function MainShell() {
     syncMealReminders().catch((err) =>
       console.error("[Notif] 식단 알림 동기화 실패:", err),
     );
+    syncWeeklyReportReminder().catch((err) =>
+      console.error("[Notif] 주간 리포트 알림 동기화 실패:", err),
+    );
+  }, []);
+
+  // 랭킹 상승 알림 — 순위는 내가 포인트를 받을 때만 오르므로, 포인트가 바뀐 직후
+  // (refreshPoints)와 앱 진입·복귀 때 다시 확인한다. 웹은 no-op(rankAlert 안에서).
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    setRankOwner(user.id);
+    checkRankUp();
+    const unsubscribe = subscribePointsChanged(() => checkRankUp());
+    const sub = isNativeApp()
+      ? CapApp.addListener("appStateChange", ({ isActive }) => {
+          if (isActive) checkRankUp();
+        })
+      : null;
+    return () => {
+      unsubscribe();
+      sub?.then((h) => h.remove()).catch(() => {});
+    };
+  }, [user?.id]);
+
+  // 알림을 누르면 해당 탭으로 — 주간 리포트(report)·랭킹(ranking). 식단 알림은 extra 가 없어 홈 그대로.
+  useEffect(() => {
+    if (!isNativeApp()) return undefined;
+    const sub = LocalNotifications.addListener(
+      "localNotificationActionPerformed",
+      ({ notification }) => {
+        const tab = notification?.extra?.tab;
+        if (tab === "report" || tab === "ranking") setActiveTab(tab);
+      },
+    );
+    return () => {
+      sub.then((h) => h.remove()).catch(() => {});
+    };
   }, []);
 
   // 건강 데이터(걸음수·수면) 동기화 — 설정에서 연동을 켠 사용자만. 앱 진입 시 한 번,

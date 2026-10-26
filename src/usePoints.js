@@ -23,6 +23,14 @@ export function refreshPoints() {
   pointsListeners.forEach((notify) => notify(pointsVersion));
 }
 
+/** 포인트가 바뀔 때마다 cb 를 부른다(화면 밖 로직용 — 예: 랭킹 상승 알림). 해제 함수 반환. */
+export function subscribePointsChanged(cb) {
+  pointsListeners.add(cb);
+  return () => {
+    pointsListeners.delete(cb);
+  };
+}
+
 export function usePoints() {
   const [points, setPoints] = useState(null);
   const [version, setVersion] = useState(pointsVersion);
