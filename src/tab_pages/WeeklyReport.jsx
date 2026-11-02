@@ -10,7 +10,7 @@
  *    달성률을 계산해 보여준다. (운동 데이터는 백엔드에 없어 제외)
  *  - 랭킹 화면과 같은 onBack 패턴 — 자체 뒤로가기로 홈으로 돌아간다.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 // 요일별 기록 원형의 채움 기준이 되는 주요 3끼
 const MAIN_MEALS = ["breakfast", "lunch", "dinner"];
@@ -39,6 +39,9 @@ function thisWeekDates() {
 }
 
 const num = (v) => Number(v) || 0; // null/undefined/문자열 방어
+
+// 주간 비교 그래프가 보여 줄 주 수 (서버 weekly-compare 는 최대 12)
+const COMPARE_WEEKS = 8;
 
 const weekLabel = (n) => (n === 0 ? "이번 주" : n === 1 ? "지난 주" : `${n}주 전`);
 
@@ -133,8 +136,57 @@ function WeeklyFeedback() {
   );
 }
 
-// 최근 4주 비교 — 옛 웹의 '주간 비교 그래프' 이식. 집계는 서버(GET /api/reports/weekly-compare)가
+// 최근 COMPARE_WEEKS주 비교 — 옛 웹의 '주간 비교 그래프' 이식. 집계는 서버(GET /api/reports/weekly-compare)가
 // 한 번에 해 준다(조회는 부모 WeeklyReport 가 하고 weeks 로 넘긴다). 그래프는 라이브러리 없이 CSS 막대.
+// 8주는 폰 폭에 다 안 들어가서 그래프마다 가로 스크롤 — 처음엔 오른쪽 끝(이번 주)을 보여 주고,
+// 양옆에 더 있으면 ‹ › 화살표(+ 흐림)로 알려 준다. 화살표를 누르면 보이는 폭만큼 넘긴다.
+function CompareScroller({ children }) {
+  const ref = useRef(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  const update = () => {
+    const el = ref.current;
+    if (!el) return;
+    setEdges({
+      left: el.scrollLeft > 2,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
+    });
+  };
+
+  // 그린 직후(화면에 보이기 전) 오른쪽 끝으로 — ref 콜백은 레이아웃 전이라 폭이 덜 잡힐 수 있다
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    el.scrollLeft = el.scrollWidth;
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  const page = (dir) => {
+    const el = ref.current;
+    if (el) el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: "smooth" });
+  };
+
+  return (
+    <div className="cmp-scroll">
+      <div className="cmp-chart" ref={ref} onScroll={update}>
+        {children}
+      </div>
+      {edges.left && (
+        <button type="button" className="cmp-arrow left" aria-label="이전 주 보기" onClick={() => page(-1)}>
+          ‹
+        </button>
+      )}
+      {edges.right && (
+        <button type="button" className="cmp-arrow right" aria-label="다음 주 보기" onClick={() => page(1)}>
+          ›
+        </button>
+      )}
+    </div>
+  );
+}
+
 function WeeklyCompare({ weeks, state }) {
   if (state === "error") return null;
 
@@ -148,7 +200,7 @@ function WeeklyCompare({ weeks, state }) {
 
   // 한 주에 막대 여러 개(series) 를 나란히 그린다. fmt 는 값 라벨 표기(기본 숫자), null 은 '-'.
   const chart = (series, max, unit, fmt = (v) => v.toLocaleString()) => (
-    <div className="cmp-chart">
+    <CompareScroller>
       {weeks.map((w) => (
         <div className={`cmp-group${w.weeks_ago === 0 ? " is-current" : ""}`} key={w.week_start}>
           <div className="cmp-bars">
@@ -169,12 +221,12 @@ function WeeklyCompare({ weeks, state }) {
           <span className="cmp-label">{weekLabel(w.weeks_ago)}</span>
         </div>
       ))}
-    </div>
+    </CompareScroller>
   );
 
   return (
     <section className="report-section">
-      <h2 className="report-section-title">최근 4주 비교</h2>
+      <h2 className="report-section-title">최근 {COMPARE_WEEKS}주 비교</h2>
       {state === "loading" ? (
         <p className="report-section-footer">불러오는 중…</p>
       ) : (
@@ -228,13 +280,13 @@ function WeeklyReport({ onBack }) {
   // 운동 합계 — 총 소모 칼로리, 총 운동 시간(분), 운동한 날 수
   const [exercise, setExercise] = useState({ burned: 0, minutes: 0, days: 0 });
   const [status, setStatus] = useState("loading"); // loading | ok | error
-  // 최근 4주 집계(서버) — 4주 비교 그래프와 이번 주 걸음·수면 카드가 함께 쓴다.
+  // 최근 COMPARE_WEEKS주 집계(서버) — 주간 비교 그래프와 이번 주 걸음·수면 카드가 함께 쓴다.
   const [weeks, setWeeks] = useState([]);
   const [weeksState, setWeeksState] = useState("loading"); // loading | ok | error
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/reports/weekly-compare?weeks=4", { credentials: "include" })
+    fetch(`/api/reports/weekly-compare?weeks=${COMPARE_WEEKS}`, { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error(`weekly-compare ${res.status}`);
         return res.json();

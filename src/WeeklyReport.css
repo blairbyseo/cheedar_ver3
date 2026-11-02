@@ -315,15 +315,56 @@
   margin: 18px 0 8px;
 }
 
+/* 8주는 폰 폭에 다 안 들어가므로 가로 스크롤(스크롤바는 숨김). 주마다 최소 폭을 보장해
+   막대 위 숫자('1,850', '6시간 30분')가 겹치지 않게 한다. */
 .cmp-chart {
   display: flex;
   gap: 6px;
   border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cmp-chart::-webkit-scrollbar {
+  display: none;
+}
+
+/* 스크롤 안내 — 더 볼 쪽에만 ‹ › 와 카드색으로 흐려지는 띠를 겹친다 */
+.cmp-scroll {
+  position: relative;
+}
+
+.cmp-arrow {
+  position: absolute;
+  top: 0;
+  bottom: 1px; /* 아래 기준선은 가리지 않는다 */
+  width: 36px;
+  padding: 0;
+  border: none;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--primary-strong);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cmp-arrow.left {
+  left: 0;
+  text-align: left;
+  background: linear-gradient(90deg, var(--card-white) 35%, rgba(255, 255, 255, 0));
+}
+
+.cmp-arrow.right {
+  right: 0;
+  text-align: right;
+  background: linear-gradient(270deg, var(--card-white) 35%, rgba(255, 255, 255, 0));
 }
 
 .cmp-group {
-  flex: 1;
-  min-width: 0;
+  flex: 1 0 64px;
+  min-width: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;
