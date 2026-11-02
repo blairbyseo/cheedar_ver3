@@ -290,6 +290,33 @@ export async function syncHealthToServer(days = 7) {
   return result;
 }
 
+/**
+ * 연동 켜기 전체 흐름 — 설정 토글과 홈 안내 카드가 같이 쓴다.
+ * Health Connect 확인 → 시스템 '허용' 창 → 토글 켬 → 바로 7일치 동기화.
+ * 반환: { status, needsInstall, gotSteps, gotSleep }
+ *   status: "connected" | "no-data" | "denied" | "needs-install" | "unavailable"
+ * 예외는 그대로 던진다(호출 쪽에서 '연동 실패' 안내).
+ */
+export async function connectHealth() {
+  const avail = await checkHealthAvailable();
+  if (!avail.available) {
+    const needsInstall = healthConnectNeedsInstall(avail.reason);
+    return { status: needsInstall ? "needs-install" : "unavailable", needsInstall };
+  }
+  const perm = await requestHealthPermissions();
+  if (!perm.any) return { status: "denied", needsInstall: false };
+  setHealthSyncEnabled(true);
+  const result = await syncHealthIfEnabled({ force: true });
+  const gotSteps = !!result?.steps?.latest_day;
+  const gotSleep = !!result?.sleep?.latest_day;
+  return {
+    status: gotSteps || gotSleep ? "connected" : "no-data",
+    needsInstall: false,
+    gotSteps,
+    gotSleep,
+  };
+}
+
 // 같은 세션에서 너무 자주 올리지 않도록 — 앱 복귀 때마다 호출돼도 10분에 한 번만.
 const SYNC_MIN_INTERVAL_MS = 10 * 60 * 1000;
 let lastSyncAt = 0;

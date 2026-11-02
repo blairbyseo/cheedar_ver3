@@ -41,6 +41,7 @@ import { checkAppUpdate } from './appUpdate';
 import { syncHealthIfEnabled, isNativeApp } from './health/healthData';
 import { App as CapApp } from '@capacitor/app';
 import MotivationCheck from './MotivationCheck';
+import HealthInvite from './health/HealthInvite';
 import { AiConsentProvider } from './notice/AiConsent';
 
 /* 로그인 이후 보여줄 메인 화면 — 탭 5개 + 하단 TabBar */
@@ -209,6 +210,9 @@ function MainShell() {
       <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
       {/* 동기 점검 — 주 1회, 앱(홈) 진입 시. 띄울지는 서버가 정한다 */}
       <MotivationCheck />
+      {/* 건강 데이터 연결 안내 — 앱에서, 연동을 한 번도 안 켜본 사용자에게만(최대 2번).
+          동기 점검 창이 뜨는 진입에는 양보한다 */}
+      <HealthInvite />
     </div>
   );
 }

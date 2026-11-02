@@ -606,6 +606,18 @@ background: rgba(242, 201, 76, 0.24);
   /* 연한거 */   background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF1 100%);
 }
 
+/* ── '건강 데이터 연결' 안내 팝업 본문 (health/HealthInvite.jsx, 시트는 MotivationCheck.css) ── */
+.health-invite-text {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-sub);
+}
+
+.health-invite-note {
+  color: var(--text-main);
+}
+
 /* ── 홈 하단 현금 보상 챌린지 이벤트 티커 ─────────────────────────────
    왼쪽 '이벤트' 뱃지는 고정, 오른쪽 문구가 자막처럼 좌로 흐른다.
    주변 카드들과 어우러지도록 크림/연골드 톤으로 차분하게 둔다.

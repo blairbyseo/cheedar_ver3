@@ -7,8 +7,7 @@
 import { useEffect, useState } from "react";
 import "./MotivationCheck.css";
 
-const SNOOZE_KEY = "cheddar.motivationSnoozeUntil";
-const SNOOZE_MS = 24 * 60 * 60 * 1000;
+import { isSnoozed, snooze } from "./motivationSnooze";
 
 const QUESTIONS = [
   {
@@ -27,21 +26,6 @@ const QUESTIONS = [
   },
 ];
 
-function isSnoozed() {
-  try {
-    return Number(localStorage.getItem(SNOOZE_KEY) || 0) > Date.now();
-  } catch {
-    return false;
-  }
-}
-
-function snooze() {
-  try {
-    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
-  } catch {
-    // 저장소를 못 쓰면 이번 실행에서만 닫힌다.
-  }
-}
 
 // 수면 분 → '6시간 30분' (서버 sleep_context.fmt_minutes 와 같은 표기)
 function formatSleep(minutes) {

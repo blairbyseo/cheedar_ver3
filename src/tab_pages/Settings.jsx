@@ -22,8 +22,7 @@ import {
   isHealthSyncEnabled,
   setHealthSyncEnabled,
   checkHealthAvailable,
-  requestHealthPermissions,
-  syncHealthIfEnabled,
+  connectHealth,
   openHealthSettings,
   openHealthConnectInstall,
   healthConnectNeedsInstall,
@@ -231,10 +230,9 @@ function Settings() {
     setHealthBusy(true);
     setHealthMessage("");
     try {
-      const avail = await checkHealthAvailable();
-      if (!avail.available) {
-        const needsInstall = healthConnectNeedsInstall(avail.reason);
-        setHealthNeedsInstall(needsInstall);
+      const { status, needsInstall, gotSteps, gotSleep } = await connectHealth();
+      setHealthNeedsInstall(needsInstall);
+      if (status === "needs-install" || status === "unavailable") {
         setHealthMessage(
           needsInstall
             ? "먼저 Health Connect 앱이 필요해요. 아래 'Health Connect 설치하기'를 눌러 설치한 뒤 다시 켜 주세요."
@@ -242,20 +240,14 @@ function Settings() {
         );
         return;
       }
-      setHealthNeedsInstall(false);
-      const perm = await requestHealthPermissions();
-      if (!perm.any) {
+      if (status === "denied") {
         setHealthMessage(
           "걸음수·수면 읽기 권한이 허용되지 않았어요. 아래 'Health Connect 설정 열기'에서 Cheddar의 권한을 켜 주세요.",
         );
         return;
       }
-      setHealthSyncEnabled(true);
       setHealthOn(true);
-      const result = await syncHealthIfEnabled({ force: true });
-      const gotSteps = !!result?.steps?.latest_day;
-      const gotSleep = !!result?.sleep?.latest_day;
-      if (gotSteps || gotSleep) {
+      if (status === "connected") {
         await refreshHealthStatus();
         const what = [gotSteps && "걸음수", gotSleep && "수면"].filter(Boolean).join("·");
         setHealthMessage(`${what} 연동됐어요. 포인트와 관계없이 체다가 대화할 때 참고만 해요.`);
