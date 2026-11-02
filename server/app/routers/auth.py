@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.deps import set_auth_cookie as _set_auth_cookie
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.daily_sleep import DailySleep
 from app.models.daily_steps import DailySteps
@@ -73,18 +74,6 @@ def kakao_authorize_url() -> dict[str, str]:
         "url": f"https://kauth.kakao.com/oauth/authorize?{urlencode(params)}",
         "redirect_uri": settings.kakao_redirect_uri,
     }
-
-
-def _set_auth_cookie(response: Response, token: str) -> None:
-    response.set_cookie(
-        key=settings.auth_cookie_name,
-        value=token,
-        max_age=settings.access_token_expire_minutes * 60,
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
-        path="/",
-    )
 
 
 def _validate_user_id_format(new_id: str) -> None:

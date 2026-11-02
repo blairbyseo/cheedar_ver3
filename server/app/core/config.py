@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # --- App / auth --------------------------------------------------------
     secret_key: str = Field(default="dev-secret-change-me")
-    access_token_expire_minutes: int = 60 * 24 * 7
+    access_token_expire_minutes: int = 60 * 24 * 30  # 30일 — 쓰는 동안엔 deps 에서 자동 연장
 
     # Cookie used to store the JWT on the browser
     auth_cookie_name: str = "cheddar_auth"

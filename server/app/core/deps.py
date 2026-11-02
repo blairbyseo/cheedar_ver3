@@ -1,12 +1,28 @@
-from fastapi import Cookie, Depends, HTTPException, Request, status
+from fastapi import Cookie, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import decode_access_token
+from app.core.security import (
+    create_access_token,
+    decode_access_token,
+    token_needs_renewal,
+)
 from app.models.user import User
 
 settings = get_settings()
+
+
+def set_auth_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=settings.auth_cookie_name,
+        value=token,
+        max_age=settings.access_token_expire_minutes * 60,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        path="/",
+    )
 
 
 def _extract_token(request: Request, cookie_token: str | None) -> str | None:
@@ -21,6 +37,7 @@ def _extract_token(request: Request, cookie_token: str | None) -> str | None:
 
 def get_current_user(
     request: Request,
+    response: Response,
     db: Session = Depends(get_db),
     cookie_token: str | None = Cookie(default=None, alias=settings.auth_cookie_name),
 ) -> User:
@@ -36,6 +53,12 @@ def get_current_user(
     # 탈퇴(익명화)된 계정 — 아직 유효한 쿠키를 들고 있어도 더는 못 쓴다
     if user.deleted_at is not None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Withdrawn account")
+    # 자동 로그인: 앱을 쓰는 동안엔 만료일을 계속 뒤로 미룬다(하루 1회 재발급).
+    # 쿠키로 들어온 경우만 — Bearer(도구/curl)는 쿠키를 안 쓰니 건드리지 않는다.
+    # 주의: 엔드포인트가 Response 객체를 직접 반환하면 이 쿠키는 버려지지만,
+    # 앱 시작 때마다 부르는 /api/auth/me 는 모델을 반환하므로 여기서 확실히 연장된다.
+    if cookie_token and token_needs_renewal(cookie_token):
+        set_auth_cookie(response, create_access_token(user.id))
     return user
 
 
