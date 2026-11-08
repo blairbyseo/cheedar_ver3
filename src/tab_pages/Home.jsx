@@ -8,6 +8,8 @@ import { usePoints } from "../usePoints";
 import { useTodayStatus } from "../useTodayStatus";
 import { useFinalReward } from "../useFinalReward";
 import { useAuth } from "../auth/AuthContext";
+import SleepMeasureCard from "../sleep/SleepMeasureCard";
+import { isSleepSoundAvailable } from "../sleep/sleepSound";
 
 // 헤더 멘트·끼니 현황 줄에서 쓰는 끼니 한글 표기.
 const MEAL_KR = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
@@ -240,6 +242,9 @@ function Home({setActiveTab}) {
     >
       <h3>주간 피드백 리포트</h3>
     </section>
+
+    {/* 소리 수면 측정 — 안드로이드 앱에서만 (src/sleep/) */}
+    {isSleepSoundAvailable() && <SleepMeasureCard />}
 
     {/* 홈 하단 현금 보상 챌린지 — 뉴스 속보 자막처럼 흐르는 이벤트 티커.
         탭하면 포인트 탭으로 이동. 지급완료(paid)면 노출하지 않는다. */}

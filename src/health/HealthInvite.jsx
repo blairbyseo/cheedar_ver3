@@ -13,10 +13,9 @@ import { useEffect, useState } from "react";
 import {
   HEALTH_SYNC_KEY,
   isNativeApp,
-  checkHealthAvailable,
-  healthConnectNeedsInstall,
+  checkAnyHealthAvailable,
   connectHealth,
-  openHealthConnectInstall,
+  connectedMessage,
 } from "./healthData";
 import { motivationCheckPending } from "../motivationSnooze";
 import "../MotivationCheck.css"; // 시트 모양(mot-overlay/mot-sheet/버튼)을 동기 점검 창과 같이 쓴다
@@ -59,7 +58,6 @@ function shouldInvite() {
 
 export default function HealthInvite() {
   const [visible, setVisible] = useState(false);
-  const [needsInstall, setNeedsInstall] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [finished, setFinished] = useState(false); // 결과 문구만 남기고 버튼 숨김
@@ -70,14 +68,9 @@ export default function HealthInvite() {
     (async () => {
       // 동기 점검 창이 뜨는 진입이면 이번엔 양보 — 노출 횟수는 차감하지 않는다
       if (await motivationCheckPending()) return;
-      // Health Connect 를 아예 못 쓰는 기기(설치로도 해결 안 됨)면 띄우지 않는다
-      const avail = await checkHealthAvailable();
-      if (cancelled) return;
-      const install = healthConnectNeedsInstall(avail.reason);
-      if (avail.available || install) {
-        setNeedsInstall(install);
-        setVisible(true);
-      }
+      // 걸음 센서(Play 서비스)도 Health Connect 도 못 쓰는 기기면 띄우지 않는다
+      const available = await checkAnyHealthAvailable();
+      if (!cancelled && available) setVisible(true);
     })();
     return () => {
       cancelled = true;
@@ -94,20 +87,10 @@ export default function HealthInvite() {
 
   async function handleConnect() {
     if (busy) return;
-    if (needsInstall) {
-      // 설치하고 돌아오면 다음 진입 때 다시 이 카드가 '연결하기'로 뜬다
-      openHealthConnectInstall();
-      return;
-    }
     setBusy(true);
     setMessage("");
     try {
-      const { status, gotSteps, gotSleep } = await connectHealth();
-      if (status === "needs-install") {
-        setNeedsInstall(true);
-        setMessage("먼저 Health Connect 앱을 설치해 주세요.");
-        return;
-      }
+      const { status, stepsGranted, gotSleep } = await connectHealth();
       if (status === "unavailable") {
         saveInvite({ ...loadInvite(), done: true });
         setMessage("이 기기에서는 건강 데이터를 연결할 수 없어요.");
@@ -119,11 +102,10 @@ export default function HealthInvite() {
       if (status === "denied") {
         setMessage("권한이 허용되지 않았어요. 원하시면 설정 → 건강 데이터 연동에서 다시 켤 수 있어요.");
       } else if (status === "connected") {
-        const what = [gotSteps && "걸음수", gotSleep && "수면"].filter(Boolean).join("·");
-        setMessage(`${what} 연결됐어요! 체다가 대화할 때 참고할게요.`);
+        setMessage(connectedMessage(stepsGranted, gotSleep));
       } else {
         setMessage(
-          "연결됐어요. 아직 넘어온 데이터가 없어요 — 갤럭시라면 삼성 헬스 → 설정 → 연결된 앱 및 서비스 → 헬스 커넥트에서 걸음수·수면을 허용해 주세요.",
+          "연결됐어요. 아직 기록된 데이터가 없어요 — 데이터가 생기면 체다가 대화할 때 참고할게요.",
         );
       }
     } catch (err) {
@@ -162,9 +144,9 @@ export default function HealthInvite() {
           </>
         ) : (
           <>
-            <p className="mot-title">걸음수·수면을 연결해 보세요</p>
+            <p className="mot-title">걸음수를 연결해 보세요</p>
             <p className="health-invite-text">
-              폰에 기록된 걸음수와 수면을 연결하면 체다가 컨디션까지 함께 봐 드려요.
+              휴대폰 센서로 걸음수를 세서 체다가 컨디션까지 함께 봐 드려요. 다른 앱은 필요 없어요.
               포인트와는 관계없고, 언제든 설정에서 끌 수 있어요.
             </p>
             {message && <p className="health-invite-text health-invite-note">{message}</p>}
@@ -173,7 +155,7 @@ export default function HealthInvite() {
                 나중에
               </button>
               <button type="button" className="mot-submit" onClick={handleConnect} disabled={busy}>
-                {busy ? "연결 중…" : needsInstall ? "Health Connect 설치" : "연결하기"}
+                {busy ? "연결 중…" : "연결하기"}
               </button>
             </div>
           </>

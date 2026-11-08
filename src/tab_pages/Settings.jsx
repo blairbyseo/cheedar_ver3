@@ -23,9 +23,9 @@ import {
   setHealthSyncEnabled,
   checkHealthAvailable,
   connectHealth,
+  connectedMessage,
+  stepsNeedReconnect,
   openHealthSettings,
-  openHealthConnectInstall,
-  healthConnectNeedsInstall,
 } from "../health/healthData";
 import { useAiConsent } from "../notice/AiConsent";
 import { HealthSourcesModal } from "../notice/HealthSources";
@@ -174,21 +174,27 @@ function Settings() {
   }, [rankingAlertOn]);
 
   // 5-1) 건강 데이터(걸음수·수면) 연동 — 앱에서만 보이는 카드. 기본 꺼짐(선택 기능).
-  //      켜는 순간 Health Connect 권한 창(걸음수·수면)을 띄우고, 허용된 것만 최근 7일치를
-  //      바로 올린다. 포인트와 무관하고 채팅·주간 리포트·동기 점검의 참고 문구에만 쓰인다.
+  //      켜는 순간 '신체 활동' 권한(폰 걸음 센서) + Health Connect 가 있으면 수면 권한을 묻고,
+  //      허용된 것만 바로 올린다. 포인트와 무관하고 채팅·주간 리포트·동기 점검의 참고 문구에만 쓰인다.
   const [healthOn, setHealthOn] = useState(() => isHealthSyncEnabled());
   const [healthBusy, setHealthBusy] = useState(false);
   const [healthMessage, setHealthMessage] = useState("");
   // 서버가 기억하는 마지막 동기화: {latest_day, latest_steps, sleep_latest_day, sleep_latest_minutes}
   const [healthStatus, setHealthStatus] = useState(null);
-  // Health Connect 미설치(Android 13 이하) — 아래 행을 '설정 열기' 대신 '설치하기'로 바꾼다.
-  const [healthNeedsInstall, setHealthNeedsInstall] = useState(false);
+  // Health Connect 가 있는 기기만 '수면 권한 설정' 행을 보여 준다(걸음수는 이제 폰 센서).
+  const [healthConnectAvailable, setHealthConnectAvailable] = useState(false);
 
   useEffect(() => {
     if (!isNativeApp()) return undefined;
     let cancelled = false;
     checkHealthAvailable().then((avail) => {
-      if (!cancelled) setHealthNeedsInstall(healthConnectNeedsInstall(avail.reason));
+      if (!cancelled) setHealthConnectAvailable(avail.available);
+    });
+    // 예전 방식(Health Connect 걸음수)으로 켜 둔 사용자 — 걸음 센서 권한이 없으니 다시 켜게 한다
+    stepsNeedReconnect().then((need) => {
+      if (cancelled || !need) return;
+      setHealthOn(false);
+      setHealthMessage("걸음수를 이제 휴대폰 센서로 직접 세요. 토글을 다시 켜고 '신체 활동' 권한을 허용해 주세요.");
     });
     return () => {
       cancelled = true;
@@ -221,7 +227,7 @@ function Settings() {
   async function handleToggleHealth() {
     if (healthBusy) return;
     if (healthOn) {
-      // 끄기: 서버에 더 올리지 않는다. 이미 준 권한은 Health Connect 에서 직접 회수 가능.
+      // 끄기: 서버에 더 올리지 않는다. 이미 준 권한은 휴대폰 설정 → 애플리케이션 → Cheddar 에서 회수 가능.
       setHealthSyncEnabled(false);
       setHealthOn(false);
       setHealthMessage("");
@@ -230,30 +236,24 @@ function Settings() {
     setHealthBusy(true);
     setHealthMessage("");
     try {
-      const { status, needsInstall, gotSteps, gotSleep } = await connectHealth();
-      setHealthNeedsInstall(needsInstall);
-      if (status === "needs-install" || status === "unavailable") {
-        setHealthMessage(
-          needsInstall
-            ? "먼저 Health Connect 앱이 필요해요. 아래 'Health Connect 설치하기'를 눌러 설치한 뒤 다시 켜 주세요."
-            : "이 기기에서는 Health Connect를 쓸 수 없어요.",
-        );
+      const { status, stepsGranted, gotSleep } = await connectHealth();
+      if (status === "unavailable") {
+        setHealthMessage("이 기기에서는 걸음수를 셀 수 없어요. Google Play 서비스를 업데이트한 뒤 다시 시도해 주세요.");
         return;
       }
       if (status === "denied") {
         setHealthMessage(
-          "걸음수·수면 읽기 권한이 허용되지 않았어요. 아래 'Health Connect 설정 열기'에서 Cheddar의 권한을 켜 주세요.",
+          "'신체 활동' 권한이 허용되지 않았어요. 휴대폰 설정 → 애플리케이션 → Cheddar → 권한에서 '신체 활동'을 허용한 뒤 다시 켜 주세요.",
         );
         return;
       }
       setHealthOn(true);
       if (status === "connected") {
         await refreshHealthStatus();
-        const what = [gotSteps && "걸음수", gotSleep && "수면"].filter(Boolean).join("·");
-        setHealthMessage(`${what} 연동됐어요. 포인트와 관계없이 체다가 대화할 때 참고만 해요.`);
+        setHealthMessage(connectedMessage(stepsGranted, gotSleep));
       } else {
         setHealthMessage(
-          "연동은 됐지만 아직 데이터가 없어요. 갤럭시라면 삼성 헬스 → 설정 → 연결된 앱 및 서비스 → 헬스 커넥트에서 걸음수·수면을 허용해 주세요. 허용 후 데이터가 넘어오기까지 시간이 걸릴 수 있어요.",
+          "연동은 됐지만 아직 기록된 데이터가 없어요. 데이터가 생기면 체다가 대화할 때 참고할게요.",
         );
       }
     } catch (err) {
@@ -681,7 +681,7 @@ function Settings() {
       </section>
 
       {/* ───────── 건강 데이터 연동 카드 — 앱(안드로이드/iOS)에서만 표시 ─────────
-          걸음수·수면을 Health Connect/HealthKit 에서 읽어 참고 문구로만 쓴다(포인트 X).
+          걸음수는 폰 센서(안드로이드)/HealthKit(iOS), 수면은 Health Connect/HealthKit — 참고 문구로만(포인트 X).
           웹에서는 읽을 방법이 없으므로 카드 자체를 그리지 않는다. */}
       {isNativeApp() && (
         <section className="settings-card">
@@ -690,7 +690,7 @@ function Settings() {
             <div className="notification-row-info">
               <p className="notification-row-title">걸음수·수면 연동</p>
               <p className="notification-row-desc">
-                걸음수와 수면을 체다가 대화·주간 리포트에서 참고해요. 포인트와는 관계없어요
+                휴대폰 센서로 센 걸음수를 체다가 대화·주간 리포트에서 참고해요. 포인트와는 관계없어요
               </p>
               {healthOn && healthStatus?.latest_day && (
                 <p className="notification-row-desc">
@@ -725,19 +725,14 @@ function Settings() {
             <div className="notification-row-info">
               <p className="notification-row-title">데이터가 안 보일 때</p>
               <p className="notification-row-desc">
-                갤럭시: 삼성 헬스 → 설정 → 연결된 앱 및 서비스 → 헬스 커넥트에서 걸음수·수면
-                허용하기. 삼성 헬스의 배터리 사용을 '제한 없음'으로 두면 동기화가 끊기지 않아요
+                걸음수는 연결한 때부터 휴대폰을 들고 다닌 걸음만 세요(워치 걸음은 빠져요).
+                휴대폰 설정 → 애플리케이션 → Cheddar → 권한에서 '신체 활동'이 허용돼 있는지 확인해 주세요
               </p>
             </div>
           </div>
-          {healthNeedsInstall ? (
-            <button type="button" className="settings-list-row" onClick={openHealthConnectInstall}>
-              Health Connect 설치하기
-              <span className="settings-list-row-arrow">›</span>
-            </button>
-          ) : (
+          {healthConnectAvailable && (
             <button type="button" className="settings-list-row" onClick={openHealthSettings}>
-              Health Connect 설정 열기
+              수면 권한 설정 (Health Connect)
               <span className="settings-list-row-arrow">›</span>
             </button>
           )}

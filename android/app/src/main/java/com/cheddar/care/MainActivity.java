@@ -4,12 +4,16 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import androidx.core.view.ViewCompat;
+import com.cheddar.care.sleep.SleepSoundPlugin;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // 앱 내장 플러그인은 super.onCreate 전에 등록해야 브리지에 잡힌다
+        registerPlugin(StepSensorPlugin.class);
+        registerPlugin(SleepSoundPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Android 14 이하에서 키보드를 띄우면 앱 화면이 쪼그라들던 문제 (2026-10-26, Galaxy A9 Pro / Android 10).

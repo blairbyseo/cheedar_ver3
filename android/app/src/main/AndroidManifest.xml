@@ -54,15 +54,36 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- 소리 수면 측정 — "수면 측정 중" 알림과 함께 밤새 마이크를 읽는다(sleep/SleepRecordService.java).
+             소리는 저장하지 않고 30초 판정만 기기 안에 남긴다. -->
+        <service
+            android:name=".sleep.SleepRecordService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
     </application>
 
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Health Connect: 걸음수(READ_STEPS)·수면(READ_SLEEP)만 쓴다. @capgo/capacitor-health 가 자기 매니페스트에
+    <!-- 걸음수: 폰 센서(Google Play 서비스 Recording API) — StepSensorPlugin.java.
+         Android 10+ 는 '신체 활동' 런타임 권한, 9 이하는 gms 쪽 권한(설치 시 자동 허용). -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION" android:maxSdkVersion="28" />
+
+    <!-- 소리 수면 측정: 마이크 + 마이크를 쓰는 포그라운드 서비스(Android 14+ 필수) + 밤새 CPU 유지 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- 걸음수는 더 이상 Health Connect 에서 읽지 않는다(2026-11-08, 삼성 헬스→HC 지연·누락 때문에 센서로 교체). -->
+    <uses-permission android:name="android.permission.health.READ_STEPS" tools:node="remove" />
+
+    <!-- Health Connect: 이제 수면(READ_SLEEP)만 쓴다(호흡음 수면 측정으로 바꾸면 이것도 제거 예정). @capgo/capacitor-health 가 자기 매니페스트에
          심박·체중·혈압 등 40여 개 권한을 선언하므로, 머지 단계에서 전부 제거해 Play 심사
-         (건강 앱 신고서)에 걸음수·수면 둘만 보이게 한다. 데이터 유형을 늘리면 여기서 풀 것. -->
+         (건강 앱 신고서)에 수면만 보이게 한다. 데이터 유형을 늘리면 여기서 풀 것. -->
     <uses-permission android:name="android.permission.health.WRITE_STEPS" tools:node="remove" />
     <uses-permission android:name="android.permission.health.READ_DISTANCE" tools:node="remove" />
     <uses-permission android:name="android.permission.health.WRITE_DISTANCE" tools:node="remove" />

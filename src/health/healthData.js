@@ -1,27 +1,31 @@
 /* 스마트폰 건강 데이터(걸음수·수면) 연동.
  *
- * 안드로이드는 Health Connect, iOS 는 HealthKit 에서 읽어 서버에 올린다.
- * 플러그인 @capgo/capacitor-health 가 두 플랫폼을 같은 API 로 감싸준다. 웹에서는 전부 no-op.
- *
- * - 걸음수: 플러그인이 일별 합계를 바로 준다(queryAggregated). → POST /api/health/steps
- * - 수면  : 플러그인은 '조각(세션/단계)' 목록만 준다(readSamples). 여기서 조각을 합쳐
- *           "하룻밤"으로 만든다(일어난 날짜 기준, 깬 구간 제외). → POST /api/health/sleep
+ * - 걸음수(안드로이드): **폰 센서**. Google Play 서비스의 Recording API 가 폰의 걸음 센서를 직접
+ *   기록한다(앱 내장 플러그인 StepSensorPlugin.java). 삼성 헬스·Health Connect 를 거치지 않는다.
+ *   2026-11-08 교체 — 삼성 헬스→Health Connect 쓰기가 기본 꺼짐이거나 몇 시간~하루씩 늦어서
+ *   대부분 사용자에게 걸음이 안 들어왔다. 대신 "연결한 순간부터" 센다(과거 기록 X), 워치 걸음 X.
+ * - 걸음수(iOS): 아직 HealthKit (@capgo/capacitor-health).
+ * - 수면: Health Connect/HealthKit (@capgo/capacitor-health). 플러그인은 '조각' 목록만 줘서
+ *   여기서 하룻밤으로 합친다(일어난 날짜 기준, 깬 구간 제외). 호흡음 측정으로 바꿀 예정.
+ * 웹에서는 전부 no-op.
  *
  * 제품 원칙(2026-10-12 결정, HEALTH_DATA_INTEGRATION.md):
  * - 포인트 적립에 쓰지 않는다. 주간 리포트·동기 점검·AI 선인사 맥락으로만.
  * - 권한을 거절하거나 연동을 안 켜도 모든 기능이 그대로 동작해야 한다.
- * - 읽기는 steps·sleep 두 가지만 요청한다(매니페스트도 READ_STEPS·READ_SLEEP 만 남김).
- *
- * 갤럭시 주의: 삼성 헬스가 Health Connect 에 데이터를 넘겨주려면 사용자가
- * 삼성 헬스 → 설정 → 연결된 앱 및 서비스 → "헬스 커넥트"(한글 표기)에서 삼성 헬스의
- * 걸음수·수면 '쓰기'를 허용해야 한다(기본 꺼짐). Cheddar 쪽 읽기 권한만 있고 이게 꺼져
- * 있으면 오류 없이 빈 결과만 온다. 허용 직후에도 삼성 헬스가 몰아서 보내 바로 안 보일 수 있다.
  */
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { Health } from "@capgo/capacitor-health";
+import { sleepMicWasUsed } from "../sleep/sleepSound";
+
+// android/app/src/main/java/com/cheddar/care/StepSensorPlugin.java
+const StepSensor = registerPlugin("StepSensor");
 
 export function isNativeApp() {
   return Capacitor.isNativePlatform();
+}
+
+function isAndroid() {
+  return Capacitor.getPlatform() === "android";
 }
 
 // 연동 토글 상태. 기본값은 꺼짐 — 건강 데이터는 사용자가 직접 켜는 선택 기능.
@@ -44,14 +48,17 @@ export function setHealthSyncEnabled(on) {
   }
 }
 
-const READ_TYPES = ["steps", "sleep"];
-
-// 서버에 올릴 때 출처 표시. 나중에 플랫폼별 품질 비교용.
-function sourceName() {
-  return Capacitor.getPlatform() === "ios" ? "healthkit" : "health_connect";
+// 서버에 올릴 때 출처 표시. 나중에 출처별 품질 비교용.
+function stepsSourceName() {
+  return isAndroid() ? "phone_sensor" : "healthkit";
+}
+function sleepSourceName() {
+  return isAndroid() ? "health_connect" : "healthkit";
 }
 
-/** 이 기기에서 건강 데이터를 읽을 수 있는지. {available, reason} */
+// ───────────────────────── 사용 가능 여부 ─────────────────────────
+
+/** Health Connect(안드로이드)/HealthKit(iOS)을 쓸 수 있는지 — 이제 안드로이드에선 수면용. */
 export async function checkHealthAvailable() {
   if (!isNativeApp()) return { available: false, reason: "web" };
   try {
@@ -63,65 +70,75 @@ export async function checkHealthAvailable() {
   }
 }
 
+/** 걸음수를 읽을 수 있는지. 안드로이드=폰 센서(Play 서비스 버전), iOS=HealthKit. */
+export async function checkStepsAvailable() {
+  if (!isNativeApp()) return { available: false, reason: "web" };
+  if (!isAndroid()) return checkHealthAvailable();
+  try {
+    const res = await StepSensor.isAvailable();
+    return { available: !!res?.available, reason: res?.reason || "" };
+  } catch (err) {
+    console.error("[StepSensor] isAvailable 실패:", err);
+    return { available: false, reason: String(err?.message || err) };
+  }
+}
+
+/** 걸음수든 수면이든 하나라도 연결할 수 있는 기기인지 — 안내 팝업·설정 카드 노출 판단용. */
+export async function checkAnyHealthAvailable() {
+  const [steps, hc] = await Promise.all([checkStepsAvailable(), checkHealthAvailable()]);
+  return steps.available || hc.available;
+}
+
+// ───────────────────────── 권한 ─────────────────────────
+
 function authorizedSet(res) {
   return new Set(Array.isArray(res?.readAuthorized) ? res.readAuthorized : []);
 }
 
-/**
- * 걸음수·수면 읽기 권한을 한 번에 요청한다.
- * 반환: { steps: boolean, sleep: boolean, any: boolean } — 사용자가 둘 중 하나만 허용할 수도 있다.
- */
-export async function requestHealthPermissions() {
-  if (!isNativeApp()) return { steps: false, sleep: false, any: false };
-  const got = authorizedSet(await Health.requestAuthorization({ read: READ_TYPES }));
-  const steps = got.has("steps");
-  const sleep = got.has("sleep");
+/** 권한 창 없이 현재 허용 상태만 확인. { steps, sleep, any } */
+export async function checkHealthPermissions() {
+  const none = { steps: false, sleep: false, any: false };
+  if (!isNativeApp()) return none;
+  let steps = false;
+  let sleep = false;
+  if (isAndroid()) {
+    try {
+      steps = !!(await StepSensor.checkActivityPermission())?.granted;
+    } catch {
+      steps = false;
+    }
+  }
+  try {
+    const types = isAndroid() ? ["sleep"] : ["steps", "sleep"];
+    const got = authorizedSet(await Health.checkAuthorization({ read: types }));
+    if (!isAndroid()) steps = got.has("steps");
+    sleep = got.has("sleep");
+  } catch {
+    // Health Connect 미설치 등 — 수면만 없는 것으로 본다
+  }
   return { steps, sleep, any: steps || sleep };
 }
 
-/** 권한 창 없이 현재 허용 상태만 확인. */
-export async function checkHealthPermissions() {
-  if (!isNativeApp()) return { steps: false, sleep: false, any: false };
-  try {
-    const got = authorizedSet(await Health.checkAuthorization({ read: READ_TYPES }));
-    const steps = got.has("steps");
-    const sleep = got.has("sleep");
-    return { steps, sleep, any: steps || sleep };
-  } catch {
-    return { steps: false, sleep: false, any: false };
-  }
-}
-
-// Android 13 이하는 Health Connect 가 기본 탑재가 아니라 Play 스토어에서 따로 받아야 한다.
-// url=healthconnect://onboarding 은 Google 이 안내하는 설치 링크 형식 — 설치 후 온보딩으로 이어진다.
-// https 링크라 Capacitor 가 WebView 밖(Play 스토어 앱)으로 넘긴다.
-const HEALTH_CONNECT_INSTALL_URL =
-  "https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata&url=healthconnect%3A%2F%2Fonboarding";
-
-/** 플러그인의 isAvailable reason 으로 "설치(또는 업데이트)하면 쓸 수 있는" 상태인지 판단. */
-export function healthConnectNeedsInstall(reason) {
-  return Capacitor.getPlatform() === "android" && /needs an update/i.test(reason || "");
-}
-
-/** Play 스토어의 Health Connect 설치 페이지를 연다. 안드로이드 전용. */
-export function openHealthConnectInstall() {
-  if (Capacitor.getPlatform() !== "android") return;
-  window.location.href = HEALTH_CONNECT_INSTALL_URL;
-}
-
 /**
- * Health Connect 설정 화면(권한·연결된 앱)을 연다. 안드로이드 전용.
- * 설치가 안 된 기기에선 설정 화면이 없어 열기가 실패하므로 설치 페이지로 보낸다
- * (2026-10-26 Galaxy A9 Pro/Android 10 실기기에서 아무 반응 없던 문제).
+ * 안드로이드 걸음 센서: '신체 활동' 권한 → 기록 시작(subscribe). 허용되면 true.
+ * subscribe 한 순간부터 Play 서비스가 앱이 꺼져 있어도 계속 센다.
  */
+async function connectStepSensor() {
+  const perm = await StepSensor.requestActivityPermission();
+  if (!perm?.granted) return false;
+  await StepSensor.subscribe();
+  return true;
+}
+
+// ───────────────────────── Health Connect 설정 ─────────────────────────
+
+/** Health Connect 설정 화면(수면 권한)을 연다. 안드로이드 전용. 미설치면 아무 일 없음. */
 export async function openHealthSettings() {
-  if (!isNativeApp()) return;
+  if (!isNativeApp() || !isAndroid()) return;
   try {
     await Health.openHealthConnectSettings();
   } catch (err) {
     console.error("[Health] 설정 열기 실패:", err);
-    const avail = await checkHealthAvailable();
-    if (healthConnectNeedsInstall(avail.reason)) openHealthConnectInstall();
   }
 }
 
@@ -144,12 +161,20 @@ function rangeStart(days) {
 
 /**
  * 최근 N일(오늘 포함) 일별 걸음수 합계. [{ day: "2026-10-19", steps: 6543 }, ...]
- *
- * queryAggregated(bucket: day, sum) 를 쓰는 이유: 삼성 헬스와 갤럭시 워치가 같은
- * 걸음을 둘 다 기록해도 Health Connect 가 합산 시 중복을 걸러준다.
+ * 안드로이드: 폰 센서(최대 10일 보관). iOS: HealthKit queryAggregated(일 합계, 중복 제거).
  */
 export async function readDailySteps(days = 7) {
   if (!isNativeApp()) return [];
+  if (isAndroid()) {
+    // 혹시 Play 서비스 쪽 구독이 풀렸어도(데이터 초기화 등) 다시 걸어 둔다 — 이미 구독 중이면 무해
+    await StepSensor.subscribe();
+    const res = await StepSensor.readDailySteps({ days });
+    return (res?.days || [])
+      .map((r) => ({ day: r.day, steps: Math.round(Number(r.steps) || 0) }))
+      .filter((r) => r.steps > 0)
+      .sort((a, b) => (a.day < b.day ? -1 : 1));
+  }
+
   const res = await Health.queryAggregated({
     dataType: "steps",
     startDate: rangeStart(days).toISOString(),
@@ -157,7 +182,6 @@ export async function readDailySteps(days = 7) {
     bucket: "day",
     aggregation: "sum",
   });
-
   const byDay = new Map();
   for (const s of res?.samples || []) {
     const value = Number(s?.value ?? s?.values?.sum ?? 0);
@@ -269,6 +293,7 @@ async function post(path, body) {
 
 /**
  * 허용된 데이터만 읽어 서버에 올린다. 권한 창은 띄우지 않는다.
+ * 걸음·수면은 서로 독립 — 한쪽이 실패해도 다른 쪽은 올린다.
  * 반환: { steps: 서버응답|null, sleep: 서버응답|null } — 둘 다 null 이면 올린 게 없음.
  */
 export async function syncHealthToServer(days = 7) {
@@ -276,45 +301,94 @@ export async function syncHealthToServer(days = 7) {
   if (!isNativeApp()) return result;
   const perm = await checkHealthPermissions();
   if (perm.steps) {
-    const rows = await readDailySteps(days);
-    if (rows.length > 0) {
-      result.steps = await post("/api/health/steps", { source: sourceName(), days: rows });
+    try {
+      const rows = await readDailySteps(days);
+      if (rows.length > 0) {
+        result.steps = await post("/api/health/steps", { source: stepsSourceName(), days: rows });
+      }
+    } catch (err) {
+      console.error("[Health] 걸음수 동기화 실패:", err);
     }
   }
-  if (perm.sleep) {
-    const nights = await readNightlySleep(days);
-    if (nights.length > 0) {
-      result.sleep = await post("/api/health/sleep", { source: sourceName(), nights });
+  // 휴대폰 마이크로 수면을 재기 시작한 사용자는 Health Connect 수면을 올리지 않는다 —
+  // 서버는 날짜당 한 줄이라 나중에 올린 쪽이 마이크 결과를 덮어쓰기 때문(src/sleep/sleepSound.js)
+  if (perm.sleep && !sleepMicWasUsed()) {
+    try {
+      const nights = await readNightlySleep(days);
+      if (nights.length > 0) {
+        result.sleep = await post("/api/health/sleep", { source: sleepSourceName(), nights });
+      }
+    } catch (err) {
+      console.error("[Health] 수면 동기화 실패:", err);
     }
   }
   return result;
 }
 
 /**
- * 연동 켜기 전체 흐름 — 설정 토글과 홈 안내 카드가 같이 쓴다.
- * Health Connect 확인 → 시스템 '허용' 창 → 토글 켬 → 바로 7일치 동기화.
- * 반환: { status, needsInstall, gotSteps, gotSleep }
- *   status: "connected" | "no-data" | "denied" | "needs-install" | "unavailable"
+ * 연동 켜기 전체 흐름 — 설정 토글과 홈 안내 팝업이 같이 쓴다.
+ * 안드로이드: '신체 활동' 권한(걸음 센서) → Health Connect 가 있으면 수면 권한 → 바로 동기화.
+ * iOS: HealthKit 에서 걸음·수면을 한 번에.
+ * 반환: { status, stepsGranted, sleepGranted, gotSteps, gotSleep }
+ *   status: "connected" | "no-data" | "denied" | "unavailable"
+ *   안드로이드 걸음 센서는 연결한 순간부터 세므로 처음엔 데이터가 없어도 "connected".
  * 예외는 그대로 던진다(호출 쪽에서 '연동 실패' 안내).
  */
 export async function connectHealth() {
-  const avail = await checkHealthAvailable();
-  if (!avail.available) {
-    const needsInstall = healthConnectNeedsInstall(avail.reason);
-    return { status: needsInstall ? "needs-install" : "unavailable", needsInstall };
+  const [stepsAvail, hcAvail] = await Promise.all([checkStepsAvailable(), checkHealthAvailable()]);
+  if (!stepsAvail.available && !hcAvail.available) return { status: "unavailable" };
+
+  let stepsGranted = false;
+  let sleepGranted = false;
+  if (isAndroid()) {
+    if (stepsAvail.available) stepsGranted = await connectStepSensor();
+    if (hcAvail.available) {
+      try {
+        const got = authorizedSet(await Health.requestAuthorization({ read: ["sleep"] }));
+        sleepGranted = got.has("sleep");
+      } catch (err) {
+        console.error("[Health] 수면 권한 요청 실패:", err);
+      }
+    }
+  } else {
+    const got = authorizedSet(await Health.requestAuthorization({ read: ["steps", "sleep"] }));
+    stepsGranted = got.has("steps");
+    sleepGranted = got.has("sleep");
   }
-  const perm = await requestHealthPermissions();
-  if (!perm.any) return { status: "denied", needsInstall: false };
+  if (!stepsGranted && !sleepGranted) return { status: "denied", stepsGranted, sleepGranted };
+
   setHealthSyncEnabled(true);
   const result = await syncHealthIfEnabled({ force: true });
   const gotSteps = !!result?.steps?.latest_day;
   const gotSleep = !!result?.sleep?.latest_day;
+  const connected = gotSteps || gotSleep || (isAndroid() && stepsGranted);
   return {
-    status: gotSteps || gotSleep ? "connected" : "no-data",
-    needsInstall: false,
+    status: connected ? "connected" : "no-data",
+    stepsGranted,
+    sleepGranted,
     gotSteps,
     gotSleep,
   };
+}
+
+/** 연결 직후 안내 문구 — 폰 센서는 지금부터 세기 시작하므로 그렇게 알려 준다. */
+export function connectedMessage(stepsGranted, gotSleep) {
+  const parts = [];
+  if (stepsGranted) parts.push("걸음수는 지금부터 휴대폰이 직접 세요.");
+  if (gotSleep) parts.push("수면 기록도 연결됐어요.");
+  return `연결됐어요! ${parts.join(" ")} 체다가 대화할 때 참고할게요.`;
+}
+
+/**
+ * 예전(Health Connect 걸음수) 방식으로 연동을 켜 둔 사용자 — 토글은 켜져 있는데
+ * 걸음 센서 권한이 없다. 설정 화면에서 '다시 연결' 안내를 띄우는 데 쓴다.
+ */
+export async function stepsNeedReconnect() {
+  if (!isNativeApp() || !isAndroid() || !isHealthSyncEnabled()) return false;
+  const avail = await checkStepsAvailable();
+  if (!avail.available) return false;
+  const perm = await checkHealthPermissions();
+  return !perm.steps;
 }
 
 // 같은 세션에서 너무 자주 올리지 않도록 — 앱 복귀 때마다 호출돼도 10분에 한 번만.
