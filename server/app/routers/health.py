@@ -110,7 +110,7 @@ def sync_sleep(
             row = DailySleep(user_id=current_user.id, day=day)
             db.add(row)
         elif sleep_source_rank(row.source) > incoming_rank:
-            # 더 직접 잰 기록(마이크 측정·건강 앱)을 걸음수 추정이 덮어쓰지 않는다
+            # 직접 잰 소리 수면 측정(phone_mic)이 있는 날은 건강 앱 기록이 덮어쓰지 않는다
             continue
         row.asleep_minutes = night.asleep_minutes
         row.bed_start = night.bed_start
