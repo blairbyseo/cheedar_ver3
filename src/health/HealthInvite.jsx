@@ -122,19 +122,16 @@ export default function HealthInvite() {
         else missed.push("수면(마이크 권한)");
       }
       saveInvite({ ...loadInvite(), done: true });
+      // 다 허용됐으면 안내 없이 바로 닫는다(2026-11-08 사용자 결정 — 멘트 최소화)
+      if (!missed.length) {
+        setVisible(false);
+        return;
+      }
       setFinished(true);
-      const lines = [];
-      if (done.length) {
-        lines.push(`${done.join("·")} 자동 기록을 켰어요.`);
-        if (done.includes("수면")) lines.push("오늘 밤부터 휴대폰 화면이 꺼져 있을 때 재고, 아침에 잠금을 풀면 자동으로 끝나요.");
-      }
-      if (missed.length) {
-        lines.push(`${missed.join(", ")}이 허용되지 않아 켜지 못했어요. 홈의 수면 카드나 설정에서 다시 켤 수 있어요.`);
-      }
-      setMessage(lines.join(" "));
+      setMessage("권한이 허용되지 않았어요. 설정에서 다시 켤 수 있어요.");
     } catch (err) {
       console.error("[HealthInvite] 켜기 실패:", err);
-      setMessage("켜지 못했어요. 홈의 수면 카드나 설정에서 다시 시도해 주세요.");
+      setMessage("켜지 못했어요. 설정에서 다시 시도해 주세요.");
       setFinished(true);
     } finally {
       setBusy(false);
@@ -166,7 +163,6 @@ export default function HealthInvite() {
       >
         {finished ? (
           <>
-            <p className="mot-title">자동 기록</p>
             <p className="health-invite-text">{message}</p>
             <div className="mot-actions">
               <button type="button" className="mot-submit" onClick={() => setVisible(false)}>
@@ -177,20 +173,6 @@ export default function HealthInvite() {
         ) : (
           <>
             <p className="mot-title">{title}</p>
-            {ask.steps && (
-              <p className="health-invite-text">
-                <b>걸음수</b> · 휴대폰 센서로 하루 걸음을 세요.
-              </p>
-            )}
-            {ask.sleep && (
-              <p className="health-invite-text">
-                <b>수면</b> · 밤에 휴대폰 화면이 꺼져 있을 때 소리로 잠을 재고, 아침에 잠금을 풀면 자동으로 끝나요.
-                소리는 저장하지 않고 휴대폰 안에서만 분석해요.
-              </p>
-            )}
-            <p className="health-invite-text health-invite-note">
-              허용을 누르면 휴대폰 권한 창이 이어서 나와요. 포인트와는 관계없고, 언제든 끌 수 있어요.
-            </p>
             <div className="mot-actions">
               <button type="button" className="mot-later" onClick={handleLater} disabled={busy}>
                 나중에
