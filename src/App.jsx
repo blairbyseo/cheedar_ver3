@@ -42,7 +42,7 @@ import { syncHealthIfEnabled, isNativeApp } from './health/healthData';
 import { App as CapApp } from '@capacitor/app';
 import MotivationCheck from './MotivationCheck';
 import HealthInvite from './health/HealthInvite';
-import { uploadPendingNights } from './sleep/sleepSound';
+import { uploadPendingNights, ensureAutoSleep } from './sleep/sleepSound';
 import { AiConsentProvider } from './notice/AiConsent';
 
 /* 로그인 이후 보여줄 메인 화면 — 탭 5개 + 하단 TabBar */
@@ -147,12 +147,15 @@ function MainShell() {
   useEffect(() => {
     if (!isNativeApp()) return undefined;
     syncHealthIfEnabled();
-    // 소리 수면 측정 결과 중 아직 못 보낸 것(오프라인·밤중에 끊긴 측정)을 보낸다
+    // 소리 수면 측정: 못 보낸 결과(밤사이 자동 측정·오프라인·끊긴 측정)를 보내고,
+    // '매일 밤 자동 측정'이 재부팅 등으로 꺼져 있으면 다시 켠다(앱이 화면에 있을 때만 가능)
     uploadPendingNights();
+    ensureAutoSleep();
     const sub = CapApp.addListener("appStateChange", ({ isActive }) => {
       if (isActive) {
         syncHealthIfEnabled();
         uploadPendingNights();
+        ensureAutoSleep();
       }
     });
     return () => {

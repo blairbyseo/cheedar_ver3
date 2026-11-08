@@ -9,7 +9,7 @@ import { useTodayStatus } from "../useTodayStatus";
 import { useFinalReward } from "../useFinalReward";
 import { useAuth } from "../auth/AuthContext";
 import SleepMeasureCard from "../sleep/SleepMeasureCard";
-import { isSleepSoundAvailable } from "../sleep/sleepSound";
+import { HEALTH_UPDATED_EVENT, isSleepSoundAvailable } from "../sleep/sleepSound";
 
 // 헤더 멘트·끼니 현황 줄에서 쓰는 끼니 한글 표기.
 const MEAL_KR = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
@@ -108,14 +108,20 @@ function Home({setActiveTab}) {
   const [healthGreeting, setHealthGreeting] = useState(null);
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/health/greeting", { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.text) setHealthGreeting(data.text);
-      })
-      .catch(() => {}); // 못 불러오면 기존 인사말 그대로
+    const load = () =>
+      fetch("/api/health/greeting", { credentials: "include" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!cancelled && data) setHealthGreeting(data.text || null);
+        })
+        .catch(() => {}); // 못 불러오면 기존 인사말 그대로
+    load();
+    // 앱을 열자마자 인사말을 가져오면 밤사이 수면 결과·오늘 걸음 업로드보다 먼저 끝날 수 있다.
+    // 업로드가 끝났다는 신호가 오면 한 번 더 불러와 "어젯밤 ~ 주무셨네요"가 바로 보이게 한다.
+    window.addEventListener(HEALTH_UPDATED_EVENT, load);
     return () => {
       cancelled = true;
+      window.removeEventListener(HEALTH_UPDATED_EVENT, load);
     };
   }, []);
   const greeting = healthGreeting || greetingPool[date % greetingPool.length];

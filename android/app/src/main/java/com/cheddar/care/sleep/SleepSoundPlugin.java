@@ -3,8 +3,6 @@ package com.cheddar.care.sleep;
 import android.Manifest;
 import android.content.Intent;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -18,12 +16,11 @@ import com.getcapacitor.annotation.PermissionCallback;
 import java.util.HashSet;
 import java.util.Set;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * 요청 창구 — 화면(src/sleep/sleepSound.js)의 요청을 받아 녹음 서비스·보관함에 전달한다.
- * 녹음이나 계산은 직접 하지 않는다.
+ * 요청 창구 — 화면(src/sleep/sleepSound.js)의 요청을 받아 수면 서비스·보관함에 전달한다.
+ * 측정은 '매일 밤 자동'뿐이라(SleepRecordService) 여기서는 켜기/끄기·상태·결과 전달만 한다.
  */
 @CapacitorPlugin(
     name = "SleepSound",
@@ -34,18 +31,8 @@ import org.json.JSONObject;
 )
 public class SleepSoundPlugin extends Plugin {
 
-    private static final long STOP_TIMEOUT_MS = 10_000;
-
-    private final Handler main = new Handler(Looper.getMainLooper());
-    private PluginCall pendingStop;
-
     private SleepSessionStore store() {
         return SleepSessionStore.get(getContext());
-    }
-
-    @Override
-    public void load() {
-        store().setFinishListener((result, normal) -> main.post(() -> resolveStop(result, normal)));
     }
 
     // ───────── 권한 ─────────
@@ -80,74 +67,65 @@ public class SleepSoundPlugin extends Plugin {
         checkMicPermission(call);
     }
 
-    // ───────── 측정 ─────────
-
-    @PluginMethod
-    public void start(PluginCall call) {
-        if (!micGranted()) {
-            call.reject("microphone permission not granted", "NO_PERMISSION");
-            return;
-        }
-        store().recoverIfStale();
-        long now = System.currentTimeMillis();
-        String id = store().beginSession(now);
-        if (!SleepRecordService.isRunning()) {
-            Intent i = new Intent(getContext(), SleepRecordService.class).setAction(SleepRecordService.ACTION_START);
-            ContextCompat.startForegroundService(getContext(), i);
-        }
-        JSObject ret = new JSObject();
-        ret.put("sessionId", id);
-        ret.put("startedAt", store().startedAt());
-        call.resolve(ret);
-    }
-
-    /** 멈춤. 녹음 서비스가 정리를 끝내면 요약과 함께 응답한다. */
-    @PluginMethod
-    public void stop(PluginCall call) {
-        store().recoverIfStale();
-        if (!store().isActive()) {
-            JSObject ret = new JSObject();
-            ret.put("summary", null);
-            ret.put("reason", "not_running");
-            call.resolve(ret);
-            return;
-        }
-        if (pendingStop != null) pendingStop.reject("superseded", "SUPERSEDED");
-        pendingStop = call;
-        Intent i = new Intent(getContext(), SleepRecordService.class).setAction(SleepRecordService.ACTION_STOP);
-        getContext().startService(i);
-
-        main.postDelayed(() -> {
-            if (pendingStop != call) return;
-            // 서비스가 응답하지 않으면 보관함에서 직접 마무리 — 결과는 finishListener 로 응답된다
-            if (store().isActive()) store().finishSession(true);
-            else resolveStop(null, true);
-        }, STOP_TIMEOUT_MS);
-    }
-
-    private void resolveStop(NightSummary.Result result, boolean normal) {
-        PluginCall call = pendingStop;
-        if (call == null) return;
-        pendingStop = null;
-        JSObject ret = new JSObject();
-        try {
-            ret.put("summary", result != null ? JSObject.fromJSONObject(SleepSessionStore.toJson(result)) : null);
-        } catch (JSONException e) {
-            ret.put("summary", null);
-        }
-        ret.put("reason", result != null ? "ok" : "too_short");
-        ret.put("interrupted", !normal);
-        call.resolve(ret);
-    }
+    // ───────── 상태 ─────────
 
     @PluginMethod
     public void getStatus(PluginCall call) {
         store().recoverIfStale();
         JSObject ret = new JSObject();
-        ret.put("running", store().isActive());
-        ret.put("sessionId", store().sessionId());
+        ret.put("running", store().isActive());       // 오늘 밤 측정이 진행 중(화면 켜져 잠시 멈춘 때 포함)
+        ret.put("recording", SleepRecordService.isRecording());
         ret.put("startedAt", store().startedAt());
-        ret.put("epochCount", store().epochCount());
+        ret.put("autoEnabled", store().isAutoEnabled());
+        ret.put("autoArmed", SleepRecordService.isRunning());
+        call.resolve(ret);
+    }
+
+    // ───────── 자동 기록 켜기/끄기 ─────────
+
+    /** 서비스에 명령. 이미 떠 있으면 일반 시작, 아니면 포그라운드 시작(앱이 화면에 있을 때만 호출됨). */
+    private void sendToService(String action) {
+        Intent i = new Intent(getContext(), SleepRecordService.class).setAction(action);
+        if (SleepRecordService.isRunning()) getContext().startService(i);
+        else ContextCompat.startForegroundService(getContext(), i);
+    }
+
+    /** { enabled } — 켤 때는 마이크 권한이 있어야 한다(JS 가 먼저 requestMicPermission). */
+    @PluginMethod
+    public void setAutoMode(PluginCall call) {
+        boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", false));
+        if (enabled && !micGranted()) {
+            call.reject("microphone permission not granted", "NO_PERMISSION");
+            return;
+        }
+        store().setAuto(enabled, SleepAuto.NIGHT_START_MINUTE);
+        if (enabled) {
+            store().recoverIfStale();
+            sendToService(SleepRecordService.ACTION_ARM);
+            SleepBootReceiver.clearRearmNotification(getContext());
+        } else if (SleepRecordService.isRunning()) {
+            getContext().startService(new Intent(getContext(), SleepRecordService.class).setAction(SleepRecordService.ACTION_AUTO_OFF));
+        }
+        JSObject ret = new JSObject();
+        ret.put("enabled", enabled);
+        call.resolve(ret);
+    }
+
+    /**
+     * 앱이 열릴 때마다 호출. 자동 기록이 켜져 있는데 서비스가 없으면(재부팅·시스템 종료) 다시 켠다.
+     * 앱이 화면에 있을 때라 마이크 서비스를 새로 시작할 수 있다.
+     */
+    @PluginMethod
+    public void ensureAuto(PluginCall call) {
+        boolean rearmed = false;
+        if (store().isAutoEnabled() && micGranted() && !SleepRecordService.isRunning()) {
+            store().recoverIfStale();
+            sendToService(SleepRecordService.ACTION_ARM);
+            rearmed = true;
+        }
+        if (store().isAutoEnabled()) SleepBootReceiver.clearRearmNotification(getContext());
+        JSObject ret = new JSObject();
+        ret.put("rearmed", rearmed);
         call.resolve(ret);
     }
 

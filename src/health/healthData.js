@@ -15,7 +15,7 @@
  */
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { Health } from "@capgo/capacitor-health";
-import { sleepMicWasUsed } from "../sleep/sleepSound";
+import { HEALTH_UPDATED_EVENT, sleepMicWasUsed } from "../sleep/sleepSound";
 
 // android/app/src/main/java/com/cheddar/care/StepSensorPlugin.java
 const StepSensor = registerPlugin("StepSensor");
@@ -83,10 +83,9 @@ export async function checkStepsAvailable() {
   }
 }
 
-/** 걸음수든 수면이든 하나라도 연결할 수 있는 기기인지 — 안내 팝업·설정 카드 노출 판단용. */
+/** 연결할 수 있는 기기인지 — 안내 팝업 노출 판단용. 연결의 기준은 걸음수(안드로이드는 폰 센서). */
 export async function checkAnyHealthAvailable() {
-  const [steps, hc] = await Promise.all([checkStepsAvailable(), checkHealthAvailable()]);
-  return steps.available || hc.available;
+  return (await checkStepsAvailable()).available;
 }
 
 // ───────────────────────── 권한 ─────────────────────────
@@ -128,18 +127,6 @@ async function connectStepSensor() {
   if (!perm?.granted) return false;
   await StepSensor.subscribe();
   return true;
-}
-
-// ───────────────────────── Health Connect 설정 ─────────────────────────
-
-/** Health Connect 설정 화면(수면 권한)을 연다. 안드로이드 전용. 미설치면 아무 일 없음. */
-export async function openHealthSettings() {
-  if (!isNativeApp() || !isAndroid()) return;
-  try {
-    await Health.openHealthConnectSettings();
-  } catch (err) {
-    console.error("[Health] 설정 열기 실패:", err);
-  }
 }
 
 // Date → 기기 로컬 날짜 "YYYY-MM-DD". (toISOString 은 UTC 라 자정 근처에 하루가 밀린다)
@@ -322,6 +309,7 @@ export async function syncHealthToServer(days = 7) {
       console.error("[Health] 수면 동기화 실패:", err);
     }
   }
+  if (result.steps || result.sleep) window.dispatchEvent(new Event(HEALTH_UPDATED_EVENT));
   return result;
 }
 
@@ -335,21 +323,15 @@ export async function syncHealthToServer(days = 7) {
  * 예외는 그대로 던진다(호출 쪽에서 '연동 실패' 안내).
  */
 export async function connectHealth() {
-  const [stepsAvail, hcAvail] = await Promise.all([checkStepsAvailable(), checkHealthAvailable()]);
-  if (!stepsAvail.available && !hcAvail.available) return { status: "unavailable" };
+  const stepsAvail = await checkStepsAvailable();
+  if (!stepsAvail.available) return { status: "unavailable" };
 
   let stepsGranted = false;
   let sleepGranted = false;
   if (isAndroid()) {
+    // 2026-11-08: 안드로이드는 Health Connect 수면 권한을 더 묻지 않는다 — 수면은 홈 카드의
+    // 소리 측정(src/sleep/)으로 잰다. 권한 창은 '신체 활동' 하나.
     if (stepsAvail.available) stepsGranted = await connectStepSensor();
-    if (hcAvail.available) {
-      try {
-        const got = authorizedSet(await Health.requestAuthorization({ read: ["sleep"] }));
-        sleepGranted = got.has("sleep");
-      } catch (err) {
-        console.error("[Health] 수면 권한 요청 실패:", err);
-      }
-    }
   } else {
     const got = authorizedSet(await Health.requestAuthorization({ read: ["steps", "sleep"] }));
     stepsGranted = got.has("steps");

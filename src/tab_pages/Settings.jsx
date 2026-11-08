@@ -21,13 +21,12 @@ import {
   isNativeApp,
   isHealthSyncEnabled,
   setHealthSyncEnabled,
-  checkHealthAvailable,
   connectHealth,
   connectedMessage,
   stepsNeedReconnect,
-  openHealthSettings,
 } from "../health/healthData";
 import { useAiConsent } from "../notice/AiConsent";
+import { getSleepStatus, isSleepSoundAvailable, setAutoSleep } from "../sleep/sleepSound";
 import { HealthSourcesModal } from "../notice/HealthSources";
 import { assetUrl } from "../api/base";
 
@@ -173,23 +172,20 @@ function Settings() {
     localStorage.setItem(NOTIF_RANKING_KEY, rankingAlertOn ? "on" : "off");
   }, [rankingAlertOn]);
 
-  // 5-1) 건강 데이터(걸음수·수면) 연동 — 앱에서만 보이는 카드. 기본 꺼짐(선택 기능).
-  //      켜는 순간 '신체 활동' 권한(폰 걸음 센서) + Health Connect 가 있으면 수면 권한을 묻고,
-  //      허용된 것만 바로 올린다. 포인트와 무관하고 채팅·주간 리포트·동기 점검의 참고 문구에만 쓰인다.
+
+  // 5-1) 건강 데이터(걸음수) 연동 — 앱에서만 보이는 카드. 기본 꺼짐(선택 기능).
+  //      켜는 순간 '신체 활동' 권한(폰 걸음 센서) 한 번만 묻는다. 포인트와 무관하고 채팅·주간 리포트·동기 점검의 참고 문구에만 쓰인다.
+  //      2026-11-08: Health Connect 관련 행(수면 권한 설정·삼성 헬스 안내)은 뺐다 — 걸음은 폰 센서,
+  //      수면은 홈 카드의 소리 측정으로 바뀌어 사용자가 만질 일이 없다.
   const [healthOn, setHealthOn] = useState(() => isHealthSyncEnabled());
   const [healthBusy, setHealthBusy] = useState(false);
   const [healthMessage, setHealthMessage] = useState("");
   // 서버가 기억하는 마지막 동기화: {latest_day, latest_steps, sleep_latest_day, sleep_latest_minutes}
   const [healthStatus, setHealthStatus] = useState(null);
-  // Health Connect 가 있는 기기만 '수면 권한 설정' 행을 보여 준다(걸음수는 이제 폰 센서).
-  const [healthConnectAvailable, setHealthConnectAvailable] = useState(false);
 
   useEffect(() => {
     if (!isNativeApp()) return undefined;
     let cancelled = false;
-    checkHealthAvailable().then((avail) => {
-      if (!cancelled) setHealthConnectAvailable(avail.available);
-    });
     // 예전 방식(Health Connect 걸음수)으로 켜 둔 사용자 — 걸음 센서 권한이 없으니 다시 켜게 한다
     stepsNeedReconnect().then((need) => {
       if (cancelled || !need) return;
@@ -223,6 +219,46 @@ function Settings() {
       cancelled = true;
     };
   }, [healthOn]);
+
+  // 5-2) 수면 자동 기록(안드로이드) — 켜기는 홈 팝업의 [허용]으로도 되고, 여기선 켜기/끄기만.
+  //      밤(저녁 8시~낮 12시)에 화면이 꺼져 있을 때만 재서 사용자가 정할 시각은 없다.
+  const [sleepAutoOn, setSleepAutoOn] = useState(false);
+  const [sleepBusy, setSleepBusy] = useState(false);
+  const [sleepMessage, setSleepMessage] = useState("");
+
+  useEffect(() => {
+    if (!isSleepSoundAvailable()) return undefined;
+    let cancelled = false;
+    getSleepStatus()
+      .then((st) => {
+        if (!cancelled && st) setSleepAutoOn(!!st.autoEnabled);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleSleepAuto() {
+    if (sleepBusy) return;
+    const next = !sleepAutoOn;
+    setSleepBusy(true);
+    setSleepMessage("");
+    try {
+      const res = await setAutoSleep(next);
+      if (res.status === "denied") {
+        setSleepMessage("마이크 권한이 필요해요. 휴대폰 설정 → 애플리케이션 → Cheddar → 권한에서 마이크를 허용해 주세요.");
+        setSleepAutoOn(false);
+      } else {
+        setSleepAutoOn(next);
+      }
+    } catch (err) {
+      console.error("[Settings] 수면 자동 기록 변경 실패:", err);
+      setSleepMessage("변경하지 못했어요. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setSleepBusy(false);
+    }
+  }
 
   async function handleToggleHealth() {
     if (healthBusy) return;
@@ -681,14 +717,14 @@ function Settings() {
       </section>
 
       {/* ───────── 건강 데이터 연동 카드 — 앱(안드로이드/iOS)에서만 표시 ─────────
-          걸음수는 폰 센서(안드로이드)/HealthKit(iOS), 수면은 Health Connect/HealthKit — 참고 문구로만(포인트 X).
+          걸음수는 폰 센서(안드로이드)/HealthKit(iOS), 수면은 홈 카드 소리 측정 — 참고 문구로만(포인트 X).
           웹에서는 읽을 방법이 없으므로 카드 자체를 그리지 않는다. */}
       {isNativeApp() && (
         <section className="settings-card">
           <h3 className="settings-card-title">건강 데이터</h3>
           <div className="notification-row">
             <div className="notification-row-info">
-              <p className="notification-row-title">걸음수·수면 연동</p>
+              <p className="notification-row-title">걸음수 연동</p>
               <p className="notification-row-desc">
                 휴대폰 센서로 센 걸음수를 체다가 대화·주간 리포트에서 참고해요. 포인트와는 관계없어요
               </p>
@@ -697,14 +733,6 @@ function Settings() {
                   걸음수 마지막 동기화: {healthStatus.latest_day}
                   {healthStatus.latest_steps != null
                     ? ` · ${Number(healthStatus.latest_steps).toLocaleString()}걸음`
-                    : ""}
-                </p>
-              )}
-              {healthOn && healthStatus?.sleep_latest_day && (
-                <p className="notification-row-desc">
-                  수면 마지막 동기화: {healthStatus.sleep_latest_day}
-                  {healthStatus.sleep_latest_minutes != null
-                    ? ` · ${formatSleep(healthStatus.sleep_latest_minutes)}`
                     : ""}
                 </p>
               )}
@@ -718,9 +746,39 @@ function Settings() {
               isOn={healthOn}
               onClick={handleToggleHealth}
               disabled={healthBusy}
-              label="걸음수·수면 연동"
+              label="걸음수 연동"
             />
           </div>
+          {isSleepSoundAvailable() && (
+            <div className="notification-row">
+              <div className="notification-row-info">
+                <p className="notification-row-title">수면 자동 기록</p>
+                <p className="notification-row-desc">
+                  밤에 휴대폰 화면이 꺼져 있을 때 소리로 잠을 재고, 아침에 잠금을 풀면 끝나요.
+                  소리는 저장하지 않고 휴대폰 안에서만 분석해요
+                </p>
+                {healthStatus?.sleep_latest_day && (
+                  <p className="notification-row-desc">
+                    수면 마지막 기록: {healthStatus.sleep_latest_day}
+                    {healthStatus.sleep_latest_minutes != null
+                      ? ` · ${formatSleep(healthStatus.sleep_latest_minutes)}`
+                      : ""}
+                  </p>
+                )}
+                {sleepMessage && (
+                  <p className="notification-row-desc" style={{ color: "#7A756B", marginTop: 6 }}>
+                    {sleepMessage}
+                  </p>
+                )}
+              </div>
+              <ToggleSwitch
+                isOn={sleepAutoOn}
+                onClick={handleSleepAuto}
+                disabled={sleepBusy}
+                label="수면 자동 기록"
+              />
+            </div>
+          )}
           <div className="notification-row">
             <div className="notification-row-info">
               <p className="notification-row-title">데이터가 안 보일 때</p>
@@ -730,12 +788,6 @@ function Settings() {
               </p>
             </div>
           </div>
-          {healthConnectAvailable && (
-            <button type="button" className="settings-list-row" onClick={openHealthSettings}>
-              수면 권한 설정 (Health Connect)
-              <span className="settings-list-row-arrow">›</span>
-            </button>
-          )}
         </section>
       )}
 

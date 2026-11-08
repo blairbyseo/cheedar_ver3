@@ -23,6 +23,16 @@ _STALE_DAYS = 3
 _MIN_NIGHT_MINUTES = 60
 
 
+# 수면 기록 출처. 같은 날에 여러 출처가 오면 순위가 높은 쪽을 남긴다(routers/health.py).
+# - health_connect / healthkit / simulated : 건강 앱이 준 수면 기록
+# - phone_mic : 사용자가 직접 켠 소리 수면 측정 — 그날 밤을 직접 잰 것이라 가장 우선
+_SOURCE_RANK = {"phone_mic": 2}
+
+
+def sleep_source_rank(source: str | None) -> int:
+    return _SOURCE_RANK.get(source or "", 1)
+
+
 def fmt_minutes(minutes: int) -> str:
     """390 → '6시간 30분', 420 → '7시간', 45 → '45분'."""
     h, m = divmod(int(minutes), 60)

@@ -110,3 +110,33 @@ def test_sleep_context_ignores_stale(db_session, monkeypatch):
     session.add(DailySleep(user_id=user.id, day=date(2026, 10, 10), asleep_minutes=480))
     session.commit()
     assert sleep_context.build_sleep_context(session, user.id) == ""
+
+
+
+def _post(client, source, minutes):
+    return client.post(
+        "/api/health/sleep",
+        json={"source": source, "nights": [{"day": "2026-11-09", "asleep_minutes": minutes}]},
+    )
+
+
+def test_health_app_never_overwrites_mic_measurement(client, db_session, monkeypatch):
+    """소리 측정(phone_mic)이 있는 날은 건강 앱 수면이 덮어쓰지 못한다. 반대는 덮어쓴다."""
+    session, user = db_session
+    monkeypatch.setattr("app.routers.health.kst_today", lambda: date(2026, 11, 9))
+
+    def row():
+        session.expire_all()
+        return session.query(DailySleep).filter_by(user_id=user.id, day=date(2026, 11, 9)).one()
+
+    assert _post(client, "health_connect", 480).status_code == 200
+    assert (row().source, row().asleep_minutes) == ("health_connect", 480)
+
+    assert _post(client, "phone_mic", 410).status_code == 200  # 측정이 건강 앱 기록을 덮음
+    assert (row().source, row().asleep_minutes) == ("phone_mic", 410)
+
+    assert _post(client, "health_connect", 395).status_code == 200  # 건강 앱은 측정을 못 덮음
+    assert (row().source, row().asleep_minutes) == ("phone_mic", 410)
+
+    assert _post(client, "phone_mic", 420).status_code == 200  # 같은 출처끼리는 최신으로
+    assert row().asleep_minutes == 420

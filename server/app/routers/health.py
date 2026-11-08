@@ -29,6 +29,7 @@ from app.schemas.health import (
 from app.services.health_greeting import build_home_greeting
 from app.services.motivation import eating_high_risk, latest_completed_survey
 from app.services.record_dates import KST, kst_today
+from app.services.sleep_context import sleep_source_rank
 
 router = APIRouter(prefix="/api/health", tags=["health"])
 
@@ -102,11 +103,15 @@ def sync_sleep(
             )
         ).scalars()
     }
+    incoming_rank = sleep_source_rank(payload.source)
     for day, night in wanted.items():
         row = existing.get(day)
         if row is None:
             row = DailySleep(user_id=current_user.id, day=day)
             db.add(row)
+        elif sleep_source_rank(row.source) > incoming_rank:
+            # 더 직접 잰 기록(마이크 측정·건강 앱)을 걸음수 추정이 덮어쓰지 않는다
+            continue
         row.asleep_minutes = night.asleep_minutes
         row.bed_start = night.bed_start
         row.wake_end = night.wake_end

@@ -96,6 +96,13 @@ public final class SleepSessionStore {
     public synchronized void appendEpoch(Epoch e) {
         String id = prefs.getString(K_SESSION, null);
         if (id == null) return;
+        // 시작 버튼보다 먼저 시작된 30초 칸은 버린다 — 이전 측정의 녹음이 이어지던 중에 새 측정이
+        // 시작된 경우 등(2026-11-08 실기기에서 첫 칸이 시작 20초 전으로 잡힌 문제)
+        long epochStart = e.endMs - NightSummary.EPOCH_SECONDS * 1000L;
+        if (epochStart < prefs.getLong(K_STARTED, 0L) - 1000L) {
+            Log.w(TAG, "측정 시작 전부터 쌓인 칸이라 버림");
+            return;
+        }
         try (FileOutputStream out = new FileOutputStream(logFile(id), true)) {
             out.write((e.toLine() + "\n").getBytes(StandardCharsets.UTF_8));
         } catch (IOException ex) {
@@ -118,16 +125,40 @@ public final class SleepSessionStore {
             result = NightSummary.compute(id, readEpochs(log), !normal, ZoneId.systemDefault());
             if (result != null) addPending(result);
             if (log.exists() && !log.delete()) Log.w(TAG, "기록 파일 삭제 실패: " + log);
-            prefs.edit().remove(K_SESSION).remove(K_STARTED).remove(K_EPOCHS).commit();
+            prefs.edit().remove(K_SESSION).remove(K_STARTED).remove(K_EPOCHS)
+                .putLong(K_LAST_FINISHED, System.currentTimeMillis()).commit();
         }
         FinishListener l = listener;
         if (l != null) l.onFinished(result, normal);
         return result;
     }
 
-    /** 측정 중으로 적혀 있는데 녹음 서비스가 없으면(밤중에 앱이 꺼짐) 끊김으로 마무리한다. */
+    // ───────── 매일 밤 자동 측정 설정 ─────────
+
+    private static final String K_AUTO = "auto_enabled";
+    private static final String K_AUTO_START = "auto_start_minute";
+    private static final String K_LAST_FINISHED = "last_finished_at";
+
+    /** 마지막으로 측정이 끝난 시각(멈춤·자동 종료·끊김 모두). 같은 밤에 다시 자동 시작하지 않는 데 쓴다. */
+    public synchronized long lastFinishedAt() {
+        return prefs.getLong(K_LAST_FINISHED, 0L);
+    }
+
+    public synchronized boolean isAutoEnabled() {
+        return prefs.getBoolean(K_AUTO, false);
+    }
+
+    /** 자동 기록 켜기/끄기. 시작 시각은 사용자가 정하지 않는다(SleepAuto 의 밤 구간 고정). */
+    public synchronized void setAuto(boolean enabled, int unusedStartMinute) {
+        prefs.edit().putBoolean(K_AUTO, enabled).remove(K_AUTO_START).commit();
+    }
+
+    /**
+     * 측정 중으로 적혀 있는데 수면 서비스가 없으면(밤중에 앱이 꺼짐) 끊김으로 마무리한다.
+     * 서비스가 살아 있으면 화면이 켜져 잠시 멈춘 것일 수 있어 건드리지 않는다.
+     */
     public void recoverIfStale() {
-        if (isActive() && !SleepRecordService.isRunning()) {
+        if (isActive() && !SleepRecordService.isRunning() && System.currentTimeMillis() - startedAt() > 15_000) {
             Log.i(TAG, "녹음 서비스 없이 남은 측정 → 끊김으로 마무리");
             finishSession(false);
         }

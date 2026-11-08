@@ -61,6 +61,17 @@
             android:name=".sleep.SleepRecordService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- 재부팅·업데이트 뒤 '매일 밤 자동 수면 측정'을 다시 켜 달라는 알림만 띄운다
+             (부팅 직후엔 마이크 서비스를 시작할 수 없음 — sleep/SleepBootReceiver.java) -->
+        <receiver
+            android:name=".sleep.SleepBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 
     <!-- Permissions -->
@@ -77,6 +88,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- 걸음수는 더 이상 Health Connect 에서 읽지 않는다(2026-11-08, 삼성 헬스→HC 지연·누락 때문에 센서로 교체). -->
     <uses-permission android:name="android.permission.health.READ_STEPS" tools:node="remove" />

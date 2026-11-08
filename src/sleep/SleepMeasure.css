@@ -1,4 +1,4 @@
-/* 홈 '수면 측정' 카드 — 홈의 다른 카드(menu-card2)와 같은 흰 카드·그림자·모서리 */
+/* 홈 '수면' 카드 — 홈의 다른 카드(menu-card2)와 같은 흰 카드·그림자·모서리 */
 .sleep-card {
   margin-top: 12px;
   padding: 16px 18px;
@@ -47,53 +47,26 @@
   gap: 4px 10px;
 }
 
+.sleep-card-label {
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
 .sleep-card-result strong {
   font-size: 22px;
   font-weight: 800;
   color: var(--text-main);
 }
 
-.sleep-card-result span {
+.sleep-card-result span:last-child {
   font-size: 14px;
   color: var(--text-sub);
   font-variant-numeric: tabular-nums;
 }
 
-.sleep-card-note,
 .sleep-card-tip {
   margin: 0;
   font-size: 12.5px;
-  color: var(--text-muted);
-}
-
-.sleep-card-message {
-  margin: 0;
-  font-size: 13px;
   line-height: 1.5;
-  color: var(--text-sub);
-}
-
-.sleep-card-btn {
-  margin-top: 4px;
-  min-height: 44px;
-  border: none;
-  border-radius: 14px;
-  background: var(--primary);
-  color: var(--text-main);
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.sleep-card-btn:active {
-  background: var(--primary-strong);
-}
-
-.sleep-card-btn:disabled {
-  opacity: 0.6;
-}
-
-.sleep-card-btn-stop {
-  background: var(--primary-soft);
+  color: var(--text-muted);
 }
