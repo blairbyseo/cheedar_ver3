@@ -1,4 +1,4 @@
-import { AlertTriangle, MessageSquare, ShieldAlert, UtensilsCrossed, Users } from "lucide-react";
+import { AlertTriangle, Footprints, MessageSquare, Moon, ShieldAlert, UtensilsCrossed, Users } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -92,6 +92,30 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {/* 건강 데이터 수신 현황 — 분모는 '최근 7일 안에 한 번이라도 기록이 온 회원'
+          (자동 기록을 켰는지는 폰에만 저장돼 서버가 모름) */}
+      <h2 className="dashboard-section-title">건강 데이터 수신</h2>
+      <div className="card-grid">
+        <HealthCard
+          label="어젯밤 수면 기록"
+          icon={Moon}
+          color="#6366f1"
+          value={stats?.sleep_last_night_users}
+          base={stats?.sleep_users_7d}
+        />
+        <HealthCard
+          label="오늘 걸음수 업로드"
+          icon={Footprints}
+          color="#14b8a6"
+          value={stats?.steps_today_users}
+          base={stats?.steps_users_7d}
+        />
+      </div>
+      <p className="dashboard-note">
+        '8 / 10명'은 최근 7일 안에 기록이 온 10명 중 8명이 오늘(어젯밤) 기록을 보냈다는 뜻이에요.
+        회원별 내역은 회원 상세 → 걸음 · 수면 탭에서 볼 수 있어요.
+      </p>
+
       {stats && (
         <p className="dashboard-note">
           현재 관리자 {stats.admin_count}명이 등록돼 있어요.
@@ -99,6 +123,23 @@ export default function Dashboard() {
       )}
 
       <AnalyticsCharts />
+    </div>
+  );
+}
+
+function HealthCard({ label, icon: Icon, color, value, base }) {
+  return (
+    <div className="stat-card">
+      <div className="stat-body">
+        <span className="stat-label">{label}</span>
+        <span className="stat-value">
+          {value != null ? value.toLocaleString() : "—"}
+          <span className="stat-suffix"> / {base != null ? base.toLocaleString() : "—"}명</span>
+        </span>
+      </div>
+      <div className="stat-icon" style={{ background: `${color}1a`, color }}>
+        <Icon size={22} />
+      </div>
     </div>
   );
 }

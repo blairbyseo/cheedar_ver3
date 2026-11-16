@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import get_current_admin
 from app.models.chat import ChatMessage, ChatRole
+from app.models.daily_sleep import DailySleep
+from app.models.daily_steps import DailySteps
 from app.models.inquiry import Inquiry
 from app.models.invite_code import InviteCode, normalize_code
 from app.models.meal import Meal
@@ -29,7 +31,9 @@ from app.schemas.admin import (
     AdminInviteCodeItem,
     AdminInviteCodeUpdateRequest,
     AdminSurveyResponseItem,
+    AdminHealthDay,
     AdminUserDetail,
+    AdminUserHealth,
     AdminUserListItem,
     AdminUserListResponse,
     DashboardStats,
@@ -93,6 +97,16 @@ def dashboard_stats(db: Session = Depends(get_db)) -> DashboardStats:
         .where(SafetyEvent.is_resolved.is_(False))
     ) or 0
 
+    # 건강 데이터 수신 현황. 수면 day 는 '일어난 날'이라 KST 오늘 = 어젯밤 잠.
+    week_ago = today - timedelta(days=6)
+
+    def _distinct_users(model, start: DateType, end: DateType) -> int:
+        return db.scalar(
+            select(func.count(func.distinct(model.user_id))).where(
+                model.day >= start, model.day <= end
+            )
+        ) or 0
+
     return DashboardStats(
         total_users=total_users,
         admin_count=admin_count,
@@ -101,6 +115,10 @@ def dashboard_stats(db: Session = Depends(get_db)) -> DashboardStats:
         total_chat_messages=total_chat_messages,
         total_points_awarded=total_points_awarded,
         unresolved_safety_count=unresolved_safety_count,
+        sleep_last_night_users=_distinct_users(DailySleep, today, today),
+        sleep_users_7d=_distinct_users(DailySleep, week_ago, today),
+        steps_today_users=_distinct_users(DailySteps, today, today),
+        steps_users_7d=_distinct_users(DailySteps, week_ago, today),
     )
 
 
@@ -487,6 +505,72 @@ def get_user_survey_responses(
         )
         for resp, version in db.execute(stmt).all()
     ]
+
+
+@router.get("/users/{user_id}/health", response_model=AdminUserHealth)
+def get_user_health(
+    user_id: int,
+    days: int = Query(default=30, ge=1, le=180),
+    db: Session = Depends(get_db),
+) -> AdminUserHealth:
+    """특정 회원의 최근 days일(KST 오늘 포함) 걸음수·수면 — 최신 날짜부터.
+
+    기록이 없는 날도 빈 줄로 넣어, 측정이 빠진 날이 표에서 바로 보이게 한다.
+    수면 day 는 '일어난 날' 기준(앱 업로드 규칙과 같음).
+    """
+    _get_user_or_404(user_id, db)
+    today = datetime.now(KST).date()
+    start = today - timedelta(days=days - 1)
+
+    steps = {
+        r.day: r
+        for r in db.execute(
+            select(DailySteps).where(
+                DailySteps.user_id == user_id,
+                DailySteps.day >= start,
+                DailySteps.day <= today,
+            )
+        ).scalars()
+    }
+    sleep = {
+        r.day: r
+        for r in db.execute(
+            select(DailySleep).where(
+                DailySleep.user_id == user_id,
+                DailySleep.day >= start,
+                DailySleep.day <= today,
+            )
+        ).scalars()
+    }
+
+    rows: list[AdminHealthDay] = []
+    for i in range(days):
+        d = today - timedelta(days=i)
+        st, sl = steps.get(d), sleep.get(d)
+        rows.append(
+            AdminHealthDay(
+                day=d,
+                steps=st.steps if st else None,
+                steps_source=st.source if st else None,
+                asleep_minutes=sl.asleep_minutes if sl else None,
+                bed_start=sl.bed_start if sl else None,
+                wake_end=sl.wake_end if sl else None,
+                sleep_source=sl.source if sl else None,
+                sleep_updated_at=sl.updated_at if sl else None,
+            )
+        )
+
+    synced = [r.updated_at for r in [*steps.values(), *sleep.values()] if r.updated_at]
+    return AdminUserHealth(
+        days=rows,
+        steps_days=len(steps),
+        sleep_days=len(sleep),
+        avg_steps=round(sum(r.steps for r in steps.values()) / len(steps)) if steps else None,
+        avg_asleep_minutes=(
+            round(sum(r.asleep_minutes for r in sleep.values()) / len(sleep)) if sleep else None
+        ),
+        last_synced_at=max(synced) if synced else None,
+    )
 
 
 @router.get("/users/{user_id}/points", response_model=list[PointHistoryItem])

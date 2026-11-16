@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -13,6 +13,11 @@ class DashboardStats(BaseModel):
     total_chat_messages: int  # 누적 채팅 메시지 수
     total_points_awarded: int  # 누적 적립 포인트 합 (point_history.amount 합)
     unresolved_safety_count: int  # 아직 처리 안 된 위험 신호 수
+    # 건강 데이터 수신 현황 — '잘 들어오고 있나' 확인용. 수면 day = 일어난 날(KST 오늘 = 어젯밤).
+    sleep_last_night_users: int   # 어젯밤 수면 기록이 들어온 회원 수
+    sleep_users_7d: int           # 최근 7일 안에 수면 기록이 한 번이라도 있는 회원 수
+    steps_today_users: int        # 오늘 걸음수가 올라온 회원 수
+    steps_users_7d: int           # 최근 7일 안에 걸음수가 한 번이라도 있는 회원 수
 
 
 class SafetyEventOut(BaseModel):
@@ -149,3 +154,27 @@ class AdminInviteCodeUpdateRequest(BaseModel):
     max_uses: int | None = None
     expires_at: datetime | None = None
     is_active: bool | None = None
+
+
+class AdminHealthDay(BaseModel):
+    """회원 건강 데이터 하루치 — 기록이 없는 날도 빈 값으로 한 줄(빠진 날이 보이도록)."""
+
+    day: date
+    steps: int | None = None
+    steps_source: str | None = None       # phone_sensor | health_connect | healthkit
+    asleep_minutes: int | None = None
+    bed_start: datetime | None = None     # 잠든 시각
+    wake_end: datetime | None = None      # 일어난 시각
+    sleep_source: str | None = None       # phone_mic | health_connect | healthkit
+    sleep_updated_at: datetime | None = None
+
+
+class AdminUserHealth(BaseModel):
+    """특정 회원의 최근 N일 걸음수·수면 + 요약."""
+
+    days: list[AdminHealthDay]            # 최신 날짜부터
+    steps_days: int                       # 걸음 기록이 있는 날 수
+    sleep_days: int                       # 수면 기록이 있는 날 수
+    avg_steps: int | None = None
+    avg_asleep_minutes: int | None = None
+    last_synced_at: datetime | None = None  # 걸음·수면 중 가장 최근 업로드 시각

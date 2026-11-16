@@ -15,6 +15,7 @@ const MEAL_LABELS = {
 const TABS = [
   { key: "meals", label: "식단" },
   { key: "activity", label: "채팅 · 포인트" },
+  { key: "health", label: "걸음 · 수면" },
   { key: "survey", label: "설문" },
   { key: "safety", label: "위험 신호" },
 ];
@@ -134,6 +135,7 @@ export default function UserDetail() {
 
           {tab === "meals" && <MealsTab userId={userId} />}
           {tab === "activity" && <ActivityTab userId={userId} />}
+          {tab === "health" && <HealthTab userId={userId} />}
           {tab === "survey" && <SurveyTab userId={userId} />}
           {tab === "safety" && <SafetyTab userId={userId} />}
         </>
@@ -257,6 +259,146 @@ function ActivityTab({ userId }) {
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+// --- 걸음 · 수면 탭 -------------------------------------------------------
+// 측정이 '잘 돌아가는지' 확인용: 빠진 날은 빈칸, 이상해 보이는 값은 강조.
+// 수면 날짜는 '일어난 날' 기준(11/9 줄 = 11/8 밤에 잔 잠).
+
+const STEPS_SOURCE_LABELS = {
+  phone_sensor: "폰 센서",
+  health_connect: "Health Connect",
+  healthkit: "HealthKit",
+};
+const SLEEP_SOURCE_LABELS = {
+  phone_mic: "폰 마이크",
+  health_connect: "Health Connect",
+  healthkit: "HealthKit",
+};
+const HEALTH_RANGES = [7, 30, 90];
+const SLEEP_SHORT_MIN = 180; // 3시간 미만 — 측정이 중간에 끊겼을 가능성
+const SLEEP_LONG_MIN = 720; // 12시간 초과 — 깨어 있던 시간이 잠으로 잡혔을 가능성
+
+function fmtMinutes(min) {
+  if (min == null) return "";
+  return `${Math.floor(min / 60)}시간 ${min % 60}분`;
+}
+
+function fmtClock(iso) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Seoul",
+  });
+}
+
+function fmtDay(day) {
+  // "2026-11-09" → "11/9 (월)" — 문자열을 직접 나눠 시간대 밀림 없음
+  const [y, m, d] = day.split("-").map(Number);
+  const wd = "일월화수목금토"[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${m}/${d} (${wd})`;
+}
+
+function HealthTab({ userId }) {
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setData(null);
+    setError("");
+    api.userHealth(userId, { days }).then(setData).catch((e) => setError(e.message));
+  }, [userId, days]);
+
+  if (error) return <p className="error-banner">{error}</p>;
+
+  return (
+    <div className="health-tab">
+      <div className="health-toolbar">
+        <div className="health-ranges">
+          {HEALTH_RANGES.map((n) => (
+            <button
+              key={n}
+              className={`health-range${days === n ? " active" : ""}`}
+              onClick={() => setDays(n)}
+            >
+              최근 {n}일
+            </button>
+          ))}
+        </div>
+        {data && (
+          <span className="muted">
+            마지막 업로드{" "}
+            {data.last_synced_at
+              ? new Date(data.last_synced_at).toLocaleString("ko-KR")
+              : "없음"}
+          </span>
+        )}
+      </div>
+
+      {!data ? (
+        <p className="muted">불러오는 중…</p>
+      ) : (
+        <>
+          <div className="health-summary">
+            <Stat label={`수면 기록 (${days}일 중)`} value={`${data.sleep_days}일`} />
+            <Stat label="평균 수면" value={fmtMinutes(data.avg_asleep_minutes) || "—"} />
+            <Stat label={`걸음 기록 (${days}일 중)`} value={`${data.steps_days}일`} />
+            <Stat label="평균 걸음" value={data.avg_steps?.toLocaleString() ?? "—"} />
+          </div>
+
+          <div className="table-wrap">
+            <table className="data-table health-table">
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th className="num">걸음수</th>
+                  <th>걸음 출처</th>
+                  <th className="num">잔 시간</th>
+                  <th>잠든 시각</th>
+                  <th>일어난 시각</th>
+                  <th>수면 출처</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.days.map((d) => {
+                  const m = d.asleep_minutes;
+                  const odd = m != null && (m < SLEEP_SHORT_MIN || m > SLEEP_LONG_MIN);
+                  return (
+                    <tr key={d.day}>
+                      <td>{fmtDay(d.day)}</td>
+                      <td className="num">
+                        {d.steps != null ? d.steps.toLocaleString() : <span className="health-missing">—</span>}
+                      </td>
+                      <td className="health-source">
+                        {STEPS_SOURCE_LABELS[d.steps_source] || d.steps_source || ""}
+                      </td>
+                      <td
+                        className={`num${odd ? " health-odd" : ""}`}
+                        title={odd ? "3시간 미만이거나 12시간 초과 — 측정 확인 필요" : undefined}
+                      >
+                        {m != null ? fmtMinutes(m) : <span className="health-missing">—</span>}
+                      </td>
+                      <td>{fmtClock(d.bed_start)}</td>
+                      <td>{fmtClock(d.wake_end)}</td>
+                      <td className="health-source">
+                        {SLEEP_SOURCE_LABELS[d.sleep_source] || d.sleep_source || ""}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="muted health-note">
+            수면 날짜는 일어난 날 기준이에요. 빨간 값은 3시간 미만·12시간 초과로, 측정이 끊겼거나
+            깨어 있던 시간이 잠으로 잡혔을 수 있어요.
+          </p>
+        </>
+      )}
     </div>
   );
 }
