@@ -248,9 +248,11 @@ def finalize_submission(
     own_answers = dict(response.answers or {})
     asked_ids: set[str] | None = None
     if response.kind == SurveyKind.RECURRING:
-        recurring_ids = recurring_question_ids(schema.schema_json, schema.version)
+        previous = previous_completed_response(db, user.id, exclude_id=response.id)
+        recurring_ids = recurring_question_ids(
+            schema.schema_json, schema.version, previous.answers if previous else None
+        )
         if recurring_ids is not None:
-            previous = previous_completed_response(db, user.id, exclude_id=response.id)
             response.answers = merge_carried_forward(previous, response.answers or {}, recurring_ids)
             asked_ids = set(recurring_ids)
 
@@ -287,6 +289,7 @@ __all__ = [
     "compute_survey_due",
     "filter_schema_for_recurring",
     "finalize_submission",
+    "previous_completed_response",
     "get_active_schema",
     "get_or_create_in_progress",
     "merge_partial_answers",

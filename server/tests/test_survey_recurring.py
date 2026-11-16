@@ -44,6 +44,30 @@ def test_recurring_schema_keeps_only_requested_questions() -> None:
             assert "show_if_sum" not in q
 
 
+def test_c9_c10_only_asked_when_previously_present() -> None:
+    both = [q for q in _EXPECTED]
+    without = [q for q in _EXPECTED if q not in ("C-9-1", "C-10")]
+
+    # 직전에 해당 없음 → 둘 다 묻지 않는다
+    assert recurring_question_ids({}, "v3", {"C-9-1": 0, "C-10": {"rows": {}}}) == without
+    assert recurring_question_ids({}, "v3", {}) == without
+    assert recurring_question_ids({}, "v3", {"C-10": {"rows": {"a": {"checked": False}}}}) == without
+    # C-9-1 이 1점 이상이었으면 C-9-1 만
+    assert recurring_question_ids({}, "v3", {"C-9-1": 1}) == [q for q in _EXPECTED if q != "C-10"]
+    # C-10 에 하나라도 체크했으면 C-10 만
+    assert recurring_question_ids(
+        {}, "v3", {"C-10": {"rows": {"e": {"checked": True, "frequency": 3}}}}
+    ) == [q for q in _EXPECTED if q != "C-9-1"]
+    # 둘 다 해당 / 직전 응답 자체가 없으면(None) 전부
+    assert recurring_question_ids(
+        {}, "v3", {"C-9-1": 2, "C-10": {"rows": {"a": {"checked": True, "frequency": 1}}}}
+    ) == both
+    assert recurring_question_ids({}, "v3", None) == both
+
+    filtered = filter_schema_for_recurring(load_schema("v3"), "v3", {"C-9-1": 0})
+    assert _question_ids(filtered) == without
+
+
 def test_schema_override_wins() -> None:
     assert recurring_question_ids({"recurring_question_ids": ["A-10"]}, "v3") == ["A-10"]
     assert recurring_question_ids({}, "unknown") is None

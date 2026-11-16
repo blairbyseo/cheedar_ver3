@@ -29,6 +29,7 @@ from app.services.survey.service import (
     get_active_schema,
     get_or_create_in_progress,
     merge_partial_answers,
+    previous_completed_response,
 )
 
 router = APIRouter(prefix="/api/survey", tags=["survey"])
@@ -78,8 +79,12 @@ def get_next_survey(
     # 재설문(2번째부터)은 변할 수 있는 문항만 다시 묻는다. 응답 kind 기준 —
     # 온보딩을 이어쓰는 중이면 전 문항 그대로.
     schema_json = schema.schema_json
+    # C-9-1·C-10 은 직전 응답에서 해당했던 사람에게만 다시 묻는다.
     if response.kind == SurveyKind.RECURRING:
-        schema_json = filter_schema_for_recurring(schema_json, schema.version)
+        previous = previous_completed_response(db, current_user.id, exclude_id=response.id)
+        schema_json = filter_schema_for_recurring(
+            schema_json, schema.version, previous.answers if previous else None
+        )
 
     return SurveyNextResponse(
         due=response.kind.value,

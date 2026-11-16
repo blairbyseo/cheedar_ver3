@@ -35,24 +35,66 @@ _DEFAULT_RECURRING_QUESTION_IDS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+
+
+def _c9_was_present(previous_answers: dict) -> bool:
+    try:
+        return int(previous_answers.get("C-9-1") or 0) >= 1
+    except (TypeError, ValueError):
+        return False
+
+
+def _c10_was_present(previous_answers: dict) -> bool:
+    rows = (previous_answers.get("C-10") or {}).get("rows") or {}
+    return any(bool((row or {}).get("checked")) for row in rows.values())
+
+
+# 직전 응답에서 해당했던 사람에게만 다시 묻는 문항(2026-11-09 미팅:
+# "전에 있으셨던 분은 C-10 … C-9-1도 1점 이상이면 2주차부터").
+# 직전 응답에서 해당이 없었으면 묻지 않고 그 값을 그대로 이어받는다.
+_ASK_ONLY_IF_PREVIOUSLY_PRESENT = {
+    "C-9-1": _c9_was_present,
+    "C-10": _c10_was_present,
+}
+
 # answers 안에 이어받기 내역을 남기는 예약 키(문항 id 와 겹치지 않음).
 CARRIED_FORWARD_KEY = "_carried_forward"
 
 
-def recurring_question_ids(schema_json: dict | None, version: str | None = None) -> Optional[list[str]]:
-    """재설문 문항 id 목록. 축약 규칙이 없는 스키마면 None(= 전 문항)."""
+def recurring_question_ids(
+    schema_json: dict | None,
+    version: str | None = None,
+    previous_answers: dict | None = None,
+) -> Optional[list[str]]:
+    """재설문 문항 id 목록. 축약 규칙이 없는 스키마면 None(= 전 문항).
+
+    previous_answers: 직전 완료 응답의 answers. 주어지면 C-9-1·C-10 은 직전에
+        해당했던 경우에만 포함한다. None(직전 응답 없음)이면 조건 없이 전부 묻는다.
+    """
     schema_json = schema_json or {}
     override = schema_json.get("recurring_question_ids")
     if override:
-        return list(override)
-    key = version or schema_json.get("version")
-    default = _DEFAULT_RECURRING_QUESTION_IDS.get(key)
-    return list(default) if default else None
+        ids = list(override)
+    else:
+        key = version or schema_json.get("version")
+        default = _DEFAULT_RECURRING_QUESTION_IDS.get(key)
+        if not default:
+            return None
+        ids = list(default)
+    if previous_answers is None:
+        return ids
+    return [
+        qid for qid in ids
+        if qid not in _ASK_ONLY_IF_PREVIOUSLY_PRESENT
+        or _ASK_ONLY_IF_PREVIOUSLY_PRESENT[qid](previous_answers)
+    ]
 
 
-def filter_schema_for_recurring(schema_json: dict, version: str | None = None) -> dict:
+def filter_schema_for_recurring(
+    schema_json: dict, version: str | None = None, previous_answers: dict | None = None
+) -> dict:
     """재설문용 스키마 사본 — 재설문 문항만 남기고 빈 섹션은 뺀다."""
-    ids = recurring_question_ids(schema_json, version)
+    ids = recurring_question_ids(schema_json, version, previous_answers)
     if ids is None:
         return schema_json
     keep = set(ids)
