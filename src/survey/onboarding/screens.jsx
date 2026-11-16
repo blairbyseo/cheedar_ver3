@@ -428,10 +428,13 @@ export function ResultScreen({ step, t, userName, onNext }) {
       <Body style={{ paddingTop: 26 }}>
         <div style={{ textAlign: "center" }}>
           <Mascot variant="cheer" size={104} />
-          <span style={{ display: "block", marginTop: 4, fontSize: 13, fontWeight: 700, color: t.accentStrong }}>분석 완료</span>
+          <span style={{ display: "block", marginTop: 4, fontSize: 13, fontWeight: 700, color: t.accentStrong }}>{step.badge || "분석 완료"}</span>
           <h1 style={{ margin: "8px 0 0", fontSize: 27, lineHeight: 1.3, fontWeight: 800, letterSpacing: "-0.02em", color: t.text, wordBreak: "keep-all", whiteSpace: "pre-line" }}>
-            {(userName ? userName + "님을 위한\n" : "당신을 위한\n") + "시작점을 찾았어요"}
+            {step.title || (userName ? userName + "님을 위한\n" : "당신을 위한\n") + "시작점을 찾았어요"}
           </h1>
+          {step.body && (
+            <p style={{ margin: "14px 0 0", fontSize: 15.5, lineHeight: 1.6, color: t.sub, wordBreak: "keep-all", whiteSpace: "pre-line" }}>{step.body}</p>
+          )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 24 }}>
           {insights.map((ins, i) => (

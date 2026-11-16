@@ -29,6 +29,13 @@ from app.models.survey import (
 from app.models.user import User
 from app.services.points import award_points_for_survey
 
+from .recurring import (
+    filter_schema_for_recurring,
+    merge_carried_forward,
+    previous_completed_response,
+    recurring_question_ids,
+    should_emit_risk_flag,
+)
 from .scoring import score as run_scoring
 from .trigger import (
     SURVEY_DUE_ONBOARDING,
@@ -136,31 +143,40 @@ def merge_partial_answers(
 
 # ---------- 제출(finalize) ----------
 
-_RISK_FLAG_TO_SAFETY_EVENT: list[tuple[str, str, RiskLevel]] = [
-    # (flag_key, detected_category, risk_level)
-    ("suicide_acute", "survey_suicide_acute", RiskLevel.CRITICAL),
-    ("suicide_screen", "survey_suicide_screen", RiskLevel.HIGH),
-    ("purging_flag", "survey_purging", RiskLevel.HIGH),
-    ("anorexia_candidate", "survey_anorexia_candidate", RiskLevel.HIGH),
-    ("bed_candidate", "survey_bed_candidate", RiskLevel.MEDIUM),
-    ("psychosis_positive", "survey_psychosis", RiskLevel.HIGH),
-    ("mania_positive", "survey_mania", RiskLevel.MEDIUM),
+_RISK_FLAG_TO_SAFETY_EVENT: list[tuple[str, str, RiskLevel, frozenset[str]]] = [
+    # (flag_key, detected_category, risk_level, 이 플래그를 만드는 문항 id)
+    ("suicide_acute", "survey_suicide_acute", RiskLevel.CRITICAL, frozenset({"C-2-3"})),
+    ("suicide_screen", "survey_suicide_screen", RiskLevel.HIGH, frozenset({"C-2-1", "C-2-2"})),
+    ("purging_flag", "survey_purging", RiskLevel.HIGH, frozenset({"C-10"})),
+    ("anorexia_candidate", "survey_anorexia_candidate", RiskLevel.HIGH, frozenset({"C-9-1", "C-10"})),
+    ("bed_candidate", "survey_bed_candidate", RiskLevel.MEDIUM, frozenset({"C-11-1", "C-11-2", "C-11-3"})),
+    ("psychosis_positive", "survey_psychosis", RiskLevel.HIGH, frozenset({"C-4-1", "C-4-3"})),
+    ("mania_positive", "survey_mania", RiskLevel.MEDIUM, frozenset({"C-3-1", "C-3-2"})),
 ]
 
 
 def _emit_safety_events(
-    db: Session, user: User, response: SurveyResponse, derived: dict[str, Any]
+    db: Session,
+    user: User,
+    response: SurveyResponse,
+    derived: dict[str, Any],
+    asked_ids: set[str] | None = None,
 ) -> list[SafetyEvent]:
     """derived_flags 의 위험 신호를 SafetyEvent 로 적재.
 
     detected_category 가 "survey_" 로 시작하므로 출처(설문 vs 챗봇)가 구분된다.
     description 에 응답 id 와 양성 flag 키를 넣어 운영자가 추적할 수 있게 한다.
+
+    asked_ids: 이번 설문에서 실제로 물은 문항(재설문일 때만). 주어지면 그 문항에서
+        나온 플래그만 적재한다 — 이어받은 옛 응답을 새 위험 이벤트로 다시 올리지 않는다.
     """
     events: list[SafetyEvent] = []
     # suicide_acute 가 있으면 screen 은 중복으로 적재하지 않음
     suppress_screen = bool(derived.get("suicide_acute"))
-    for flag_key, category, level in _RISK_FLAG_TO_SAFETY_EVENT:
+    for flag_key, category, level, source_ids in _RISK_FLAG_TO_SAFETY_EVENT:
         if not derived.get(flag_key):
+            continue
+        if not should_emit_risk_flag(source_ids, asked_ids):
             continue
         if flag_key == "suicide_screen" and suppress_screen:
             continue
@@ -226,6 +242,20 @@ def finalize_submission(
         "user_age": user.age,
         "user_sex": None,  # 우리 User 엔 성별 컬럼이 없음(현재 v3 scoring 은 미사용)
     }
+
+    # 재설문: 묻지 않은 문항을 직전 완료 응답에서 이어받아 전체 스냅샷으로 만든다.
+    # 프로필(나이·키·몸무게)에는 이번에 실제로 들어온 값만 반영한다(이어받은 옛 값 제외).
+    own_answers = dict(response.answers or {})
+    asked_ids: set[str] | None = None
+    if response.kind == SurveyKind.RECURRING:
+        previous = previous_completed_response(db, user.id, exclude_id=response.id)
+        recurring_ids = recurring_question_ids(
+            schema.schema_json, schema.version, previous.answers if previous else None
+        )
+        if recurring_ids is not None:
+            response.answers = merge_carried_forward(previous, response.answers or {}, recurring_ids)
+            asked_ids = set(recurring_ids)
+
     derived = run_scoring(scoring_module, response.answers or {}, context)
 
     now = _utcnow()
@@ -237,10 +267,10 @@ def finalize_submission(
     user.last_survey_at = now
     if response.kind == SurveyKind.ONBOARDING:
         user.onboarded = True
-    _apply_profile_answers(user, response.answers or {})
+    _apply_profile_answers(user, own_answers)
     db.add(user)
 
-    _emit_safety_events(db, user, response, derived)
+    _emit_safety_events(db, user, response, derived, asked_ids)
 
     # 설문 완료 보상 — 같은 트랜잭션 안에서 XP/CP 적립(응답 1건당 1회).
     earned = award_points_for_survey(db, user, response)
@@ -257,7 +287,9 @@ def finalize_submission(
 __all__ = [
     "build_prefilled_answers",
     "compute_survey_due",
+    "filter_schema_for_recurring",
     "finalize_submission",
+    "previous_completed_response",
     "get_active_schema",
     "get_or_create_in_progress",
     "merge_partial_answers",

@@ -102,7 +102,47 @@ function screens(userName) {
   };
 }
 
-export function buildFlow(schema, userName) {
+// 재설문(2주 주기) — 서버가 재설문 문항만 남긴 축약 스키마를 내려준다.
+// 온보딩용 환영·소개·약속 화면은 빼고, 남은 문항만 섹션 순서대로 묻는다.
+// 마음 건강(C) 문항 앞의 차분한 전환 화면만 유지한다.
+function buildRecurringFlow(schema, userName) {
+  const nm = userName ? `${userName}님, ` : "";
+  const steps = [{
+    kind: "interstitial", tone: "warm", mascot: "cheer",
+    title: `${nm}2주 만이에요!`,
+    body: "그동안 달라진 것만 짧게 물어볼게요.\n1~2분이면 끝나요.", cta: "시작할게요",
+  }];
+  for (const section of schema?.sections || []) {
+    const questions = (section.questions || []).map((q) => mergeQuestion(q, section));
+    if (!questions.length) continue;
+    if (section.id === "C") {
+      steps.push({
+        kind: "transition", tone: "calm", stage: STAGE.C,
+        title: "이번엔 마음에\n대해 물어볼게요",
+        body: "정답도, 평가도 없어요.\n지난 2주를 떠올리며 솔직하게 답해주세요.",
+        note: "비공개 · 언제든 멈출 수 있어요", cta: "천천히 시작할게요",
+      });
+    }
+    steps.push(...questions);
+  }
+  steps.push(
+    {
+      kind: "loading", tone: "warm",
+      title: "달라진 점을\n반영하는 중...",
+      steps: ["응답을 살펴보고 있어요", "지난 응답과 비교해요", "거의 다 됐어요"],
+    },
+    {
+      kind: "result", tone: "warm", recurring: true,
+      badge: "2주 점검 완료", title: "2주 점검을 마쳤어요",
+      body: "달라진 점을 체다가 반영할게요.\n2주 뒤에 또 짧게 물어볼게요.",
+      cta: "체다로 돌아가기",
+    },
+  );
+  return steps;
+}
+
+export function buildFlow(schema, userName, due = "onboarding") {
+  if (due === "recurring") return buildRecurringFlow(schema, userName);
   const S = screens(userName);
   const steps = [{ kind: "welcome" }];
   for (const section of schema?.sections || []) {
