@@ -49,11 +49,17 @@ def strip_image_metadata(contents: bytes, content_type: str) -> bytes:
     - 회전 정보(EXIF Orientation)는 지우기 전에 픽셀에 먼저 반영한다.
       안 그러면 세로로 찍은 사진이 옆으로 누워 보인다.
     - 색 프로필(ICC)은 개인정보가 아니고 색감에 필요하므로 유지한다.
+    - 긴 변이 settings.meal_image_max_side 보다 크면 그 크기로 줄인다.
+      폰 원본(24MP·4MB)을 그대로 S3·OpenAI 로 보내면 분석이 약 40% 느려지고,
+      1024px 로 줄여도 인식 결과는 같았다 (results/REPORT.md 실험 V1).
     - 읽을 수 없는 파일은 400 — 메타데이터를 못 지운 원본을 그대로 올리지 않는다.
     """
     try:
         with Image.open(io.BytesIO(contents)) as img:
             img = ImageOps.exif_transpose(img)
+            max_side = settings.meal_image_max_side
+            if max_side and max(img.size) > max_side:
+                img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
             icc = img.info.get("icc_profile")
             fmt = PIL_FORMAT_BY_MIME[content_type]
             if fmt == "JPEG" and img.mode not in ("RGB", "L", "CMYK"):

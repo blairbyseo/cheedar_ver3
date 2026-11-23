@@ -199,3 +199,16 @@ def test_edit_does_not_erase_taken_at(api):
     assert res.status_code == 200
     assert res.json()["menu"] == "토스트와 우유"
     assert res.json()["taken_at"] == stamp
+
+
+def test_large_photo_resized_to_max_side():
+    # 세로 사진(회전 6)도 회전을 반영한 뒤 긴 변 기준으로 줄인다.
+    cleaned = strip_image_metadata(_jpeg_with_exif(size=(4000, 3000), orientation=6), "image/jpeg")
+    with Image.open(io.BytesIO(cleaned)) as img:
+        assert img.size == (768, 1024)
+
+
+def test_small_photo_not_upscaled():
+    cleaned = strip_image_metadata(_jpeg_with_exif(size=(40, 20), orientation=1), "image/jpeg")
+    with Image.open(io.BytesIO(cleaned)) as img:
+        assert img.size == (40, 20)
