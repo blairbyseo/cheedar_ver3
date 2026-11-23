@@ -381,7 +381,7 @@ def _chat_json(
     를 낮춘다. 구형 모델(gpt-4o 등)은 max_tokens+temperature 를 그대로 쓴다.
     """
     resolved = model or settings.openai_model
-    is_gpt5 = resolved.startswith("gpt-5")
+    is_gpt5 = resolved.startswith(("gpt-5", "gpt-6"))
     kwargs: dict[str, Any] = {
         "model": resolved,
         "messages": messages,
@@ -392,7 +392,8 @@ def _chat_json(
         # gpt-5 계열은 reasoning model. 'low' 로 둬도 reasoning 이 예산을 전부
         # 소진해 content='' + finish_reason='length' 로 끝나는 케이스가 있어
         # (특히 vision+JSON) 'minimal' 로 낮춰 출력에 예산을 남긴다.
-        kwargs["reasoning_effort"] = "minimal"
+        # gpt-6 계열은 'minimal' 대신 'none' 을 받는다.
+        kwargs["reasoning_effort"] = "none" if resolved.startswith("gpt-6") else "minimal"
     else:
         kwargs["max_tokens"] = int(max_tokens)
         kwargs["temperature"] = float(temperature)
@@ -671,9 +672,9 @@ def weekly_feedback_text(summary: str, survey_context: str | None = None) -> str
 
     resolved = settings.openai_model
     kwargs: dict[str, Any] = {"model": resolved, "messages": messages}
-    if resolved.startswith("gpt-5"):
+    if resolved.startswith(("gpt-5", "gpt-6")):
         kwargs["max_completion_tokens"] = 600
-        kwargs["reasoning_effort"] = "minimal"
+        kwargs["reasoning_effort"] = "none" if resolved.startswith("gpt-6") else "minimal"
     else:
         kwargs["max_tokens"] = 300
         kwargs["temperature"] = 0.7
