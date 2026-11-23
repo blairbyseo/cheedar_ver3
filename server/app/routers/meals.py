@@ -1,4 +1,6 @@
 import json
+import logging
+import time
 import uuid
 from datetime import date as DateType
 from pathlib import Path
@@ -10,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import get_ai_consented_user, get_current_user
 from app.models.meal import Meal, MealType
+from app.models.meal_analysis_log import MealAnalysisLog
 from app.models.user import User
 from app.schemas.meal import (
     AIAnalysisResult,
@@ -33,6 +36,7 @@ from app.services.points import award_points_for_meal
 from app.services.record_dates import clean_taken_at, kst_today, resolve_record_date
 from app.services.uploads import save_meal_image
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/meals", tags=["meals"])
 
 
@@ -83,13 +87,25 @@ def _sanitize_items(raw_items: object) -> list[MealItem]:
     return items
 
 
+def _log_analysis(db: Session, **fields) -> None:
+    """분석 소요 시간을 남긴다. 기록이 실패해도 분석 결과는 그대로 돌려준다."""
+    try:
+        db.add(MealAnalysisLog(**fields))
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("meal analysis log failed")
+
+
 @router.post("/analyze", response_model=AIAnalysisResult)
 def analyze_image(
     file: UploadFile | None = File(default=None),
     meal_time: str = Form(default=""),
     description: str = Form(default=""),
-    _: User = Depends(get_ai_consented_user),
+    user: User = Depends(get_ai_consented_user),
+    db: Session = Depends(get_db),
 ) -> AIAnalysisResult:
+    started = time.perf_counter()
     if file is None and not (description or "").strip():
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "사진이나 설명 중 하나는 필요해요."
@@ -100,11 +116,23 @@ def analyze_image(
     if file is not None:
         saved_path, public_url = save_meal_image(file)
         abs_path = Path(saved_path)
+    saved = time.perf_counter()
 
     data = analyze_meal_image(
         abs_path, meal_time=meal_time, description=description or ""
     )
+    analyzed = time.perf_counter()
     items = _sanitize_items(data.get("items"))
+    _log_analysis(
+        db,
+        user_id=user.id,
+        image_path=public_url,
+        model=data.get("_model_used"),
+        item_count=len(items),
+        save_ms=round((saved - started) * 1000),
+        ai_ms=round((analyzed - saved) * 1000),
+        total_ms=round((time.perf_counter() - started) * 1000),
+    )
     return AIAnalysisResult(
         analysis_id=str(uuid.uuid4()),
         image_path=public_url,

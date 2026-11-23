@@ -6,6 +6,7 @@ from app.models.exercise import ExerciseLog
 from app.models.inquiry import Inquiry
 from app.models.invite_code import InviteCode, normalize_code
 from app.models.meal import Meal, MealType
+from app.models.meal_analysis_log import MealAnalysisLog
 from app.models.motivation import MotivationCheck
 from app.models.points import PointHistory
 from app.models.reward import KIND_FINAL_LEVEL, RewardClaim, RewardClaimStatus
@@ -28,6 +29,7 @@ __all__ = [
     "DailySleep",
     "Meal",
     "MealType",
+    "MealAnalysisLog",
     "ChatMessage",
     "ChatRole",
     "EmotionLog",

@@ -421,7 +421,7 @@ def analyze_meal_image(
     AI 비활성/키 없음/실패 시 mock 으로 폴백해 프론트가 항상 쓸 수 있는 형태를 준다.
     """
     if settings.ai_mock_mode or not settings.openai_api_key:
-        return dict(MOCK_ANALYSIS)
+        return {**MOCK_ANALYSIS, "_model_used": "mock"}
 
     user_content: list[dict] = [
         {
@@ -455,20 +455,23 @@ def analyze_meal_image(
         raw = _chat_json(messages, model=model, max_tokens=3000)
         return extract_first_json_object(raw)
 
+    # "_model_used" 는 분석 시간 기록(meal_analysis_logs)용 — 실제로 결과를 낸 모델.
     try:
         data = _run(primary_model)
+        data["_model_used"] = primary_model or settings.openai_model
         if _valid_item_count(data) == 0 and settings.openai_flagship_vision_model:
             logger.info("meal analyze: empty items, retrying with flagship model")
             try:
                 flagship = _run(settings.openai_flagship_vision_model)
                 if _valid_item_count(flagship) > 0:
                     data = flagship
+                    data["_model_used"] = settings.openai_flagship_vision_model
             except OpenAIError as exc:
                 logger.warning("flagship retry failed: %s", exc)
         return data
     except (OpenAIError, json.JSONDecodeError, KeyError, IndexError) as exc:
         logger.warning("OpenAI analysis failed, falling back to mock: %s", exc)
-        return dict(MOCK_ANALYSIS)
+        return {**MOCK_ANALYSIS, "_model_used": "mock"}
 
 
 def analyze_single_item(name: str, quantity: float, unit: str) -> dict:
