@@ -30,7 +30,7 @@ from app.services.openai_client import (
     apply_delta_to_items,
 )
 from app.services.points import award_points_for_meal
-from app.services.record_dates import kst_today, resolve_record_date
+from app.services.record_dates import clean_taken_at, kst_today, resolve_record_date
 from app.services.uploads import save_meal_image
 
 router = APIRouter(prefix="/api/meals", tags=["meals"])
@@ -191,6 +191,7 @@ def create_meal(
         user_id=current_user.id,
         meal_type=payload.meal_type,
         eaten_on=resolve_record_date(payload.eaten_on),
+        taken_at=clean_taken_at(payload.taken_at),
         menu=payload.menu,
         calories=payload.calories,
         protein_g=payload.protein_g,

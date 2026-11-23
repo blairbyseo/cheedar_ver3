@@ -155,6 +155,14 @@ function Stat({ label, value }) {
 
 // --- 식단 탭 ---------------------------------------------------------------
 
+// 식단 사진 촬영 시각 표시. taken_at 은 시간대 없는 기기 현지 시각("YYYY-MM-DDTHH:mm:ss")이라
+// Date 로 바꾸지 않고 글자 그대로 잘라 쓴다. 기록 날짜와 다른 날 찍은 사진이면 날짜도 붙인다.
+function formatTakenAt(takenAt, eatenOn) {
+  const time = takenAt.slice(11, 16);
+  if (takenAt.slice(0, 10) === eatenOn) return `촬영 ${time}`;
+  return `촬영 ${Number(takenAt.slice(5, 7))}/${Number(takenAt.slice(8, 10))} ${time}`;
+}
+
 function MealsTab({ userId }) {
   const [meals, setMeals] = useState(null);
   const [error, setError] = useState("");
@@ -172,7 +180,12 @@ function MealsTab({ userId }) {
       {meals.map((m) => (
         <div className="meal-card" key={m.id}>
           {m.image_path && (
-            <img className="meal-thumb" src={m.image_path} alt="" />
+            <div className="meal-thumb-col">
+              <img className="meal-thumb" src={m.image_path} alt="" />
+              {m.taken_at && (
+                <span className="meal-taken-at">{formatTakenAt(m.taken_at, m.eaten_on)}</span>
+              )}
+            </div>
           )}
           <div className="meal-info">
             <div className="meal-top">

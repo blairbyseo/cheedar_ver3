@@ -33,3 +33,21 @@ def resolve_record_date(requested: DateType | None) -> DateType:
             f"최근 {BACKFILL_DAYS}일 이내의 기록만 추가할 수 있어요.",
         )
     return requested
+
+
+def clean_taken_at(value: datetime | None) -> datetime | None:
+    """사진 촬영 시각을 저장 가능한 형태로 다듬는다. 믿기 어려우면 None.
+
+    촬영 시각은 사진(EXIF)에 적힌 '기기 현지 벽시계 시각'이라 시간대가 없다.
+    그대로(naive) 저장한다 — "12:40 에 찍었다"가 궁금한 값이기 때문.
+    시간대가 붙어 오면 KST 벽시계로 바꾼 뒤 시간대를 뗀다.
+    기기 시계가 틀린 사진(먼 과거·미래)은 식단 저장을 막지 않고 값만 버린다.
+    """
+    if value is None:
+        return None
+    if value.tzinfo is not None:
+        value = value.astimezone(KST).replace(tzinfo=None)
+    now = datetime.now(KST).replace(tzinfo=None)
+    if value.year < 2000 or value > now + timedelta(days=1):
+        return None
+    return value.replace(microsecond=0)

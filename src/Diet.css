@@ -859,3 +859,52 @@
   border-radius: 14px;
   margin: 0 0 12px;
 }
+
+/* 촬영 시각 제안 — 사진을 찍은 날짜·시간대가 지금 고른 날짜·끼니와 다를 때 */
+.meal-time-hint {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: rgba(94, 159, 138, 0.10);
+  border-radius: 14px;
+  text-align: left;
+}
+.meal-time-hint-text {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+.meal-time-hint-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+.meal-time-hint-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.meal-time-hint-actions button {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card-white);
+  color: var(--text-main);
+  cursor: pointer;
+}
+.meal-time-hint-actions button.is-primary {
+  background: #FFF0B8;
+  border-color: rgba(209, 169, 22, 0.28);
+}
+.meal-time-hint-actions button:disabled { opacity: 0.5; cursor: default; }
+
+.saved-meal-time {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-sub);
+}

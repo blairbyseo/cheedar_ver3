@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { usePoints, refreshPoints } from "../usePoints";
 import Exercise from "./Exercise";
 import RecordDateNav from "./RecordDateNav";
-import { dayWord, isViewOnlyDate, todayStr } from "../utils/recordDate";
+import { dayWord, isLateRecord, isViewOnlyDate, todayStr } from "../utils/recordDate";
+import { formatClock, readPhotoTakenAt, suggestPlacement } from "../utils/photoTime";
 import { useAiConsent } from "../notice/AiConsent";
 import { HealthSourcesLink } from "../notice/HealthSources";
 import { assetUrl } from "../api/base";
@@ -107,6 +108,10 @@ function Diet() {
   const [uploadedImagePreview, setUploadedImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);          // 백엔드 업로드용 원본 파일
   const [mealDescription, setMealDescription] = useState(""); // 분석 힌트용 설명(선택)
+  // 사진 촬영 시각("YYYY-MM-DDTHH:mm:ss", 없으면 null) — 식사 시각으로 함께 저장한다.
+  const [photoTakenAt, setPhotoTakenAt] = useState(null);
+  // 촬영 시각이 지금 고른 날짜·끼니와 어긋날 때의 이동 제안({date, mealType}). 없으면 null.
+  const [placementHint, setPlacementHint] = useState(null);
   const [manualEntry, setManualEntry] = useState({
     menu: "",
     calories: "",
@@ -158,6 +163,10 @@ function Diet() {
   const mealsOfType = savedMeals.filter((m) => m.meal_type === selectedMealType);
 
   const resultRef = useRef(null);
+  // 제안을 받아들여 날짜·끼니를 옮길 때, 올려 둔 사진과 분석 결과를 지우지 않기 위한 표시.
+  const keepDraftRef = useRef(false);
+  // 가장 최근에 고른 사진 — 촬영 시각을 읽는 사이 다른 사진으로 바꾼 경우를 걸러낸다.
+  const latestFileRef = useRef(null);
 
   const totals = sumItems(items);
   const hasItems = items.length > 0;
@@ -217,6 +226,14 @@ function Diet() {
 
   // 끼니 탭이나 날짜를 바꾸면 작성 중이던 내용 초기화.
   useEffect(() => {
+    // 촬영 시각 제안으로 옮겨 온 경우엔 사진·분석 결과를 그대로 들고 온다.
+    // 옮겨 간 끼니에 이미 기록이 있어도 업로드 화면이 보이도록 '추가' 상태로 둔다.
+    if (keepDraftRef.current) {
+      keepDraftRef.current = false;
+      setIsAdding(true);
+      setEditingMeal(null);
+      return;
+    }
     resetDraft();
     setIsAdding(false);
     setEditingMeal(null);
@@ -224,6 +241,9 @@ function Diet() {
   }, [selectedMealType, recordDate]);
 
   function resetDraft() {
+    latestFileRef.current = null;
+    setPhotoTakenAt(null);
+    setPlacementHint(null);
     setUploadedImagePreview(null);
     setImageFile(null);
     setMealDescription("");
@@ -286,16 +306,37 @@ function Diet() {
     }
   }
 
-  function handleImageUpload(e) {
+  // fromCamera: '카메라로 촬영/재촬영' 버튼으로 방금 찍은 사진인지.
+  function handleImageUpload(e, fromCamera = false) {
     const file = e.target.files?.[0];
     if (!file) return;
     setImageFile(file);
     setItems([]);
     setAnalysis(null);
     setAnalyzeError("");
+    setPhotoTakenAt(null);
+    setPlacementHint(null);
     const reader = new FileReader();
     reader.onload = () => setUploadedImagePreview(reader.result);
     reader.readAsDataURL(file);
+
+    // 사진에 적힌 촬영 시각을 읽어 두고, 지금 고른 날짜·끼니와 어긋나면 옮길지 묻는다.
+    // 자동으로 옮기지는 않는다 — 날짜에 따라 적립 포인트가 달라지기 때문.
+    latestFileRef.current = file;
+    readPhotoTakenAt(file, { fromCamera }).then((stamp) => {
+      if (latestFileRef.current !== file) return;
+      setPhotoTakenAt(stamp);
+      setPlacementHint(suggestPlacement(stamp, recordDate, selectedMealType));
+    });
+  }
+
+  // 촬영 시각 제안 수락 — 사진은 그대로 둔 채 날짜·끼니만 옮긴다.
+  function applyPlacementHint() {
+    if (!placementHint) return;
+    keepDraftRef.current = true;
+    setPlacementHint(null);
+    setRecordDate(placementHint.date);
+    setSelectedMealType(placementHint.mealType);
   }
 
   async function handleAnalyzeMeal() {
@@ -337,6 +378,9 @@ function Diet() {
   }
 
   function handleRemoveImage() {
+    latestFileRef.current = null;
+    setPhotoTakenAt(null);
+    setPlacementHint(null);
     setUploadedImagePreview(null);
     setImageFile(null);
     setItems([]);
@@ -508,6 +552,7 @@ function Diet() {
         carbs_g: round1(t.carbs),
         fat_g: round1(t.fat),
         image_path: analysis?.image_path || null,
+        taken_at: analysis?.image_path ? photoTakenAt : null,
         ai_summary: analysis?.suggested_description || null,
         ai_comment: null,
         ai_notes: analysis?.notes || null,
@@ -545,6 +590,7 @@ function Diet() {
       carbs_g: useManual ? Number(manualEntry.carbs) : null,
       fat_g: useManual ? Number(manualEntry.fat) : null,
       image_path: analysis?.image_path || null,
+      taken_at: analysis?.image_path ? photoTakenAt : null,
       ai_summary: null,
       ai_comment: null,
       items: null,
@@ -566,11 +612,14 @@ function Diet() {
   // 새 기록이면 POST, 수정 중이면 PATCH. 수정은 포인트 적립이 없다.
   async function submitMeal(payload) {
     if (editingMeal) {
+      // 수정은 사진을 바꾸지 않으므로 촬영 시각도 건드리지 않는다.
+      const changes = { ...payload };
+      delete changes.taken_at;
       const res = await fetch(`/api/meals/${editingMeal.id}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(changes),
       });
       if (!res.ok) throw new Error(`update ${res.status}`);
       setShowPointReward(true);
@@ -713,6 +762,10 @@ function Diet() {
                         )}
                         <div className="saved-meal-body">
                           <p className="saved-meal-menu">{m.menu || "메뉴 이름 없음"}</p>
+                          {/* 그날 찍은 사진일 때만 — 예전 사진으로 기록한 경우엔 식사 시각이 아니다 */}
+                          {m.taken_at && m.taken_at.slice(0, 10) === m.eaten_on && (
+                            <p className="saved-meal-time">{formatClock(m.taken_at)}</p>
+                          )}
                           {m.calories != null && (
                             <p className="saved-meal-macros">
                               {m.calories}kcal · 탄 {round1(m.carbs_g)}g · 단 {round1(m.protein_g)}g · 지{" "}
@@ -795,7 +848,7 @@ function Diet() {
                       type="file"
                       accept="image/*"
                       capture="environment"
-                      onChange={handleImageUpload}
+                      onChange={(e) => handleImageUpload(e, true)}
                       hidden
                     />
                   </label>
@@ -808,6 +861,42 @@ function Diet() {
                     {isAnalyzing ? "분석 중..." : "업로드 후 AI분석"}
                   </button>
                 </div>
+                {placementHint && photoTakenAt && !showPointReward && (
+                  <div className="meal-time-hint" role="status">
+                    <p className="meal-time-hint-text">
+                      {dayWord(photoTakenAt.slice(0, 10))} {formatClock(photoTakenAt)}에 찍은
+                      사진이에요.
+                    </p>
+                    {placementHint.date !== recordDate && isLateRecord(placementHint.date) && (
+                      <p className="meal-time-hint-note">
+                        옮기면 지난 기록이라 포인트가 절반만 적립돼요
+                      </p>
+                    )}
+                    <div className="meal-time-hint-actions">
+                      <button
+                        type="button"
+                        className="is-primary"
+                        onClick={applyPlacementHint}
+                        disabled={isAnalyzing || isSaving}
+                      >
+                        {placementHint.date !== recordDate
+                          ? `${dayWord(placementHint.date)} ${
+                              MEAL_TYPES.find((t) => t.id === placementHint.mealType)?.label
+                            } 기록으로 옮기기`
+                          : `${
+                              MEAL_TYPES.find((t) => t.id === placementHint.mealType)?.label
+                            } 기록으로 바꾸기`}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPlacementHint(null)}
+                        disabled={isAnalyzing || isSaving}
+                      >
+                        그대로 둘게요
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="meal-upload-area">
@@ -824,7 +913,7 @@ function Diet() {
                       type="file"
                       accept="image/*"
                       capture="environment"
-                      onChange={handleImageUpload}
+                      onChange={(e) => handleImageUpload(e, true)}
                       hidden
                     />
                   </label>

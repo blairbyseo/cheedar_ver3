@@ -26,6 +26,7 @@ class MealItem(BaseModel):
 class MealCreate(BaseModel):
     meal_type: MealType
     eaten_on: DateType | None = None  # default to today server-side
+    taken_at: datetime | None = None  # 사진 촬영 시각(기기 현지 시각). 없으면 None
     menu: str | None = Field(default=None, max_length=120)
     calories: int | None = Field(default=None, ge=0)
     protein_g: float | None = Field(default=None, ge=0)
@@ -56,6 +57,7 @@ class MealOut(BaseModel):
     id: int
     meal_type: MealType
     eaten_on: DateType
+    taken_at: datetime | None = None
     menu: str | None
     calories: int | None
     protein_g: float | None

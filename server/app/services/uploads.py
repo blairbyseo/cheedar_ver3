@@ -2,8 +2,9 @@
 
 업로드 흐름:
 1. 검증 (content-type, 용량)
-2. boto3 로 S3 버킷에 PUT (Key: meals/{uuid}.{ext})
-3. (abs_path, public_url) 반환
+2. 사진 속 메타데이터(EXIF: 위치·기기 정보 등) 제거 — 공개 URL 로 새어 나가지 않게
+3. boto3 로 S3 버킷에 PUT (Key: meals/{uuid}.{ext})
+4. (abs_path, public_url) 반환
    - abs_path: 로컬 임시 파일 경로. OpenAI 분석을 base64 로 보내는 데 사용.
    - public_url: 프론트가 <img src=...> 로 쓸 공개 URL.
 
@@ -13,12 +14,14 @@ S3 자격증명은 boto3 기본 chain 으로 탐색:
   3) EC2/ECS IAM Role
 """
 
+import io
 import uuid
 from pathlib import Path
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException, UploadFile, status
+from PIL import Image, ImageOps
 
 from app.core.config import get_settings
 
@@ -30,6 +33,51 @@ EXTENSION_BY_MIME = {
     "image/png": ".png",
     "image/webp": ".webp",
 }
+PIL_FORMAT_BY_MIME = {
+    "image/jpeg": "JPEG",
+    "image/png": "PNG",
+    "image/webp": "WEBP",
+}
+
+
+def strip_image_metadata(contents: bytes, content_type: str) -> bytes:
+    """사진에서 메타데이터(EXIF 위치·촬영 기기 등)를 떼어낸 새 파일 바이트를 돌려준다.
+
+    식단 사진은 공개 읽기 버킷에 올라가므로, 원본에 GPS 좌표가 남아 있으면
+    URL 을 아는 누구나 볼 수 있다. 그래서 올리기 전에 픽셀만 남기고 다시 저장한다.
+
+    - 회전 정보(EXIF Orientation)는 지우기 전에 픽셀에 먼저 반영한다.
+      안 그러면 세로로 찍은 사진이 옆으로 누워 보인다.
+    - 색 프로필(ICC)은 개인정보가 아니고 색감에 필요하므로 유지한다.
+    - 읽을 수 없는 파일은 400 — 메타데이터를 못 지운 원본을 그대로 올리지 않는다.
+    """
+    try:
+        with Image.open(io.BytesIO(contents)) as img:
+            img = ImageOps.exif_transpose(img)
+            icc = img.info.get("icc_profile")
+            fmt = PIL_FORMAT_BY_MIME[content_type]
+            if fmt == "JPEG" and img.mode not in ("RGB", "L", "CMYK"):
+                img = img.convert("RGB")
+            # 새 이미지로 옮겨 담아 원본의 부가 정보(info)가 따라오지 않게 한다.
+            clean = Image.new(img.mode, img.size)
+            clean.paste(img)
+            if img.mode == "P":
+                clean.putpalette(img.getpalette())
+            save_kwargs: dict = {"icc_profile": icc} if icc else {}
+            if fmt == "JPEG":
+                save_kwargs.update(quality=92, optimize=True)
+            elif fmt == "WEBP":
+                save_kwargs.update(quality=92)
+            out = io.BytesIO()
+            clean.save(out, format=fmt, **save_kwargs)
+            return out.getvalue()
+    except HTTPException:
+        raise
+    except Exception as exc:  # Pillow 는 손상 파일에 여러 종류의 예외를 던진다
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "이미지를 읽을 수 없어요. 다른 사진으로 다시 시도해주세요.",
+        ) from exc
 
 
 def _s3_client():
@@ -61,6 +109,9 @@ def save_meal_image(file: UploadFile) -> tuple[Path, str]:
             status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             f"Image exceeds {settings.max_upload_mb}MB",
         )
+
+    # 위치 등 메타데이터를 지운 사본만 S3·로컬·OpenAI 로 보낸다.
+    contents = strip_image_metadata(contents, file.content_type)
 
     suffix = EXTENSION_BY_MIME[file.content_type]
     filename = f"{uuid.uuid4().hex}{suffix}"

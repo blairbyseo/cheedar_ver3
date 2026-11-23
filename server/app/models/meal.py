@@ -38,6 +38,11 @@ class Meal(Base):
         Enum(MealType, name="meal_type"), index=True
     )
     eaten_on: Mapped[DateType] = mapped_column(Date, index=True)
+    # 사진 촬영 시각 = 실제 식사 시각의 근사값. 사진(EXIF)에 적힌 기기 현지
+    # 벽시계 시각이라 시간대 없이 저장한다. 사진이 없거나 시각 정보가 없는
+    # 사진(받은 사진·스크린샷)은 None. 날짜가 eaten_on 과 다를 수 있다
+    # (예전에 찍어 둔 사진으로 오늘 식단을 기록한 경우).
+    taken_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     menu: Mapped[str | None] = mapped_column(String(120), nullable=True)
     calories: Mapped[int | None] = mapped_column(Integer, nullable=True)
