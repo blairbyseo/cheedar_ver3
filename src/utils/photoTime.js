@@ -110,18 +110,29 @@ export function exifDateToStamp(raw) {
   return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`;
 }
 
-/* 사진 파일의 촬영 시각("YYYY-MM-DDTHH:mm:ss") — 알 수 없으면 null.
+/* 사진의 촬영 시각("YYYY-MM-DDTHH:mm:ss") — 알 수 없으면 null.
+ *
+ * dataUrl: 미리보기용으로 이미 읽어 둔 파일 내용(FileReader.readAsDataURL 결과).
+ * 파일을 따로 한 번 더 읽지 않고 미리보기와 같은 데이터에서 꺼낸다 — 안드로이드 앱에서
+ * 같은 사진을 동시에 두 번 읽는 일을 없애고, 화면에 보이는 사진과 시각이 항상 짝이 맞게 한다.
  *
  * fromCamera: '카메라로 촬영' 버튼으로 방금 찍은 사진인지. 이 경우 EXIF 가 없어도
  * 지금 시각이 곧 촬영 시각이다. 갤러리 사진은 EXIF 가 없으면 추측하지 않는다
  * (파일 수정 시각은 다운로드·복사 시각일 수 있어 믿을 수 없다).
  * 미래 시각(기기 시계 오류)은 버린다.
  */
-export async function readPhotoTakenAt(file, { fromCamera = false } = {}) {
+export function photoTakenAtFromDataUrl(dataUrl, { fromCamera = false } = {}) {
   let stamp = null;
   try {
-    const head = await file.slice(0, HEAD_BYTES).arrayBuffer();
-    stamp = exifDateToStamp(readExifDateString(head));
+    const comma = typeof dataUrl === "string" ? dataUrl.indexOf(",") : -1;
+    if (comma > 0 && dataUrl.slice(0, comma).endsWith(";base64")) {
+      // base64 는 4글자 = 3바이트. 앞부분만 4의 배수 길이로 잘라 디코딩한다.
+      const chars = Math.ceil(HEAD_BYTES / 3) * 4;
+      const bin = atob(dataUrl.slice(comma + 1, comma + 1 + chars));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+      stamp = exifDateToStamp(readExifDateString(bytes.buffer));
+    }
   } catch (err) {
     console.warn("[photoTime] EXIF read failed:", err);
   }

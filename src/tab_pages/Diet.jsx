@@ -4,7 +4,7 @@ import { usePoints, refreshPoints } from "../usePoints";
 import Exercise from "./Exercise";
 import RecordDateNav from "./RecordDateNav";
 import { dayWord, isLateRecord, isViewOnlyDate, todayStr } from "../utils/recordDate";
-import { formatClock, readPhotoTakenAt, suggestPlacement } from "../utils/photoTime";
+import { formatClock, photoTakenAtFromDataUrl, suggestPlacement } from "../utils/photoTime";
 import { useAiConsent } from "../notice/AiConsent";
 import { HealthSourcesLink } from "../notice/HealthSources";
 import { assetUrl } from "../api/base";
@@ -165,8 +165,6 @@ function Diet() {
   const resultRef = useRef(null);
   // 제안을 받아들여 날짜·끼니를 옮길 때, 올려 둔 사진과 분석 결과를 지우지 않기 위한 표시.
   const keepDraftRef = useRef(false);
-  // 가장 최근에 고른 사진 — 촬영 시각을 읽는 사이 다른 사진으로 바꾼 경우를 걸러낸다.
-  const latestFileRef = useRef(null);
 
   const totals = sumItems(items);
   const hasItems = items.length > 0;
@@ -241,7 +239,6 @@ function Diet() {
   }, [selectedMealType, recordDate]);
 
   function resetDraft() {
-    latestFileRef.current = null;
     setPhotoTakenAt(null);
     setPlacementHint(null);
     setUploadedImagePreview(null);
@@ -317,17 +314,15 @@ function Diet() {
     setPhotoTakenAt(null);
     setPlacementHint(null);
     const reader = new FileReader();
-    reader.onload = () => setUploadedImagePreview(reader.result);
-    reader.readAsDataURL(file);
-
-    // 사진에 적힌 촬영 시각을 읽어 두고, 지금 고른 날짜·끼니와 어긋나면 옮길지 묻는다.
-    // 자동으로 옮기지는 않는다 — 날짜에 따라 적립 포인트가 달라지기 때문.
-    latestFileRef.current = file;
-    readPhotoTakenAt(file, { fromCamera }).then((stamp) => {
-      if (latestFileRef.current !== file) return;
+    reader.onload = () => {
+      setUploadedImagePreview(reader.result);
+      // 미리보기와 같은 데이터에서 촬영 시각을 꺼내고, 지금 고른 날짜·끼니와 어긋나면
+      // 옮길지 묻는다. 자동으로 옮기지는 않는다 — 날짜에 따라 적립 포인트가 달라지기 때문.
+      const stamp = photoTakenAtFromDataUrl(reader.result, { fromCamera });
       setPhotoTakenAt(stamp);
       setPlacementHint(suggestPlacement(stamp, recordDate, selectedMealType));
-    });
+    };
+    reader.readAsDataURL(file);
   }
 
   // 촬영 시각 제안 수락 — 사진은 그대로 둔 채 날짜·끼니만 옮긴다.
@@ -378,7 +373,6 @@ function Diet() {
   }
 
   function handleRemoveImage() {
-    latestFileRef.current = null;
     setPhotoTakenAt(null);
     setPlacementHint(null);
     setUploadedImagePreview(null);
