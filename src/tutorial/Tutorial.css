@@ -1,0 +1,121 @@
+/* 튜토리얼 — 어두운 배경 + 비춘 영역 + 설명 말풍선 (Tutorial.jsx) */
+
+/* 화면 전체를 덮어 뒤 화면이 눌리지 않게 한다. 다른 팝업(동의 창 200)보다 위. */
+.tour-root {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+}
+
+/* 비춘 영역 — 투명한 상자 바깥으로 아주 큰 그림자를 드리워 나머지를 어둡게 만든다. */
+.tour-spotlight {
+  position: fixed;
+  border-radius: 18px;
+  box-shadow: 0 0 0 9999px rgba(20, 22, 24, 0.62);
+  outline: 2px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 0;
+  pointer-events: none;
+  transition: left 0.25s ease, top 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
+/* 비출 요소를 못 찾았을 때 — 전체를 어둡게만 */
+.tour-dim {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 22, 24, 0.62);
+}
+
+.tour-card {
+  position: fixed;
+  box-sizing: border-box;
+  padding: 16px 18px 14px;
+  border-radius: 18px;
+  background: var(--card-white);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  animation: tour-pop 0.2s ease;
+}
+
+@keyframes tour-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 꼬리 — 흰 정사각형을 45° 돌린 것. 말풍선이 위에 있으면 아래쪽에, 아래에 있으면 위쪽에 붙는다. */
+.tour-arrow {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  background: var(--card-white);
+  transform: rotate(45deg);
+}
+
+.tour-card--above .tour-arrow {
+  bottom: -6px;
+}
+
+.tour-card--below .tour-arrow {
+  top: -6px;
+}
+
+.tour-count {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-strong);
+}
+
+.tour-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.tour-body {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-sub);
+  white-space: pre-line; /* 문구의 줄바꿈(\n)을 그대로 */
+}
+
+.tour-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.tour-skip,
+.tour-next {
+  height: 40px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tour-skip {
+  margin-right: auto;
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+}
+
+.tour-next {
+  min-width: 88px;
+  padding: 0 18px;
+  border: none;
+  background: var(--primary);
+  color: var(--text-main);
+}

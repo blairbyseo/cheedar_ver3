@@ -44,6 +44,8 @@ import MotivationCheck from './MotivationCheck';
 import HealthInvite from './health/HealthInvite';
 import { uploadPendingNights, ensureAutoSleep } from './sleep/sleepSound';
 import { AiConsentProvider } from './notice/AiConsent';
+import Tutorial from './tutorial/Tutorial';
+import { shouldShowTutorial } from './tutorial/tutorialSteps';
 
 /* 로그인 이후 보여줄 메인 화면 — 탭 5개 + 하단 TabBar */
 function MainShell() {
@@ -167,6 +169,12 @@ function MainShell() {
   // due 가 있으면 탭 화면 대신 설문을 전체화면으로 보여주고, 완료되면 홈으로 돌아간다.
   // (비로그인/스크린샷 우회 상태에서는 /api/survey/next 가 401 → 그냥 무시)
   const [surveyData, setSurveyData] = useState(null);
+  // 설문 확인이 끝났는지 — 끝나기 전에는 튜토리얼을 띄우지 않는다(설문이 뒤늦게 화면을 덮으면 끊기므로).
+  const [surveyChecked, setSurveyChecked] = useState(false);
+
+  // 튜토리얼(기능 안내) — 이 기기에서 아직 안 본 사람(새 가입자·업데이트한 사람)에게 한 번.
+  // 설정의 '앱 사용법 다시 보기'로도 연다. 떠 있는 동안 다른 홈 팝업은 기다린다.
+  const [tourOpen, setTourOpen] = useState(shouldShowTutorial);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,6 +186,8 @@ function MainShell() {
         }
       } catch {
         // 띄울 설문 없음 또는 비로그인 — 무시하고 메인 화면 진행
+      } finally {
+        if (!cancelled) setSurveyChecked(true);
       }
     })();
     return () => { cancelled = true; };
@@ -210,7 +220,7 @@ function MainShell() {
           />
         )}
         {activeTab === "point"    && <Point />}
-        {activeTab === "settings" && <Settings />}
+        {activeTab === "settings" && <Settings onReplayTutorial={() => setTourOpen(true)} />}
         {/* 랭킹 — 홈의 "랭킹" 카드에서 진입. 탭바에는 없고 자체 뒤로가기 사용 */}
         {activeTab === "ranking"  && <Ranking onBack={() => setActiveTab("home")} />}
         {/* 주간 리포트 — 홈의 "주간 피드백 리포트" 카드에서 진입. 자체 뒤로가기 사용 */}
@@ -218,10 +228,14 @@ function MainShell() {
       </div>
       <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
       {/* 동기 점검 — 주 1회, 앱(홈) 진입 시. 띄울지는 서버가 정한다 */}
-      <MotivationCheck />
+      {!tourOpen && <MotivationCheck />}
       {/* 건강 데이터 연결 안내 — 앱에서, 연동을 한 번도 안 켜본 사용자에게만(최대 2번).
           동기 점검 창이 뜨는 진입에는 양보한다 */}
-      <HealthInvite />
+      {!tourOpen && <HealthInvite />}
+      {/* 튜토리얼 — 끝나면 위 두 팝업이 그때 자기 조건을 확인해 뜬다 */}
+      {tourOpen && surveyChecked && (
+        <Tutorial setActiveTab={setActiveTab} onClose={() => setTourOpen(false)} />
+      )}
     </div>
   );
 }

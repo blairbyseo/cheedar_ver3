@@ -21,6 +21,7 @@ function TabBar({ activeTab, setActiveTab }) {
      {/*2. 포인트버튼*/}
       <button
         className={activeTab === "point" ? "active" : ""}
+        data-tour="tab-point"
         onClick={() => setActiveTab("point")}
       >
         <div><CoinIcon active={activeTab === "point"} /></div>
@@ -30,6 +31,7 @@ function TabBar({ activeTab, setActiveTab }) {
     {/*3. 식단버튼*/}
       <button
         className={activeTab === "diet" ? "active diet-tab" : "diet-tab"}
+        data-tour="tab-diet"
         onClick={() => setActiveTab("diet")} 
       >
         
@@ -44,6 +46,7 @@ function TabBar({ activeTab, setActiveTab }) {
     {/*4. 대화버튼*/}
       <button
         className={activeTab === "chat" ? "active" : ""}
+        data-tour="tab-chat"
         onClick={() => setActiveTab("chat")}
       >
         <div><ChatIcon active={activeTab === "chat"} /></div>
@@ -53,6 +56,7 @@ function TabBar({ activeTab, setActiveTab }) {
     {/*5. 설정버튼*/}
       <button
         className={activeTab === "settings" ? "active" : ""}
+        data-tour="tab-settings"
         onClick={() => setActiveTab("settings")}
       >
         <div><Settings color={activeTab=="settings" ? "#FFB800" : "#9CA3AF"} /></div>

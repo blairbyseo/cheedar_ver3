@@ -172,7 +172,7 @@ function Home({setActiveTab}) {
         </div>
 
         <div className="welcome-content">
-          <div className="welcome-bubble">
+          <div className="welcome-bubble" data-tour="home-greeting">
             <h2>{userName ? `${userName}님` : "오늘의 식단관리"}</h2>
             <p className="welcome-content-sub">{greeting}</p>
           </div>
@@ -217,7 +217,7 @@ function Home({setActiveTab}) {
           </section>
       </section>
     <section className="menus">
-      <div className="menu-card menu-rank" onClick={() => setActiveTab("ranking")} role="button" tabIndex={0}>
+      <div className="menu-card menu-rank" data-tour="home-ranking" onClick={() => setActiveTab("ranking")} role="button" tabIndex={0}>
         <h3>랭킹</h3>
         <p>병원 내<br />랭킹보기</p>
         {/* <RankingIcon /> */}
@@ -239,6 +239,7 @@ function Home({setActiveTab}) {
 
     <section
       className="menu-card2 feedback"
+      data-tour="home-report"
       role="button"
       tabIndex={0}
       onClick={() => setActiveTab("report")}
