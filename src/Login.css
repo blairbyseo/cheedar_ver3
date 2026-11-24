@@ -144,6 +144,39 @@
   min-width: 0;
 }
 
+/* 비밀번호 입력칸의 눈 아이콘(보기/숨기기) — auth/PasswordInput.jsx. 회원탈퇴 확인 칸에서도 쓴다 */
+.password-field {
+  position: relative;
+  width: 100%;
+}
+
+/* 글자가 아이콘 밑으로 들어가지 않게 오른쪽을 비운다 */
+.password-field .password-field-input {
+  padding-right: 48px;
+}
+
+.password-field-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #a39a82;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.password-field-toggle:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .login-input:focus {
   outline: none;
   border-color: #d1a916;

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
+import PasswordInput from "../auth/PasswordInput";
 import { usePoints } from "../usePoints";
 import {
   scheduleMealReminders,
@@ -74,7 +75,7 @@ function getUserIdChangeInfo(windowStartRaw, count) {
   };
 }
 
-function Settings() {
+function Settings({ onReplayTutorial }) {
   const { user, setUser, logout } = useAuth();
   const { ensureAiConsent, setAiConsent } = useAiConsent();
   const [isSavingAiConsent, setIsSavingAiConsent] = useState(false);
@@ -826,6 +827,17 @@ function Settings() {
         <h3 className="settings-card-title">기타</h3>
 
 
+        {/* 튜토리얼(기능 안내) 다시 보기 — src/tutorial/ */}
+        {onReplayTutorial && (
+          <button
+            type="button"
+            className="settings-list-row"
+            onClick={onReplayTutorial}
+          >
+            앱 사용법 다시 보기
+            <span className="settings-list-row-arrow">›</span>
+          </button>
+        )}
         <button
           type="button"
           className="settings-list-row"
@@ -937,8 +949,7 @@ function Settings() {
             </p>
 
             {needsPasswordToWithdraw && (
-              <input
-                type="password"
+              <PasswordInput
                 className="withdraw-modal-input"
                 value={withdrawPassword}
                 onChange={(e) => {

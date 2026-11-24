@@ -5,6 +5,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import { useAuth } from "./AuthContext";
 import InviteGate from "./InviteGate";
+import PasswordInput from "./PasswordInput";
 import {
   clearInviteCode,
   isInviteRequired,
@@ -164,8 +165,7 @@ function SignupPage() {
             disabled={isBusy}
             required
           />
-          <input
-            type="password"
+          <PasswordInput
             className="login-input"
             placeholder={`비밀번호 (${PASSWORD_MIN}자 이상)`}
             value={password}
@@ -174,8 +174,7 @@ function SignupPage() {
             disabled={isBusy}
             required
           />
-          <input
-            type="password"
+          <PasswordInput
             className="login-input"
             placeholder="비밀번호 확인"
             value={passwordConfirm}

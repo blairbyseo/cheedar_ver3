@@ -8,6 +8,7 @@ import { isAppleSignInAvailable, requestAppleCredential } from "./appleNative";
 
 import { useAuth } from "./AuthContext";
 import InviteGate from "./InviteGate";
+import PasswordInput from "./PasswordInput";
 import { isNativeApp, openKakaoNative } from "./kakaoNative";
 
 function LoginPage() {
@@ -148,8 +149,7 @@ function LoginPage() {
             disabled={busy}
             required
           />
-          <input
-            type="password"
+          <PasswordInput
             className="login-input"
             placeholder="비밀번호"
             value={password}
