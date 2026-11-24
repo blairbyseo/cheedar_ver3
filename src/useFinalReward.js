@@ -13,11 +13,18 @@ import { useCallback, useEffect, useState } from "react";
  *   claim()  : POST 후 현황을 다시 불러온다. { ok, error } 반환
  *              (error 코드: not_eligible / already_claimed / network)
  */
+/* 현금 보상 챌린지 화면 스위치.
+ * false 면 현황을 아예 불러오지 않아 status 가 null 로 남고, 홈 하단 티커(Home.jsx)와
+ * 포인트 탭 카드(Point.jsx)가 둘 다 숨겨진다. 다시 보이게 하려면 true 로만 바꾸면 된다.
+ * 서버(/api/rewards/*)와 관리자 화면은 그대로다. */
+export const REWARD_CHALLENGE_ENABLED = false;
+
 export function useFinalReward() {
   const [status, setStatus] = useState(null);
   const [claiming, setClaiming] = useState(false);
 
   const load = useCallback(async () => {
+    if (!REWARD_CHALLENGE_ENABLED) return;
     try {
       const res = await fetch("/api/rewards/final-level", {
         credentials: "include",
