@@ -125,8 +125,10 @@ public final class SleepSessionStore {
             result = NightSummary.compute(id, readEpochs(log), !normal, ZoneId.systemDefault());
             if (result != null) addPending(result);
             if (log.exists() && !log.delete()) Log.w(TAG, "기록 파일 삭제 실패: " + log);
-            prefs.edit().remove(K_SESSION).remove(K_STARTED).remove(K_EPOCHS)
-                .putLong(K_LAST_FINISHED, System.currentTimeMillis()).commit();
+            SharedPreferences.Editor ed = prefs.edit().remove(K_SESSION).remove(K_STARTED).remove(K_EPOCHS);
+            // 끊김(마이크 문제·앱 종료)으로 끝난 건 '그 밤 끝'이 아니다 — 같은 밤에 다시 잴 수 있게 둔다
+            if (normal) ed.putLong(K_LAST_FINISHED, System.currentTimeMillis());
+            ed.commit();
         }
         FinishListener l = listener;
         if (l != null) l.onFinished(result, normal);
@@ -139,7 +141,7 @@ public final class SleepSessionStore {
     private static final String K_AUTO_START = "auto_start_minute";
     private static final String K_LAST_FINISHED = "last_finished_at";
 
-    /** 마지막으로 측정이 끝난 시각(멈춤·자동 종료·끊김 모두). 같은 밤에 다시 자동 시작하지 않는 데 쓴다. */
+    /** 마지막으로 측정이 정상으로 끝난 시각(아침 자동 종료·'오늘 측정 끝내기'). 같은 밤에 다시 자동 시작하지 않는 데 쓴다. */
     public synchronized long lastFinishedAt() {
         return prefs.getLong(K_LAST_FINISHED, 0L);
     }
@@ -158,10 +160,13 @@ public final class SleepSessionStore {
      * 서비스가 살아 있으면 화면이 켜져 잠시 멈춘 것일 수 있어 건드리지 않는다.
      */
     public void recoverIfStale() {
-        if (isActive() && !SleepRecordService.isRunning() && System.currentTimeMillis() - startedAt() > 15_000) {
-            Log.i(TAG, "녹음 서비스 없이 남은 측정 → 끊김으로 마무리");
-            finishSession(false);
-        }
+        if (!isActive() || SleepRecordService.isRunning()) return;
+        long now = System.currentTimeMillis();
+        if (now - startedAt() <= 15_000) return;
+        // 그 밤이 아직 안 끝났으면 남겨 둔다 — 서비스가 다시 뜰 때(arm) 이어서 잰다
+        if (!SleepAuto.shouldFinishStale(startedAt(), now, isAutoEnabled(), ZoneId.systemDefault())) return;
+        Log.i(TAG, "녹음 서비스 없이 남은 측정 → 끊김으로 마무리");
+        finishSession(false);
     }
 
     // ───────── 보낼 결과 ─────────

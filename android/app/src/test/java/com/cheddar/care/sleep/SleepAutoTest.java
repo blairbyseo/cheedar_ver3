@@ -21,14 +21,14 @@ public class SleepAutoTest {
     }
 
     @Test
-    public void night_isEightPmToNoon() {
-        assertFalse(SleepAuto.inNight(at(8, 19, 59), SEOUL));
-        assertTrue(SleepAuto.inNight(at(8, 20, 0), SEOUL));
+    public void night_isNinePmToNineAm() {
+        assertFalse(SleepAuto.inNight(at(8, 20, 59), SEOUL));
+        assertTrue(SleepAuto.inNight(at(8, 21, 0), SEOUL));
         assertTrue(SleepAuto.inNight(at(9, 3, 0), SEOUL));
-        assertTrue(SleepAuto.inNight(at(9, 11, 59), SEOUL));
-        assertFalse(SleepAuto.inNight(at(9, 12, 0), SEOUL));
-        assertEquals(at(9, 20, 0), SleepAuto.nextNightStartMs(at(9, 3, 0), SEOUL));
-        assertEquals(at(8, 20, 0), SleepAuto.nextNightStartMs(at(8, 15, 0), SEOUL));
+        assertTrue(SleepAuto.inNight(at(9, 8, 59), SEOUL));
+        assertFalse(SleepAuto.inNight(at(9, 9, 0), SEOUL));
+        assertEquals(at(9, 21, 0), SleepAuto.nextNightStartMs(at(9, 3, 0), SEOUL));
+        assertEquals(at(8, 21, 0), SleepAuto.nextNightStartMs(at(8, 15, 0), SEOUL));
     }
 
     @Test
@@ -46,13 +46,22 @@ public class SleepAutoTest {
         assertFalse("새벽 3시 화장실", SleepAuto.shouldEndOnUnlock(start, at(9, 3, 0), SEOUL));
         assertTrue("아침 6시 반", SleepAuto.shouldEndOnUnlock(start, at(9, 6, 30), SEOUL));
         assertFalse("시작하고 1시간", SleepAuto.shouldEndOnUnlock(at(9, 5, 0), at(9, 6, 0), SEOUL));
-        assertTrue("낮 12시 넘으면 무조건", SleepAuto.shouldEndOnUnlock(at(9, 10, 0), at(9, 12, 30), SEOUL));
+        assertTrue("오전 9시 넘으면 무조건", SleepAuto.shouldEndOnUnlock(at(9, 7, 0), at(9, 9, 30), SEOUL));
     }
 
     @Test
-    public void hardEnd_isNextNoon() {
-        assertEquals(at(9, 12, 0), SleepAuto.hardEndMs(at(8, 22, 0), SEOUL));
-        assertEquals(at(9, 12, 0), SleepAuto.hardEndMs(at(9, 1, 0), SEOUL));
+    public void staleSession_survivesAppRestartDuringTheNight() {
+        long start = at(24, 21, 9);
+        assertFalse("밤중 앱 업데이트 — 이어서 잰다", SleepAuto.shouldFinishStale(start, at(24, 21, 15), true, SEOUL));
+        assertFalse("새벽에 앱이 다시 떠도 이어서", SleepAuto.shouldFinishStale(start, at(25, 3, 0), true, SEOUL));
+        assertTrue("오전 9시가 지나면 마감", SleepAuto.shouldFinishStale(start, at(25, 9, 1), true, SEOUL));
+        assertTrue("자동 기록을 껐으면 마감", SleepAuto.shouldFinishStale(start, at(24, 21, 15), false, SEOUL));
+    }
+
+    @Test
+    public void hardEnd_isNextNineAm() {
+        assertEquals(at(9, 9, 0), SleepAuto.hardEndMs(at(8, 22, 0), SEOUL));
+        assertEquals(at(9, 9, 0), SleepAuto.hardEndMs(at(9, 1, 0), SEOUL));
     }
 
     @Test
@@ -71,9 +80,9 @@ public class SleepAutoTest {
         assertEquals(null, NightSummary.compute("s", night, false, SEOUL));
 
         // 더 길게 자면 결과가 나오고, 멈춘 구간은 잠에 안 들어간다
-        for (int i = 0; i < 20; i++) { t += 30_000; night.add(new Epoch(t, Epoch.DEEP, 0.003f, 0f, 0f)); }
+        for (int i = 0; i < 250; i++) { t += 30_000; night.add(new Epoch(t, Epoch.DEEP, 0.003f, 0f, 0f)); }
         NightSummary.Result r = NightSummary.compute("s", night, false, SEOUL);
         assertNotNull(r);
-        assertTrue(r.asleepMinutes <= (8 + 8 + 20) / 2);
+        assertTrue(r.asleepMinutes <= (8 + 8 + 250) / 2);
     }
 }

@@ -139,16 +139,95 @@ public class SleepAnalysisTest {
     }
 
     @Test
+    public void summary_underTwoHoursIsNotRecorded() {
+        List<Epoch> night = new ArrayList<>();
+        long t = add(night, 0, Epoch.AWAKE, 10);
+        add(night, t, Epoch.DEEP, 119);
+        assertNull("1시간 59분", NightSummary.compute("s", night, false, SEOUL));
+
+        List<Epoch> two = new ArrayList<>();
+        t = add(two, 0, Epoch.AWAKE, 10);
+        add(two, t, Epoch.DEEP, 120);
+        NightSummary.Result r = NightSummary.compute("s", two, false, SEOUL);
+        assertNotNull("딱 2시간", r);
+        assertEquals(120, r.asleepMinutes);
+    }
+
+    @Test
+    public void summary_shortBreakIsSummed_longBreakKeepsLongest() {
+        // 잠 90분 → 깸 59분 → 잠 90분: 1시간 안쪽으로 끊겼으니 합산 180분
+        List<Epoch> merged = new ArrayList<>();
+        long t = add(merged, 0, Epoch.DEEP, 90);
+        t = add(merged, t, Epoch.AWAKE, 59);
+        add(merged, t, Epoch.DEEP, 90);
+        NightSummary.Result m = NightSummary.compute("s", merged, false, SEOUL);
+        assertNotNull(m);
+        assertEquals(180, m.asleepMinutes);
+        assertEquals(0L, m.bedStartMs);
+
+        // 잠 150분 → 깸 60분 → 잠 300분 → 깸 70분 → 잠 130분: 가장 긴 300분만
+        List<Epoch> split = new ArrayList<>();
+        t = add(split, 0, Epoch.DEEP, 150);
+        t = add(split, t, Epoch.AWAKE, 60);
+        long secondStart = t;
+        t = add(split, t, Epoch.DEEP, 300);
+        long secondEnd = t;
+        t = add(split, t, Epoch.AWAKE, 70);
+        add(split, t, Epoch.DEEP, 130);
+        NightSummary.Result s = NightSummary.compute("s", split, false, SEOUL);
+        assertNotNull(s);
+        assertEquals(300, s.asleepMinutes);
+        assertEquals(secondStart, s.bedStartMs);
+        assertEquals(secondEnd, s.wakeEndMs);
+
+        // 잠 100분 → 깸 60분 → 잠 100분: 따로 보면 둘 다 2시간 미만 → 기록 없음
+        List<Epoch> none = new ArrayList<>();
+        t = add(none, 0, Epoch.DEEP, 100);
+        t = add(none, t, Epoch.AWAKE, 60);
+        add(none, t, Epoch.DEEP, 100);
+        assertNull(NightSummary.compute("s", none, false, SEOUL));
+    }
+
+    @Test
+    public void summary_screenOffStretchUnderOneHourIsNotSleep() {
+        // 폰을 50분 내려놓음 → 5분 사용 → 3시간 잠 → 아침 화면 켜짐 2분 → 조용한 방 40분
+        List<Epoch> night = new ArrayList<>();
+        long t = add(night, 0, Epoch.DEEP, 50);
+        night.addAll(SleepAuto.awakeFill(t, t + 5 * 60_000L));
+        t += 5 * 60_000L;
+        long sleepStart = t;
+        t = add(night, t, Epoch.DEEP, 180);
+        long sleepEnd = t;
+        night.addAll(SleepAuto.awakeFill(t, t + 2 * 60_000L));
+        t += 2 * 60_000L;
+        add(night, t, Epoch.DEEP, 40);
+
+        NightSummary.Result r = NightSummary.compute("s", night, false, SEOUL);
+        assertNotNull(r);
+        assertEquals(180, r.asleepMinutes);
+        assertEquals(sleepStart, r.bedStartMs);
+        assertEquals(sleepEnd, r.wakeEndMs);
+
+        // 새벽에 시계만 보고 다시 잔 경우: 두 구간 모두 1시간 이상이라 합산
+        List<Epoch> two = new ArrayList<>();
+        t = add(two, 0, Epoch.DEEP, 200);
+        two.addAll(SleepAuto.awakeFill(t, t + 60_000L));
+        t += 60_000L;
+        add(two, t, Epoch.DEEP, 220);
+        assertEquals(420, NightSummary.compute("s", two, false, SEOUL).asleepMinutes);
+    }
+
+    @Test
     public void summary_tvTimeIsNotSleep() {
         long t0 = 1_762_600_000_000L;
         List<Epoch> night = new ArrayList<>();
         long t = t0;
         // 조용하지만 TV 소리가 대부분인 30분 → 잠 아님
         for (int i = 0; i < 60; i++) { t += 30_000; night.add(new Epoch(t, Epoch.LIGHT, 0.01f, 1e-5f, 0.8f)); }
-        t = add(night, t, Epoch.DEEP, 60);
+        t = add(night, t, Epoch.DEEP, 150);
         NightSummary.Result r = NightSummary.compute("s2", night, false, SEOUL);
         assertNotNull(r);
-        assertEquals(60, r.asleepMinutes);
+        assertEquals(150, r.asleepMinutes);
         assertEquals(t0 + 60 * 30_000L, r.bedStartMs);
     }
 

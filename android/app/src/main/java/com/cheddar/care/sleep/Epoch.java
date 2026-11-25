@@ -26,6 +26,14 @@ public final class Epoch {
         this.externalAudioFraction = externalAudioFraction;
     }
 
+    /**
+     * 마이크로 잰 칸이 아니라 '화면이 켜져 있던 시간'을 채운 칸인지(SleepAuto.awakeFill — 크기 0의 깸).
+     * 마이크가 실제로 0을 읽은 칸도 같은 모양이지만, 그것도 '재지 못한 시간'이라 똑같이 다룬다.
+     */
+    public boolean isScreenOnFill() {
+        return phase == AWAKE && meanRms == 0f;
+    }
+
     public String toLine() {
         return endMs + "," + phase + "," + meanRms + "," + rmsVariance + "," + externalAudioFraction;
     }

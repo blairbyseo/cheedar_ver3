@@ -222,7 +222,7 @@ function Settings({ onReplayTutorial }) {
   }, [healthOn]);
 
   // 5-2) 수면 자동 기록(안드로이드) — 켜기는 홈 팝업의 [허용]으로도 되고, 여기선 켜기/끄기만.
-  //      밤(저녁 8시~낮 12시)에 화면이 꺼져 있을 때만 재서 사용자가 정할 시각은 없다.
+  //      밤(밤 9시~오전 9시)에 화면이 꺼져 있을 때만 재서 사용자가 정할 시각은 없다.
   const [sleepAutoOn, setSleepAutoOn] = useState(false);
   const [sleepBusy, setSleepBusy] = useState(false);
   const [sleepMessage, setSleepMessage] = useState("");

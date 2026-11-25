@@ -112,6 +112,14 @@ def sync_sleep(
         elif sleep_source_rank(row.source) > incoming_rank:
             # 직접 잰 소리 수면 측정(phone_mic)이 있는 날은 건강 앱 기록이 덮어쓰지 않는다
             continue
+        elif (
+            payload.source == "phone_mic"
+            and row.source == "phone_mic"
+            and night.asleep_minutes < row.asleep_minutes
+        ):
+            # 소리 측정이 하루에 두 번 끝난 경우(끊김 뒤 다시 잼, 저녁 조각 등) 긴 쪽을 남긴다.
+            # 2026-11-24: 아침 567분 기록이 같은 날 저녁 5분짜리에 덮어써졌다.
+            continue
         row.asleep_minutes = night.asleep_minutes
         row.bed_start = night.bed_start
         row.wake_end = night.wake_end

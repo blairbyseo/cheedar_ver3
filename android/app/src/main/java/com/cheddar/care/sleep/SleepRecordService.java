@@ -7,6 +7,7 @@ package com.cheddar.care.sleep;
  */
 
 import android.app.AlarmManager;
+import android.app.KeyguardManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -35,10 +36,11 @@ import java.time.ZoneId;
 /**
  * '매일 밤 자동 수면 측정' 서비스. 홈 팝업의 [허용](또는 설정 토글)으로 한 번 켜면 계속 떠 있다.
  *
- * 마이크는 '밤(저녁 8시~낮 12시) + 휴대폰 화면이 꺼져 있을 때'만 켠다(SleepAuto).
+ * 마이크는 '밤(밤 9시~오전 9시) + 휴대폰 화면이 꺼져 있을 때'만 켠다(SleepAuto).
  * - 화면 꺼짐 → 그 밤의 측정을 시작하거나(첫 번째) 이어서 잰다
- * - 화면 켜짐 → 폰을 쓰는 중 = 깨어 있음. 마이크를 멈추고, 그 시간은 나중에 '깸' 칸으로 채운다
- * - 아침 첫 잠금 해제(5시 이후·3시간 넘게 잰 뒤) 또는 낮 12시 이후 → 그 밤 측정 끝, 결과 계산
+ * - 잠금 해제 → 폰을 쓰는 중 = 깨어 있음. 마이크를 멈추고, 그 시간은 나중에 '깸' 칸으로 채운다
+ *   (알림으로 잠금화면만 켜진 것은 쓰는 게 아니므로 계속 잰다 — 2026-11-25)
+ * - 아침 첫 잠금 해제(5시 이후·3시간 넘게 잰 뒤) 또는 오전 9시 이후 → 그 밤 측정 끝, 결과 계산
  * 읽은 소리는 다음 읽기에 덮어써져 어디에도 남지 않는다. 남는 건 30초 판정뿐.
  *
  * 왜 계속 떠 있나: Android 14 이상은 백그라운드에서 마이크 서비스를 '새로 시작'하지 못하게 한다.
@@ -150,7 +152,17 @@ public class SleepRecordService extends Service {
     private void arm() {
         registerScreenReceiver();
         // 앱이 꺼져 있던 사이 남은 측정(서비스가 새로 떴는데 보관함은 '측정 중')이 있으면 이어서 쓴다
-        if (store().isActive() && sessionStartMs == 0) sessionStartMs = store().startedAt();
+        if (store().isActive() && sessionStartMs == 0) {
+            sessionStartMs = store().startedAt();
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm != null && pm.isInteractive() && !keyguardLocked()) {
+                // 잠금이 풀린 채 다시 떴다 = 사용자가 폰을 쓰는 중. 아침이면 그 밤을 끝내고,
+                // 아니면 '잠시 멈춤'으로 두어 다음 화면 꺼짐 때 그 사이를 '깸'으로 채우고 이어 잰다
+                long now = System.currentTimeMillis();
+                if (SleepAuto.shouldEndOnUnlock(sessionStartMs, now, zone())) endSession(true);
+                else if (pausedAtMs == 0) pausedAtMs = now;
+            }
+        }
         scheduleNightStart();
         checkScreenNow();
         refreshNotification();
@@ -164,6 +176,7 @@ public class SleepRecordService extends Service {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String a = intent.getAction();
+                Log.i(TAG, "방송 " + a + " (재는 중=" + recording + ")");
                 if (Intent.ACTION_SCREEN_OFF.equals(a)) onScreenOff();
                 else if (Intent.ACTION_SCREEN_ON.equals(a)) onScreenOn();
                 else if (Intent.ACTION_USER_PRESENT.equals(a)) onUnlock();
@@ -173,8 +186,11 @@ public class SleepRecordService extends Service {
         f.addAction(Intent.ACTION_SCREEN_OFF);
         f.addAction(Intent.ACTION_SCREEN_ON);
         f.addAction(Intent.ACTION_USER_PRESENT);
-        // 시스템 방송만 받으므로 다른 앱에 열 필요 없음
-        ContextCompat.registerReceiver(this, screenReceiver, f, ContextCompat.RECEIVER_NOT_EXPORTED);
+        // EXPORTED 여야 한다: 잠금 해제(USER_PRESENT)는 시스템 서버가 아니라 잠금화면(SystemUI)이 보내서,
+        // NOT_EXPORTED 로 등록하면 Android 13+ 에서 전달되지 않는다(2026-11-25 A15 Android 14 실측 —
+        // 화면 꺼짐/켜짐은 왔지만 잠금 해제는 한 번도 안 옴). 세 방송 모두 시스템만 보낼 수 있는
+        // 보호된 방송이라 다른 앱이 흉내 낼 수 없다.
+        ContextCompat.registerReceiver(this, screenReceiver, f, ContextCompat.RECEIVER_EXPORTED);
     }
 
     private void unregisterScreenReceiver() {
@@ -209,8 +225,19 @@ public class SleepRecordService extends Service {
         }
     }
 
+    /** 잠금화면이 떠 있는지. 잠금을 아예 안 쓰는 폰은 항상 false. */
+    private boolean keyguardLocked() {
+        KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+        return km != null && km.isKeyguardLocked();
+    }
+
+    /**
+     * 화면이 켜졌다고 폰을 쓰는 건 아니다 — 알림이 와서 잠금화면만 켜진 것일 수 있다(자는 중).
+     * 잠금화면이 떠 있으면 마이크를 계속 돌리고, 잠금이 풀릴 때(onUnlock) 멈춘다.
+     * 잠금이 이미 풀려 있는 폰(잠금 미사용·꺼진 직후 다시 켬)은 켜진 것 자체가 '쓰는 중'이다.
+     */
     private void onScreenOn() {
-        if (recording) pauseMic();
+        if (recording && !keyguardLocked()) pauseMic();
     }
 
     private void onUnlock() {
@@ -219,6 +246,8 @@ public class SleepRecordService extends Service {
         if (SleepAuto.shouldEndOnUnlock(sessionStartMs, System.currentTimeMillis(), zone())) {
             Log.i(TAG, "아침 잠금 해제 — 그 밤 측정 끝");
             endSession(true);
+        } else if (recording) {
+            pauseMic(); // 밤중에 잠금을 풀었다 = 폰을 쓰는 중. 다시 화면이 꺼지면 이어 잰다
         }
     }
 
@@ -238,7 +267,7 @@ public class SleepRecordService extends Service {
             }
             wakeLock.acquire(WAKE_LOCK_TIMEOUT_MS);
         }
-        // 녹음 중엔 CPU 가 깨어 있어 일반 타이머로 낮 12시 종료를 건다
+        // 녹음 중엔 CPU 가 깨어 있어 일반 타이머로 오전 9시 종료를 건다
         main.removeCallbacks(hardEnd);
         main.postDelayed(hardEnd, Math.max(0, SleepAuto.hardEndMs(sessionStartMs, zone()) - System.currentTimeMillis()));
         refreshNotification();
@@ -263,7 +292,7 @@ public class SleepRecordService extends Service {
 
     private final Runnable hardEnd = () -> {
         if (store().isActive()) {
-            Log.i(TAG, "낮 12시 — 그 밤 측정 끝");
+            Log.i(TAG, "오전 9시 — 그 밤 측정 끝");
             endSession(true);
         }
     };
@@ -366,7 +395,7 @@ public class SleepRecordService extends Service {
     // ───────────────────────── 밤 시작 알람 ─────────────────────────
 
     /**
-     * 저녁 8시에 화면이 이미 꺼져 있는 경우를 위한 알람(화면이 켜져 있으면 꺼질 때 시작된다).
+     * 밤 9시에 화면이 이미 꺼져 있는 경우를 위한 알람(화면이 켜져 있으면 꺼질 때 시작된다).
      * 정확한 알람 권한 없이 쓰는 알람은 '멀리 예약할수록 늦게 울려도 되는' 규칙이라(남은 시간의 최대 75%
      * 지연 — 2026-11-08 A9 Pro 실측), 남은 시간의 1/4 지점에 중간 알람을 걸고 울릴 때마다 다시 가까이 건다.
      */

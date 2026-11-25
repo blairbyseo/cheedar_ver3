@@ -138,5 +138,8 @@ def test_health_app_never_overwrites_mic_measurement(client, db_session, monkeyp
     assert _post(client, "health_connect", 395).status_code == 200  # 건강 앱은 측정을 못 덮음
     assert (row().source, row().asleep_minutes) == ("phone_mic", 410)
 
-    assert _post(client, "phone_mic", 420).status_code == 200  # 같은 출처끼리는 최신으로
+    assert _post(client, "phone_mic", 420).status_code == 200  # 같은 출처끼리는 더 긴 쪽으로
+    assert row().asleep_minutes == 420
+
+    assert _post(client, "phone_mic", 5).status_code == 200  # 같은 날 짧은 조각은 긴 기록을 못 덮음
     assert row().asleep_minutes == 420
