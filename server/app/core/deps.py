@@ -35,6 +35,44 @@ def _extract_token(request: Request, cookie_token: str | None) -> str | None:
     return None
 
 
+_PLATFORMS = {"ios", "android", "web"}
+
+
+def detect_platform(headers) -> str | None:
+    """요청 헤더로 접속 기기를 추정한다: "ios" | "android" | "web" | None(모름).
+
+    1) 앱이 직접 붙여 보내는 X-Client-Platform 이 있으면 그대로 믿는다.
+    2) 없으면(구버전 앱·웹 브라우저) User-Agent 로 추정한다. 앱은 CapacitorHttp
+       (네이티브 HTTP)를 쓰므로 안드로이드는 "Dalvik/… Android …", 아이폰은
+       "…CFNetwork/… Darwin/…" 형태로 온다. 폰 브라우저의 "Android"/"iPhone" 도 같이 잡힌다.
+    curl 같은 도구는 None 으로 두어 기존 값을 덮어쓰지 않는다.
+    """
+    explicit = (headers.get("X-Client-Platform") or "").strip().lower()
+    if explicit in _PLATFORMS:
+        return explicit
+    ua = (headers.get("User-Agent") or "").lower()
+    if "android" in ua or "dalvik" in ua:
+        return "android"
+    if any(k in ua for k in ("iphone", "ipad", "ipod", "cfnetwork", "darwin")):
+        return "ios"
+    if "mozilla" in ua:
+        return "web"
+    return None
+
+
+def _remember_platform(request: Request, user: User, db: Session) -> None:
+    """접속 기기가 바뀌었을 때만 users.last_platform 을 갱신한다(관리자 화면 표시용)."""
+    platform = detect_platform(request.headers)
+    if platform is None or user.last_platform == platform:
+        return
+    try:
+        user.last_platform = platform
+        db.commit()
+    except Exception:
+        # 표시용 부가 정보일 뿐 — 저장에 실패해도 본 요청은 그대로 진행한다.
+        db.rollback()
+
+
 def get_current_user(
     request: Request,
     response: Response,
@@ -59,6 +97,7 @@ def get_current_user(
     # 앱 시작 때마다 부르는 /api/auth/me 는 모델을 반환하므로 여기서 확실히 연장된다.
     if cookie_token and token_needs_renewal(cookie_token):
         set_auth_cookie(response, create_access_token(user.id))
+    _remember_platform(request, user, db)
     return user
 
 

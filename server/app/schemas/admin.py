@@ -73,6 +73,7 @@ class AdminUserListItem(BaseModel):
     is_admin: bool
     meal_count: int       # 이 회원이 기록한 총 식단 수
     chat_count: int       # 이 회원이 직접 보낸 채팅(user 발화) 수
+    last_platform: str | None = None  # 마지막 접속 기기: ios | android | web
     created_at: datetime
 
     class Config:
@@ -100,6 +101,7 @@ class AdminUserDetail(BaseModel):
     xp: int
     cp: int
     is_admin: bool
+    last_platform: str | None = None  # 마지막 접속 기기: ios | android | web
     created_at: datetime
     # 집계값 — 탭별 데이터 양을 미리 보여주는 데 쓴다.
     meal_count: int

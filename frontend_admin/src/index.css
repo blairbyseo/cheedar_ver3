@@ -375,6 +375,22 @@ button { font-family: inherit; cursor: pointer; }
   vertical-align: middle;
 }
 
+/* 마지막 접속 기기 배지 (아이폰 / 갤럭시 / 웹) */
+.badge-platform {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.badge-platform-ios { background: #f1f5f9; color: #0f172a; }
+.badge-platform-android { background: #ecfdf5; color: #047857; }
+.badge-platform-web { background: var(--accent-soft); color: var(--accent); }
+.platform-none { color: var(--muted-light); }
+
 /* ---------- 페이지네이션 ---------- */
 .pagination {
   display: flex;

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/api";
+import PlatformBadge from "../components/PlatformBadge";
 import { categoryLabel, riskMeta, STATUS_LABELS } from "../safety";
 
 const MEAL_LABELS = {
@@ -111,6 +112,12 @@ export default function UserDetail() {
                 {user.age != null && ` · ${user.age}세`}
                 {user.height_cm != null && ` · ${user.height_cm}cm`}
                 {user.weight_kg != null && ` · ${user.weight_kg}kg`}
+                {user.last_platform && (
+                  <>
+                    {" · "}
+                    <PlatformBadge platform={user.last_platform} />
+                  </>
+                )}
               </p>
             </div>
             <div className="detail-stats">

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { api } from "../api/api";
+import PlatformBadge from "../components/PlatformBadge";
 
 const PAGE_SIZE = 20;
 
@@ -123,6 +124,7 @@ export default function UserManagement() {
               <th>아이디</th>
               <th>닉네임</th>
               <th>이메일</th>
+              <th>기기</th>
               <th className="num">식단</th>
               <th className="num">채팅</th>
               <th className="num">XP</th>
@@ -148,6 +150,7 @@ export default function UserManagement() {
                 </td>
                 <td>{u.nickname || "—"}</td>
                 <td>{u.email || "—"}</td>
+                <td><PlatformBadge platform={u.last_platform} /></td>
                 <td className="num">{u.meal_count}</td>
                 <td className="num">{u.chat_count}</td>
                 <td className="num">{u.xp}</td>
@@ -157,7 +160,7 @@ export default function UserManagement() {
             ))}
             {!loading && data?.items.length === 0 && (
               <tr>
-                <td colSpan={9} className="table-empty">검색 결과가 없어요.</td>
+                <td colSpan={10} className="table-empty">검색 결과가 없어요.</td>
               </tr>
             )}
           </tbody>

@@ -125,6 +125,11 @@ class User(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # 마지막으로 접속한 기기 종류: "ios"(아이폰) | "android"(갤럭시 등) | "web".
+    # 로그인된 요청이 올 때마다 값이 바뀌었으면 갱신한다(core/deps.py).
+    # 이 컬럼이 생긴 뒤 한 번도 접속하지 않은 계정은 None.
+    last_platform: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
     @property
     def ai_consented(self) -> bool:
         return self.ai_consent_at is not None

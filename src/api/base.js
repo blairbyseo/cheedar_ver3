@@ -12,6 +12,8 @@
  *     절대주소를 붙여준다. 각 화면의 fetch("/api/...") 코드는 한 줄도 안 바꾼다.
  */
 
+import { Capacitor } from "@capacitor/core";
+
 // 웹에서는 "" (Vite 가 정의 안 된 env 를 undefined 로 치환 → || "" 로 흡수).
 export const API_BASE = import.meta.env.VITE_API_BASE || "";
 
@@ -26,6 +28,28 @@ export function assetUrl(path) {
   return API_BASE && path.startsWith("/") ? API_BASE + path : path;
 }
 
+/** 요청에 X-Client-Platform("ios" | "android") 헤더를 덧붙인다.
+ *
+ * 관리자 화면이 회원별 기기(아이폰/갤럭시)를 보여주는 데 쓴다. 기존 헤더는
+ * 원래 형태(Headers / 배열 / 일반 객체) 그대로 두고 한 줄만 추가한다.
+ */
+function withPlatformHeader(init) {
+  const platform = Capacitor.getPlatform();
+  if (platform !== "ios" && platform !== "android") return init;
+  const name = "X-Client-Platform";
+  const prev = init?.headers;
+  let headers;
+  if (typeof Headers !== "undefined" && prev instanceof Headers) {
+    headers = new Headers(prev);
+    headers.set(name, platform);
+  } else if (Array.isArray(prev)) {
+    headers = [...prev, [name, platform]];
+  } else {
+    headers = { ...(prev || {}), [name]: platform };
+  }
+  return { ...(init || {}), headers };
+}
+
 /** API_BASE 가 설정된 앱 빌드에서만 fetch 를 감싼다. 웹(API_BASE="")에서는 no-op. */
 export function installApiBaseFetch() {
   if (!API_BASE) return; // 웹: 아무 것도 안 함 → 기존과 동일
@@ -36,7 +60,7 @@ export function installApiBaseFetch() {
       typeof input === "string" &&
       (input.startsWith("/api") || input.startsWith("/uploads"))
     ) {
-      return nativeFetch(API_BASE + input, init);
+      return nativeFetch(API_BASE + input, withPlatformHeader(init));
     }
     // Request 객체이거나 이미 절대주소면 그대로 통과
     return nativeFetch(input, init);

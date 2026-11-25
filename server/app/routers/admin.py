@@ -305,6 +305,7 @@ def list_users(
             is_admin=user.is_admin,
             meal_count=meal_cnt,
             chat_count=chat_cnt,
+            last_platform=user.last_platform,
             created_at=user.created_at,
         )
         for user, meal_cnt, chat_cnt in rows
@@ -313,6 +314,10 @@ def list_users(
     return AdminUserListResponse(
         items=items, total=total, page=page, page_size=page_size
     )
+
+
+# users.last_platform → CSV 표기 (관리자 화면의 기기 배지와 같은 이름)
+_PLATFORM_LABELS = {"ios": "아이폰", "android": "갤럭시", "web": "웹"}
 
 
 @router.get("/users/export")
@@ -344,7 +349,7 @@ def export_users(
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow(
-            ["ID", "아이디", "닉네임", "이메일", "식단수", "채팅수", "XP", "CP", "관리자", "가입일"]
+            ["ID", "아이디", "닉네임", "이메일", "식단수", "채팅수", "XP", "CP", "관리자", "기기", "가입일"]
         )
         for user, meal_cnt, chat_cnt in rows:
             writer.writerow(
@@ -358,6 +363,7 @@ def export_users(
                     user.xp,
                     user.cp,
                     "Y" if user.is_admin else "N",
+                    _PLATFORM_LABELS.get(user.last_platform or "", ""),
                     user.created_at.astimezone(KST).strftime("%Y-%m-%d %H:%M")
                     if user.created_at
                     else "",
@@ -413,6 +419,7 @@ def get_user(user_id: int, db: Session = Depends(get_db)) -> AdminUserDetail:
         xp=user.xp,
         cp=user.cp,
         is_admin=user.is_admin,
+        last_platform=user.last_platform,
         created_at=user.created_at,
         meal_count=meal_count,
         chat_count=chat_count,
