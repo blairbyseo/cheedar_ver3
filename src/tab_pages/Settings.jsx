@@ -19,7 +19,7 @@ import {
 import { NOTIF_RANKING_KEY } from "../notifications/rankAlert";
 import { PRIVACY_URL, openExternal } from "../openExternal";
 import {
-  isNativeApp,
+  isHealthSupported,
   isHealthSyncEnabled,
   setHealthSyncEnabled,
   connectHealth,
@@ -185,7 +185,7 @@ function Settings({ onReplayTutorial }) {
   const [healthStatus, setHealthStatus] = useState(null);
 
   useEffect(() => {
-    if (!isNativeApp()) return undefined;
+    if (!isHealthSupported()) return undefined;
     let cancelled = false;
     // 예전 방식(Health Connect 걸음수)으로 켜 둔 사용자 — 걸음 센서 권한이 없으니 다시 켜게 한다
     stepsNeedReconnect().then((need) => {
@@ -208,7 +208,7 @@ function Settings({ onReplayTutorial }) {
   }
 
   useEffect(() => {
-    if (!isNativeApp() || !healthOn) return undefined;
+    if (!isHealthSupported() || !healthOn) return undefined;
     let cancelled = false;
     fetch("/api/health/status", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
@@ -717,10 +717,10 @@ function Settings({ onReplayTutorial }) {
         </div>
       </section>
 
-      {/* ───────── 건강 데이터 연동 카드 — 앱(안드로이드/iOS)에서만 표시 ─────────
+      {/* ───────── 건강 데이터 연동 카드 — 안드로이드 앱에서만 표시(iOS 는 isHealthSupported 참고) ─────────
           걸음수는 폰 센서(안드로이드)/HealthKit(iOS), 수면은 홈 카드 소리 측정 — 참고 문구로만(포인트 X).
           웹에서는 읽을 방법이 없으므로 카드 자체를 그리지 않는다. */}
-      {isNativeApp() && (
+      {isHealthSupported() && (
         <section className="settings-card">
           <h3 className="settings-card-title">건강 데이터</h3>
           <div className="notification-row">
