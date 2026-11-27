@@ -18,6 +18,7 @@ from app.routers import motivation as motivation_router
 from app.routers import points as points_router
 from app.routers import reports as reports_router
 from app.routers import rewards as rewards_router
+from app.routers import sheet_sync as sheet_sync_router
 from app.routers import survey as survey_router
 from app.routers import telemetry as telemetry_router
 
@@ -52,6 +53,7 @@ app.include_router(survey_router.router)
 app.include_router(telemetry_router.router)
 app.include_router(admin_router.router)
 app.include_router(admin_analytics_router.router)
+app.include_router(sheet_sync_router.router)
 
 
 @app.get("/health")

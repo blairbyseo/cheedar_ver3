@@ -94,6 +94,11 @@ class Settings(BaseSettings):
     apple_key_id: str | None = None
     apple_private_key: str | None = None  # .p8 내용. 한 줄로 넣을 땐 줄바꿈을 \n 으로
 
+    # --- 구글시트 자동 동기화 (/api/sheet-sync) --------------------------------
+    # 구글시트 Apps Script 가 X-Sync-Token 헤더로 이 값을 보내야 데이터를 준다.
+    # 비어 있으면 동기화 주소 자체가 꺼진다(404). 32자 이상 무작위 값으로.
+    sheet_sync_token: str | None = None
+
     # --- OpenAI ------------------------------------------------------------
     openai_api_key: str | None = None
     openai_model: str = "gpt-5-mini"
