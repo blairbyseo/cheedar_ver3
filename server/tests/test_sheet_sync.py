@@ -52,6 +52,9 @@ def ctx(monkeypatch):
                     bed_start=datetime(2026, 11, 26, 14, 30, tzinfo=timezone.utc),  # KST 23:30
                     wake_end=datetime(2026, 11, 26, 21, 30, tzinfo=timezone.utc),  # KST 06:30
                     source="phone_mic",
+                    deep_minutes=90, light_minutes=270, rem_minutes=60, awake_minutes=20,
+                    awakenings=2, sleep_efficiency=95, breathing_rate=14.5,
+                    breathing_detected_pct=80, apnea_count=1, hypopnea_count=3,
                 ),
                 DailySleep(
                     user_id=a.id, day=date(2026, 11, 26), asleep_minutes=120,
@@ -114,6 +117,13 @@ def test_returns_two_sheets(ctx):
     assert row["평균 잠든 시각(30일)"] == "00:30"
     assert row["평균 일어난 시각(30일)"] == "05:00"
     assert row["이상 수면 기록 수(180일, 3시간 미만·12시간 초과)"] == 1
+    # 최근 밤 추가 지표
+    assert row["깊은 수면(분)"] == 90
+    assert row["렘수면(분, 추정)"] == 60
+    assert row["수면 효율(%)"] == 95
+    assert row["수면 중 호흡수(회/분)"] == 14.5
+    assert row["수면 무호흡 의심(회)"] == 1
+    assert row["수면 저호흡 의심(회)"] == 3
     assert all(len(r) == len(header) for r in rows)
 
 

@@ -23,6 +23,7 @@ import org.json.JSONObject;
  * - 진행 상태: SharedPreferences "cheddar_sleep" (측정 중인 세션 id·시작 시각·칸 수)
  * - 30초 판정 기록: filesDir/sleep/&lt;sessionId&gt;.log — 한 줄씩 덧붙이고 매번 닫는다.
  *   앱이 갑자기 꺼져도 그때까지의 기록은 남는다. 소리는 들어 있지 않다.
+ *   무호흡·저호흡 의심 사건도 같은 파일에 "E,가운데시각ms,종류,길이ms" 줄로 덧붙인다(2026-11-27).
  * - 측정이 끝나면 바로 요약(NightSummary)을 만들어 '보낼 결과' 목록에 넣고 기록 파일은 지운다.
  *   서버에 보내고 나면 markUploaded 로 목록에서 뺀다.
  *
@@ -112,6 +113,17 @@ public final class SleepSessionStore {
         prefs.edit().putInt(K_EPOCHS, prefs.getInt(K_EPOCHS, 0) + 1).apply();
     }
 
+    /** 무호흡(0)·저호흡(1) 의심 사건 한 줄 저장. 측정 중이 아니거나 시작 전 사건이면 버린다. */
+    public synchronized void appendEvent(long midMs, int type, long durationMs) {
+        String id = prefs.getString(K_SESSION, null);
+        if (id == null || midMs < prefs.getLong(K_STARTED, 0L)) return;
+        try (FileOutputStream out = new FileOutputStream(logFile(id), true)) {
+            out.write(("E," + midMs + "," + type + "," + durationMs + "\n").getBytes(StandardCharsets.UTF_8));
+        } catch (IOException ex) {
+            Log.e(TAG, "사건 저장 실패", ex);
+        }
+    }
+
     /**
      * 측정 끝. 기록으로 요약을 만들어 '보낼 결과'에 넣고, 기록 파일을 지우고, 진행 상태를 비운다.
      * normal=false 는 멈춤 버튼 없이 끝난 경우(시스템 종료·마이크 문제).
@@ -122,7 +134,7 @@ public final class SleepSessionStore {
             String id = prefs.getString(K_SESSION, null);
             if (id == null) return null;
             File log = logFile(id);
-            result = NightSummary.compute(id, readEpochs(log), !normal, ZoneId.systemDefault());
+            result = NightSummary.compute(id, readEpochs(log), readEvents(log), !normal, ZoneId.systemDefault());
             if (result != null) addPending(result);
             if (log.exists() && !log.delete()) Log.w(TAG, "기록 파일 삭제 실패: " + log);
             SharedPreferences.Editor ed = prefs.edit().remove(K_SESSION).remove(K_STARTED).remove(K_EPOCHS);
@@ -199,6 +211,17 @@ public final class SleepSessionStore {
             o.put("wake_end", r.wakeEndIso());
             o.put("interrupted", r.interrupted);
             o.put("epochs", r.epochCount);
+            // 2026-11-27 추가 지표 (DeltaSleep 기반, 검증 안 된 추정값)
+            o.put("deep_minutes", r.deepMinutes);
+            o.put("light_minutes", r.lightMinutes);
+            o.put("rem_minutes", r.remMinutes);
+            o.put("awake_minutes", r.awakeMinutes);
+            o.put("awakenings", r.awakenings);
+            o.put("sleep_efficiency", r.sleepEfficiency);
+            o.put("breathing_rate", r.breathingRate == null ? JSONObject.NULL : (double) r.breathingRate);
+            o.put("breathing_detected_pct", r.breathingDetectedPct);
+            o.put("apnea_count", r.apneaCount);
+            o.put("hypopnea_count", r.hypopneaCount);
         } catch (JSONException ignored) {
             // put 에 넣는 값이 모두 문자열·숫자라 실제로는 나지 않는다
         }
@@ -221,6 +244,28 @@ public final class SleepSessionStore {
 
     private File logFile(String sessionId) {
         return new File(dir(), sessionId + ".log");
+    }
+
+    /** 사건 줄("E,가운데시각ms,종류,길이ms") → {가운데시각ms, 종류}. */
+    private static List<long[]> readEvents(File log) {
+        List<long[]> out = new ArrayList<>();
+        if (!log.exists()) return out;
+        try (BufferedReader r = new BufferedReader(new FileReader(log))) {
+            String line;
+            while ((line = r.readLine()) != null) {
+                if (!line.startsWith("E,")) continue;
+                String[] p = line.trim().split(",");
+                if (p.length != 4) continue;
+                try {
+                    out.add(new long[] {Long.parseLong(p[1]), Integer.parseInt(p[2])});
+                } catch (NumberFormatException ignored) {
+                    // 앱이 쓰다 꺼진 마지막 줄
+                }
+            }
+        } catch (IOException ex) {
+            Log.e(TAG, "사건 읽기 실패", ex);
+        }
+        return out;
     }
 
     private static List<Epoch> readEpochs(File log) {

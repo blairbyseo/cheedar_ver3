@@ -21,6 +21,7 @@ from app.models.daily_steps import DailySteps
 from app.models.user import User
 from app.schemas.health import (
     HealthGreetingOut,
+    SLEEP_DETAIL_FIELDS,
     HealthStatusOut,
     SleepSyncIn,
     StepsSyncIn,
@@ -124,6 +125,9 @@ def sync_sleep(
         row.bed_start = night.bed_start
         row.wake_end = night.wake_end
         row.source = payload.source
+        # 추가 지표는 이번 기록 것으로 통째로 바꾼다(없으면 NULL) — 다른 출처 값이 섞여 남지 않게
+        for field in SLEEP_DETAIL_FIELDS:
+            setattr(row, field, getattr(night, field))
     db.commit()
     return StepsSyncOut(saved=len(wanted), latest_day=max(wanted))
 

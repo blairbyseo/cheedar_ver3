@@ -133,6 +133,17 @@ async function doUpload() {
           asleep_minutes: n.asleep_minutes,
           bed_start: n.bed_start,
           wake_end: n.wake_end,
+          // 2026-11-27 추가 지표 — 예전 앱 버전이 만든 결과엔 없어서 undefined(=안 보냄)
+          deep_minutes: n.deep_minutes,
+          light_minutes: n.light_minutes,
+          rem_minutes: n.rem_minutes,
+          awake_minutes: n.awake_minutes,
+          awakenings: n.awakenings,
+          sleep_efficiency: n.sleep_efficiency,
+          breathing_rate: n.breathing_rate,
+          breathing_detected_pct: n.breathing_detected_pct,
+          apnea_count: n.apnea_count,
+          hypopnea_count: n.hypopnea_count,
         })),
       }),
     });

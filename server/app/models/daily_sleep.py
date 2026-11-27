@@ -1,7 +1,7 @@
 from datetime import date as DateType
 from datetime import datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -30,6 +30,19 @@ class DailySleep(Base):
     bed_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     wake_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     source: Mapped[str] = mapped_column(String(32), default="health_connect")
+
+    # ── 소리 수면 측정(phone_mic, 앱 versionCode 19+)만 채우는 추가 지표 — DeltaSleep 기반 추정값,
+    # 실제 사람으로 검증 안 됨. 다른 출처·예전 앱이면 NULL. (2026-11-27, alembic 0029)
+    deep_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    light_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rem_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 렘(추정)
+    awake_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 잠든~일어난 사이 깬 분
+    awakenings: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 1분 이상 깬 횟수
+    sleep_efficiency: Mapped[int | None] = mapped_column(Integer, nullable=True)  # %
+    breathing_rate: Mapped[float | None] = mapped_column(Float, nullable=True)  # 회/분 (중앙값)
+    breathing_detected_pct: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 숨 잡힌 잠 칸 %
+    apnea_count: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 무호흡 의심
+    hypopnea_count: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 저호흡 의심
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

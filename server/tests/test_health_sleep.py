@@ -143,3 +143,46 @@ def test_health_app_never_overwrites_mic_measurement(client, db_session, monkeyp
 
     assert _post(client, "phone_mic", 5).status_code == 200  # 같은 날 짧은 조각은 긴 기록을 못 덮음
     assert row().asleep_minutes == 420
+
+
+def test_sleep_detail_metrics_saved_and_cleared(client, db_session, monkeypatch):
+    """소리 측정 추가 지표(2026-11-27)는 저장되고, 지표 없는 기록으로 덮이면 NULL 로 비워진다."""
+    session, user = db_session
+    monkeypatch.setattr("app.routers.health.kst_today", lambda: date(2026, 11, 27))
+    detail = {
+        "deep_minutes": 80,
+        "light_minutes": 250,
+        "rem_minutes": 60,
+        "awake_minutes": 25,
+        "awakenings": 3,
+        "sleep_efficiency": 94,
+        "breathing_rate": 14.5,
+        "breathing_detected_pct": 72,
+        "apnea_count": 2,
+        "hypopnea_count": 5,
+    }
+    res = client.post(
+        "/api/health/sleep",
+        json={"source": "phone_mic", "nights": [{"day": "2026-11-27", "asleep_minutes": 390, **detail}]},
+    )
+    assert res.status_code == 200, res.text
+    session.expire_all()
+    row = session.query(DailySleep).filter_by(user_id=user.id, day=date(2026, 11, 27)).one()
+    assert {k: getattr(row, k) for k in detail} == detail
+
+    # 예전 앱(지표 없음)의 더 긴 같은 출처 기록이 덮으면 지표는 비워진다
+    client.post(
+        "/api/health/sleep",
+        json={"source": "phone_mic", "nights": [{"day": "2026-11-27", "asleep_minutes": 400}]},
+    )
+    session.expire_all()
+    row = session.query(DailySleep).filter_by(user_id=user.id, day=date(2026, 11, 27)).one()
+    assert row.asleep_minutes == 400
+    assert all(getattr(row, k) is None for k in detail)
+
+    # 범위 밖 값은 거절
+    bad = client.post(
+        "/api/health/sleep",
+        json={"source": "phone_mic", "nights": [{"day": "2026-11-27", "asleep_minutes": 500, "sleep_efficiency": 150}]},
+    )
+    assert bad.status_code == 422

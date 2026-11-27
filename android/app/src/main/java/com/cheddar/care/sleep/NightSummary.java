@@ -8,6 +8,8 @@ package com.cheddar.care.sleep;
 
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -24,6 +26,18 @@ import java.util.List;
  * 6. 잔 분 = 4~5 사이 잠 칸 수 × 30초 (중간에 깬 칸은 빠진다)                     — DeltaSleep + 범위
  * 7. day = 일어난 시각의 기기 날짜 (Health Connect 수면 코드와 같은 기준)
  * 잔 시간이 2시간 미만이면 null — 결과를 만들지 않는다(2026-11-25 사용자 결정).
+ *
+ * 추가 지표(2026-11-27, 모두 '그 묶음' 안에서만 — 잠든 시각~일어난 시각):
+ * - 깊은/얕은/렘 분: 잠 칸을 다듬은 판정별로 센다. 렘은 DeltaSleep NightSummarizer 처럼
+ *   잠든 뒤 60분 안의 렘은 얕은 잠으로, 4칸(2분) 미만으로 짧게 끊긴 렘은 앞 칸 판정으로 바꾼다
+ *   (원본은 '측정 시작'부터 60분이지만 Cheddar 는 자동 측정이 잠들기 한참 전에 시작돼 '잠든 시각' 기준).
+ *   앞 칸이 깸이면 잠 시간은 그대로 두려고 얕은 잠으로 센다. 깊은+얕은+렘 = 잔 분.
+ * - 중간에 깬 분: 그 사이 잠 칸이 아닌 칸 수 × 30초. 중간에 깬 횟수: 잠 아닌 칸이 2칸(1분) 이상 이어진 횟수.
+ * - 수면 효율(%): 잔 분 ÷ (일어난 시각 − 잠든 시각).
+ * - 호흡수(회/분): 숨 주기가 잡힌 잠 칸들의 (60 ÷ 숨 주기) 중앙값. 하나도 없으면 null.
+ *   숨 감지 비율(%): 잠 칸 중 숨 주기가 잡힌 칸의 비율 — 이 값이 낮으면 호흡수·무호흡·렘을 믿기 어렵다.
+ * - 무호흡/저호흡 의심 횟수: 사건 가운데 시각이 잠 칸에 들어가는 것만 센다
+ *   (DeltaSleep 처럼 깸·TV 소리 구간의 사건은 버린다).
  */
 public final class NightSummary {
 
@@ -44,8 +58,21 @@ public final class NightSummary {
         public final long wakeEndMs;
         public final boolean interrupted;
         public final int epochCount;
+        public final int deepMinutes;
+        public final int lightMinutes;
+        public final int remMinutes;
+        public final int awakeMinutes;
+        public final int awakenings;
+        public final int sleepEfficiency;
+        /** 회/분. 숨 주기가 한 칸도 안 잡혔으면 null. */
+        public final Float breathingRate;
+        public final int breathingDetectedPct;
+        public final int apneaCount;
+        public final int hypopneaCount;
 
-        Result(String sessionId, String day, int asleepMinutes, long bedStartMs, long wakeEndMs, boolean interrupted, int epochCount) {
+        Result(String sessionId, String day, int asleepMinutes, long bedStartMs, long wakeEndMs, boolean interrupted,
+               int epochCount, int deepMinutes, int lightMinutes, int remMinutes, int awakeMinutes, int awakenings,
+               int sleepEfficiency, Float breathingRate, int breathingDetectedPct, int apneaCount, int hypopneaCount) {
             this.sessionId = sessionId;
             this.day = day;
             this.asleepMinutes = asleepMinutes;
@@ -53,6 +80,16 @@ public final class NightSummary {
             this.wakeEndMs = wakeEndMs;
             this.interrupted = interrupted;
             this.epochCount = epochCount;
+            this.deepMinutes = deepMinutes;
+            this.lightMinutes = lightMinutes;
+            this.remMinutes = remMinutes;
+            this.awakeMinutes = awakeMinutes;
+            this.awakenings = awakenings;
+            this.sleepEfficiency = sleepEfficiency;
+            this.breathingRate = breathingRate;
+            this.breathingDetectedPct = breathingDetectedPct;
+            this.apneaCount = apneaCount;
+            this.hypopneaCount = hypopneaCount;
         }
 
         public String bedStartIso() { return Instant.ofEpochMilli(bedStartMs).toString(); }
@@ -74,7 +111,17 @@ public final class NightSummary {
         return out;
     }
 
+    static final long REM_SUPPRESS_MS = 60L * 60 * 1000; // 잠든 뒤 60분 안의 렘은 얕은 잠으로
+    static final int REM_MIN_RUN = 4;                     // 렘이 4칸(2분) 미만이면 앞 칸 판정으로
+    static final int AWAKENING_MIN_RUN = 2;               // 잠 아닌 칸이 2칸(1분) 이상이면 '깬 것'
+
+    /** 사건 없이 요약(예전 기록·테스트용). */
     public static Result compute(String sessionId, List<Epoch> epochs, boolean interrupted, ZoneId zone) {
+        return compute(sessionId, epochs, java.util.Collections.emptyList(), interrupted, zone);
+    }
+
+    /** events: 각 원소 {가운데 시각ms, 종류(0 무호흡·1 저호흡)}. */
+    public static Result compute(String sessionId, List<Epoch> epochs, List<long[]> events, boolean interrupted, ZoneId zone) {
         int n = epochs.size();
         if (n == 0) return null;
 
@@ -139,7 +186,86 @@ public final class NightSummary {
         long bedStart = epochs.get(bestOnset).endMs - EPOCH_SECONDS * 1000L;
         long wakeEnd = epochs.get(bestWake).endMs;
         String day = Instant.ofEpochMilli(wakeEnd).atZone(zone).toLocalDate().toString();
-        return new Result(sessionId, day, minutes, bedStart, wakeEnd, interrupted, n);
+
+        // ── 단계별 시간 (렘 후처리 — DeltaSleep NightSummarizer.smoothPhases 2·3단계) ──
+        int[] stage = phases.clone();
+        for (int k = bestOnset; k <= bestWake; k++) {
+            if (stage[k] == Epoch.REM && epochs.get(k).endMs - bedStart <= REM_SUPPRESS_MS) stage[k] = Epoch.LIGHT;
+        }
+        for (int i = bestOnset; i <= bestWake; ) {
+            if (stage[i] != Epoch.REM) { i++; continue; }
+            int j = i;
+            while (j <= bestWake && stage[j] == Epoch.REM) j++;
+            if (j - i < REM_MIN_RUN) {
+                int fill = i > 0 ? stage[i - 1] : (j < n ? stage[j] : Epoch.LIGHT);
+                for (int k = i; k < j; k++) stage[k] = fill;
+            }
+            i = j;
+        }
+        int deep = 0, light = 0, rem = 0, awakeEpochs = 0, awakenings = 0, run = 0;
+        int breathEpochs = 0;
+        List<Float> bpms = new ArrayList<>();
+        for (int k = bestOnset; k <= bestWake; k++) {
+            if (!asleep[k]) {
+                awakeEpochs++;
+                run++;
+                continue;
+            }
+            if (run >= AWAKENING_MIN_RUN) awakenings++;
+            run = 0;
+            if (stage[k] == Epoch.DEEP) deep++;
+            else if (stage[k] == Epoch.REM) rem++;
+            else light++; // 얕은 잠 + 렘 정리에서 깸으로 채워진 칸
+            float period = epochs.get(k).breathPeriodS;
+            if (period > 0f) {
+                breathEpochs++;
+                bpms.add(60f / period);
+            }
+        }
+        Float breathingRate = null;
+        if (!bpms.isEmpty()) {
+            Collections.sort(bpms);
+            int mid = bpms.size() / 2;
+            float med = bpms.size() % 2 == 1 ? bpms.get(mid) : (bpms.get(mid - 1) + bpms.get(mid)) / 2f;
+            breathingRate = Math.round(med * 10f) / 10f;
+        }
+        int breathPct = Math.round(breathEpochs * 100f / bestSleep);
+        double spanMin = (wakeEnd - bedStart) / 60_000.0;
+        int efficiency = spanMin > 0 ? (int) Math.min(100, Math.round(minutes * 100.0 / spanMin)) : 0;
+
+        // ── 무호흡·저호흡: 가운데 시각이 이 묶음의 잠 칸에 들어가는 사건만 ──
+        int apnea = 0, hypopnea = 0;
+        for (long[] ev : events) {
+            int k = epochIndexAt(epochs, ev[0]);
+            if (k < bestOnset || k > bestWake || !asleep[k]) continue;
+            if (ev[1] == BreathingTrackerEvents.APNEA) apnea++;
+            else if (ev[1] == BreathingTrackerEvents.HYPOPNEA) hypopnea++;
+        }
+
+        // 30초 칸 단위 합산이라 분은 내림 — 깊은+얕은+렘 = 잔 분이 되도록 렘·깊은을 먼저 내리고 나머지를 얕은 잠에
+        int deepMin = deep * EPOCH_SECONDS / 60;
+        int remMin = rem * EPOCH_SECONDS / 60;
+        int lightMin = Math.max(0, minutes - deepMin - remMin);
+        return new Result(sessionId, day, minutes, bedStart, wakeEnd, interrupted, n,
+            deepMin, lightMin, remMin, awakeEpochs * EPOCH_SECONDS / 60, awakenings, efficiency,
+            breathingRate, breathPct, apnea, hypopnea);
+    }
+
+    /** 사건 종류 번호 (BreathingTracker 와 같은 값). */
+    static final class BreathingTrackerEvents {
+        static final long APNEA = 0;
+        static final long HYPOPNEA = 1;
+    }
+
+    /** 시각 t 가 들어가는 칸 번호 — 칸 i 는 (끝시각 − 30초, 끝시각]. 없으면 -1. */
+    static int epochIndexAt(List<Epoch> epochs, long t) {
+        int lo = 0, hi = epochs.size() - 1, ans = -1;
+        while (lo <= hi) {
+            int mid = (lo + hi) >>> 1;
+            if (epochs.get(mid).endMs >= t) { ans = mid; hi = mid - 1; } else lo = mid + 1;
+        }
+        if (ans < 0) return -1;
+        return epochs.get(ans).endMs - EPOCH_SECONDS * 1000L < t ? ans : -1;
     }
 
     /** [from, to] 안에서 잠 칸이 10칸(5분) 연속되는 첫 구간의 시작. 없으면 -1. */

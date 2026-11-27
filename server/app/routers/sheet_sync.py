@@ -79,6 +79,12 @@ def _avg_clock(times: list[datetime], pivot_hour: int) -> str:
     return f"{total // 60:02d}:{total % 60:02d}"
 
 
+def _v(row, field: str):
+    """행의 값 그대로, 행이 없거나 값이 NULL 이면 빈칸."""
+    value = getattr(row, field, None) if row is not None else None
+    return "" if value is None else value
+
+
 def _round(v: float | None) -> int | str:
     return round(v) if v is not None else ""
 
@@ -161,6 +167,17 @@ def sheet_sync(
             ("수면시간", _fmt_minutes(sl_last.asleep_minutes) if sl_last else ""),
             ("잠든 시각", _fmt_dt(sl_last.bed_start) if sl_last else ""),
             ("일어난 시각", _fmt_dt(sl_last.wake_end) if sl_last else ""),
+            # 최근 밤 추가 지표 — 소리 수면 측정(앱 versionCode 19+)만 값이 있음, 추정값
+            ("깊은 수면(분)", _v(sl_last, "deep_minutes")),
+            ("얕은 수면(분)", _v(sl_last, "light_minutes")),
+            ("렘수면(분, 추정)", _v(sl_last, "rem_minutes")),
+            ("수면 중 깬 시간(분)", _v(sl_last, "awake_minutes")),
+            ("수면 중 깬 횟수", _v(sl_last, "awakenings")),
+            ("수면 효율(%)", _v(sl_last, "sleep_efficiency")),
+            ("수면 중 호흡수(회/분)", _v(sl_last, "breathing_rate")),
+            ("수면 중 숨 감지 비율(%)", _v(sl_last, "breathing_detected_pct")),
+            ("수면 무호흡 의심(회)", _v(sl_last, "apnea_count")),
+            ("수면 저호흡 의심(회)", _v(sl_last, "hypopnea_count")),
             ("최근 7일 평균 수면시간", _fmt_minutes(_avg(sl7))),
             ("최근 30일 평균 수면시간", _fmt_minutes(_avg([r.asleep_minutes for r in sl30]))),
             ("평균 수면시간(분, 180일)", _round(avg_sleep_all)),

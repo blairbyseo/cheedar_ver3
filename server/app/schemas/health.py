@@ -28,6 +28,31 @@ class SleepNightIn(BaseModel):
     asleep_minutes: int = Field(ge=0, le=24 * 60)
     bed_start: datetime | None = None
     wake_end: datetime | None = None
+    # 소리 수면 측정 추가 지표(앱 versionCode 19+, 선택) — models/daily_sleep.py 참고
+    deep_minutes: int | None = Field(default=None, ge=0, le=24 * 60)
+    light_minutes: int | None = Field(default=None, ge=0, le=24 * 60)
+    rem_minutes: int | None = Field(default=None, ge=0, le=24 * 60)
+    awake_minutes: int | None = Field(default=None, ge=0, le=24 * 60)
+    awakenings: int | None = Field(default=None, ge=0, le=1000)
+    sleep_efficiency: int | None = Field(default=None, ge=0, le=100)
+    breathing_rate: float | None = Field(default=None, ge=0, le=60)
+    breathing_detected_pct: int | None = Field(default=None, ge=0, le=100)
+    apnea_count: int | None = Field(default=None, ge=0, le=10_000)
+    hypopnea_count: int | None = Field(default=None, ge=0, le=10_000)
+
+
+SLEEP_DETAIL_FIELDS = (
+    "deep_minutes",
+    "light_minutes",
+    "rem_minutes",
+    "awake_minutes",
+    "awakenings",
+    "sleep_efficiency",
+    "breathing_rate",
+    "breathing_detected_pct",
+    "apnea_count",
+    "hypopnea_count",
+)
 
 
 class SleepSyncIn(BaseModel):

@@ -330,6 +330,7 @@ public class SleepRecordService extends Service {
 
                 Epoch e = analyzer.process(frame, System.currentTimeMillis());
                 if (e != null) store().appendEpoch(e);
+                for (long[] ev : analyzer.drainEvents()) store().appendEvent(ev[0], (int) ev[1], ev[2]);
             }
             reason = stopRequested ? stopReason : StopReason.MIC_FAILED;
         } catch (Throwable t) {
