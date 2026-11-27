@@ -220,3 +220,38 @@ def test_health_overview_stale_user_first(client, db_session):
     assert [u["user_id"] for u in body["users"]] == ["a", "b"]
     assert body["users"][0]["last_steps_day"] == "2026-10-20"
     assert body["users"][0]["steps_days_7d"] == 0
+
+
+def test_sleep_detail_metrics_in_admin_views(client, db_session):
+    """소리 수면 측정 추가 지표(2026-11-27)가 회원 상세·건강 데이터 수면 탭 응답에 실린다."""
+    session, a, b = db_session
+    detail = dict(
+        deep_minutes=80, light_minutes=250, rem_minutes=60, awake_minutes=20, awakenings=2,
+        sleep_efficiency=90, breathing_rate=14.0, breathing_detected_pct=70,
+        apnea_count=1, hypopnea_count=3,
+    )
+    s1 = _sleep(a, TODAY, 390)
+    for k, v in detail.items():
+        setattr(s1, k, v)
+    s2 = _sleep(b, TODAY, 400)
+    s2.sleep_efficiency, s2.breathing_rate, s2.apnea_count = 80, 16.0, 2
+    old = _sleep(b, TODAY - timedelta(days=1), 380, source="health_connect")  # 지표 없음
+    session.add_all([s1, s2, old])
+    session.commit()
+
+    day0 = client.get(f"/api/admin/users/{a.id}/health?days=3").json()["days"][0]
+    assert {k: day0[k] for k in detail} == detail
+
+    body = client.get("/api/admin/health/overview?days=3").json()
+    today_row, yday_row = body["daily"][0], body["daily"][1]
+    assert today_row["sleep_detail_users"] == 2
+    assert today_row["avg_sleep_efficiency"] == 85
+    assert today_row["avg_breathing_rate"] == 15.0
+    assert today_row["apnea_total"] == 3
+    assert yday_row["sleep_detail_users"] == 0 and yday_row["avg_sleep_efficiency"] is None
+
+    users = {u["user_id"]: u for u in body["users"]}
+    assert users["a"]["last_sleep_efficiency"] == 90
+    assert users["a"]["last_rem_minutes"] == 60
+    assert users["a"]["last_asleep_minutes"] == 390
+    assert users["b"]["last_deep_minutes"] is None

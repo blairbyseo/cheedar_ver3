@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 
 import { api } from "../api/api";
 
-// 건강 데이터 수집 모니터링 — "업데이트 후 걸음·수면이 잘 들어오고 있나?" 확인용.
-// - 날짜별: 그날 기록을 보낸 회원 수(출처별), 평균값, 이상 수면값
-// - 회원별: 마지막으로 걸음·수면이 들어온 날 → 며칠째 끊겼는지
+// 건강 데이터 수집 모니터링 — [걸음수] / [수면] 탭으로 나눠 본다.
+// - 날짜별: 그날 기록을 보낸 회원 수(출처별), 평균값
+// - 회원별: 마지막으로 들어온 날 → 며칠째 끊겼는지 + 최근 값
 // 수면 날짜는 '일어난 날' 기준(오늘 줄 = 어젯밤 잠).
+// 수면 탭의 효율·단계·호흡·무호흡 지표는 앱 1.0.18+ 소리 측정(DeltaSleep 기반 추정값)에서만 나온다.
 
 const SOURCE_LABELS = {
   phone_sensor: "폰 센서",
@@ -22,6 +23,10 @@ const SOURCE_COLORS = {
 };
 const RANGES = [7, 14, 30];
 const STALE_DAYS = 2; // 마지막 기록이 이틀 이상 전이면 '끊김'
+const TABS = [
+  { key: "steps", label: "걸음수" },
+  { key: "sleep", label: "수면" },
+];
 
 function fmtDay(day) {
   const [y, m, d] = day.split("-").map(Number);
@@ -33,6 +38,17 @@ function fmtMinutes(min) {
   if (min == null) return "—";
   return `${Math.floor(min / 60)}시간 ${min % 60}분`;
 }
+
+function fmtClock(value) {
+  if (!value) return "—";
+  return new Date(value).toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Seoul",
+  });
+}
+
+const dash = (v, suffix = "") => (v == null ? "—" : `${v.toLocaleString()}${suffix}`);
 
 function daysBetween(from, to) {
   // "YYYY-MM-DD" 두 개의 차이(일) — UTC 로 계산해 시간대 밀림 없음
@@ -76,33 +92,36 @@ function Freshness({ lastDay, source, today }) {
   );
 }
 
+function SummaryCard({ label, value, prev, suffix, danger }) {
+  const diff = prev != null && value != null ? value - prev : null;
+  return (
+    <div className="stat-card">
+      <div className="stat-body">
+        <span className="stat-label">{label}</span>
+        <span className="stat-value" style={danger && value > 0 ? { color: "var(--danger)" } : undefined}>
+          {value == null ? "—" : value.toLocaleString()}
+          {value != null && <span className="stat-suffix">{suffix}</span>}
+        </span>
+        {diff != null && (
+          <span className="hm-sub">
+            전날 대비 {diff > 0 ? `+${diff}` : diff}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function HealthMonitor() {
-  const navigate = useNavigate();
+  const [tab, setTab] = useState("steps");
   const [days, setDays] = useState(14);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
-  const [staleOnly, setStaleOnly] = useState(false);
 
   useEffect(() => {
     setError("");
     api.healthOverview({ days }).then(setData).catch((e) => setError(e.message));
   }, [days]);
-
-  // 걸음·수면 중 더 최근 것도 STALE_DAYS 이상 지났으면 '끊김'
-  const allUsers = useMemo(() => {
-    if (!data) return [];
-    return data.users.map((u) => {
-      const gaps = [u.last_steps_day, u.last_sleep_day]
-        .filter(Boolean)
-        .map((d) => daysBetween(d, data.today));
-      return { ...u, stale: !gaps.length || Math.min(...gaps) >= STALE_DAYS };
-    });
-  }, [data]);
-  const staleCount = allUsers.filter((u) => u.stale).length;
-  const users = staleOnly ? allUsers.filter((u) => u.stale) : allUsers;
-
-  const today = data?.daily[0];
-  const yday = data?.daily[1];
 
   return (
     <div className="page">
@@ -124,149 +143,290 @@ export default function HealthMonitor() {
         </div>
       </header>
 
+      <div className="tabs">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            className={`tab${tab === t.key ? " active" : ""}`}
+            onClick={() => setTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {error && <p className="error-banner">{error}</p>}
       {!data && !error && <p className="muted">불러오는 중…</p>}
 
-      {data && (
-        <>
-          <div className="card-grid">
-            <SummaryCard
-              label="어젯밤 수면 기록"
-              value={today.sleep_users}
-              prev={yday?.sleep_users}
-              suffix="명"
-            />
-            <SummaryCard
-              label="오늘 걸음수 업로드"
-              value={today.steps_users}
-              prev={yday?.steps_users}
-              suffix="명"
-            />
-            <SummaryCard
-              label="건강 데이터 보낸 적 있는 회원"
-              value={data.users.length}
-              suffix="명"
-            />
-            <SummaryCard
-              label={`${STALE_DAYS}일 이상 끊긴 회원`}
-              value={staleCount}
-              suffix="명"
-              danger
-            />
-          </div>
-
-          <h2 className="dashboard-section-title">날짜별 수신</h2>
-          <div className="table-wrap">
-            <table className="data-table health-table">
-              <thead>
-                <tr>
-                  <th>날짜</th>
-                  <th className="num">걸음 회원</th>
-                  <th>걸음 출처</th>
-                  <th className="num">평균 걸음</th>
-                  <th className="num">수면 회원</th>
-                  <th>수면 출처</th>
-                  <th className="num">평균 수면</th>
-                  <th className="num">이상 수면값</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.daily.map((d) => (
-                  <tr key={d.day}>
-                    <td>{fmtDay(d.day)}</td>
-                    <td className="num cell-strong">{d.steps_users || <span className="health-missing">0</span>}</td>
-                    <td><SourceChips bySource={d.steps_by_source} /></td>
-                    <td className="num">{d.avg_steps?.toLocaleString() ?? "—"}</td>
-                    <td className="num cell-strong">{d.sleep_users || <span className="health-missing">0</span>}</td>
-                    <td><SourceChips bySource={d.sleep_by_source} /></td>
-                    <td className="num">{fmtMinutes(d.avg_asleep_minutes)}</td>
-                    <td className={`num${d.odd_sleep_count ? " health-odd" : ""}`}>
-                      {d.odd_sleep_count || "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="muted health-note">
-            폰 센서(걸음)·폰 마이크(수면)는 11/8 앱 업데이트(1.0.12) 이후 생긴 출처예요. 업데이트 이후
-            날짜에서 이 두 출처 숫자가 늘어나면 새 방식이 잘 동작하는 거예요. 이상 수면값은 3시간 미만이거나
-            12시간을 넘는 기록 수예요.
-          </p>
-
-          <div className="hm-users-head">
-            <h2 className="dashboard-section-title">회원별 마지막 수신</h2>
-            <label className="hm-toggle">
-              <input
-                type="checkbox"
-                checked={staleOnly}
-                onChange={(e) => setStaleOnly(e.target.checked)}
-              />
-              {STALE_DAYS}일 이상 끊긴 회원만
-            </label>
-          </div>
-          <div className="table-wrap">
-            <table className="data-table health-table">
-              <thead>
-                <tr>
-                  <th>회원</th>
-                  <th>걸음수</th>
-                  <th className="num">최근 7일 걸음</th>
-                  <th>수면</th>
-                  <th className="num">최근 7일 수면</th>
-                  <th>마지막 업로드</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="muted">해당하는 회원이 없어요.</td>
-                  </tr>
-                )}
-                {users.map((u) => (
-                  <tr key={u.id} className="row-clickable" onClick={() => navigate(`/users/${u.id}`)}>
-                    <td>
-                      <span className="cell-strong">{u.user_id}</span>
-                      {u.nickname && <span className="hm-sub"> {u.nickname}</span>}
-                    </td>
-                    <td><Freshness lastDay={u.last_steps_day} source={u.last_steps_source} today={data.today} /></td>
-                    <td className="num">{u.steps_days_7d}/7</td>
-                    <td><Freshness lastDay={u.last_sleep_day} source={u.last_sleep_source} today={data.today} /></td>
-                    <td className="num">{u.sleep_days_7d}/7</td>
-                    <td className="hm-sub">
-                      {u.last_synced_at ? new Date(u.last_synced_at).toLocaleString("ko-KR") : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="muted health-note">
-            건강 데이터를 한 번이라도 보낸 회원만 나와요. 자동 기록을 켰는지는 폰에만 저장돼서 서버는 알 수
-            없어요. 가장 오래 끊긴 회원이 위에 있고, 줄을 누르면 회원 상세의 걸음·수면 탭에서 날짜별로 볼 수 있어요.
-          </p>
-        </>
-      )}
+      {data && tab === "steps" && <StepsView data={data} />}
+      {data && tab === "sleep" && <SleepView data={data} />}
     </div>
   );
 }
 
-function SummaryCard({ label, value, prev, suffix, danger }) {
-  const diff = prev != null ? value - prev : null;
+/** 회원 목록에서 이 탭 기준(걸음 또는 수면)으로 기록이 있는 회원만, 끊김 여부 표시. */
+function useUsers(data, dayKey) {
+  return useMemo(() => {
+    return data.users
+      .filter((u) => u[dayKey])
+      .map((u) => ({ ...u, stale: daysBetween(u[dayKey], data.today) >= STALE_DAYS }));
+  }, [data, dayKey]);
+}
+
+function StaleToggle({ checked, onChange }) {
   return (
-    <div className="stat-card">
-      <div className="stat-body">
-        <span className="stat-label">{label}</span>
-        <span className="stat-value" style={danger && value > 0 ? { color: "var(--danger)" } : undefined}>
-          {value.toLocaleString()}
-          <span className="stat-suffix">{suffix}</span>
-        </span>
-        {diff != null && (
-          <span className="hm-sub">
-            전날 대비 {diff > 0 ? `+${diff}` : diff}
-          </span>
-        )}
+    <label className="hm-toggle">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      {STALE_DAYS}일 이상 끊긴 회원만
+    </label>
+  );
+}
+
+function MemberCell({ u }) {
+  return (
+    <td>
+      <span className="cell-strong">{u.user_id}</span>
+      {u.nickname && <span className="hm-sub"> {u.nickname}</span>}
+    </td>
+  );
+}
+
+// ───────── 걸음수 ─────────
+
+function StepsView({ data }) {
+  const navigate = useNavigate();
+  const [staleOnly, setStaleOnly] = useState(false);
+  const all = useUsers(data, "last_steps_day");
+  const users = staleOnly ? all.filter((u) => u.stale) : all;
+  const today = data.daily[0];
+  const yday = data.daily[1];
+
+  return (
+    <>
+      <div className="card-grid">
+        <SummaryCard label="오늘 걸음수 업로드" value={today.steps_users} prev={yday?.steps_users} suffix="명" />
+        <SummaryCard label="오늘 평균 걸음" value={today.avg_steps} prev={yday?.avg_steps} suffix="보" />
+        <SummaryCard label="걸음 보낸 적 있는 회원" value={all.length} suffix="명" />
+        <SummaryCard
+          label={`${STALE_DAYS}일 이상 끊긴 회원`}
+          value={all.filter((u) => u.stale).length}
+          suffix="명"
+          danger
+        />
       </div>
-    </div>
+
+      <h2 className="dashboard-section-title">날짜별 수신</h2>
+      <div className="table-wrap">
+        <table className="data-table health-table">
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th className="num">걸음 회원</th>
+              <th>걸음 출처</th>
+              <th className="num">평균 걸음</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.daily.map((d) => (
+              <tr key={d.day}>
+                <td>{fmtDay(d.day)}</td>
+                <td className="num cell-strong">{d.steps_users || <span className="health-missing">0</span>}</td>
+                <td><SourceChips bySource={d.steps_by_source} /></td>
+                <td className="num">{dash(d.avg_steps)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="muted health-note">
+        폰 센서는 11/8 앱 업데이트(1.0.12) 이후 생긴 출처예요. 업데이트 이후 날짜에서 이 출처 숫자가 늘어나면 새
+        방식이 잘 동작하는 거예요.
+      </p>
+
+      <div className="hm-users-head">
+        <h2 className="dashboard-section-title">회원별 마지막 수신</h2>
+        <StaleToggle checked={staleOnly} onChange={setStaleOnly} />
+      </div>
+      <div className="table-wrap">
+        <table className="data-table health-table">
+          <thead>
+            <tr>
+              <th>회원</th>
+              <th>마지막 걸음 기록</th>
+              <th className="num">그날 걸음수</th>
+              <th className="num">최근 7일 기록</th>
+              <th>마지막 업로드</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={5} className="muted">해당하는 회원이 없어요.</td>
+              </tr>
+            )}
+            {users.map((u) => (
+              <tr key={u.id} className="row-clickable" onClick={() => navigate(`/users/${u.id}`)}>
+                <MemberCell u={u} />
+                <td><Freshness lastDay={u.last_steps_day} source={u.last_steps_source} today={data.today} /></td>
+                <td className="num">{dash(u.last_steps, "보")}</td>
+                <td className="num">{u.steps_days_7d}/7</td>
+                <td className="hm-sub">
+                  {u.last_synced_at ? new Date(u.last_synced_at).toLocaleString("ko-KR") : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="muted health-note">
+        걸음 데이터를 한 번이라도 보낸 회원만 나와요. 가장 오래 끊긴 회원이 위에 있고, 줄을 누르면 회원 상세의 걸음·수면
+        탭에서 날짜별로 볼 수 있어요.
+      </p>
+    </>
+  );
+}
+
+// ───────── 수면 ─────────
+
+function SleepView({ data }) {
+  const navigate = useNavigate();
+  const [staleOnly, setStaleOnly] = useState(false);
+  const all = useUsers(data, "last_sleep_day");
+  const users = staleOnly ? all.filter((u) => u.stale) : all;
+  const today = data.daily[0];
+  const yday = data.daily[1];
+
+  return (
+    <>
+      <div className="card-grid">
+        <SummaryCard label="어젯밤 수면 기록" value={today.sleep_users} prev={yday?.sleep_users} suffix="명" />
+        <SummaryCard
+          label="어젯밤 평균 수면 효율"
+          value={today.avg_sleep_efficiency}
+          prev={yday?.avg_sleep_efficiency}
+          suffix="%"
+        />
+        <SummaryCard label="수면 보낸 적 있는 회원" value={all.length} suffix="명" />
+        <SummaryCard
+          label={`${STALE_DAYS}일 이상 끊긴 회원`}
+          value={all.filter((u) => u.stale).length}
+          suffix="명"
+          danger
+        />
+      </div>
+
+      <h2 className="dashboard-section-title">날짜별 수신</h2>
+      <div className="table-wrap table-scroll">
+        <table className="data-table health-table sleep-table">
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th className="num">수면 회원</th>
+              <th>수면 출처</th>
+              <th className="num">평균 수면</th>
+              <th className="num">이상 수면값</th>
+              <th className="num" title="아래 지표가 있는 기록 수(앱 1.0.18+ 소리 측정)">지표 있는 기록</th>
+              <th className="num">평균 효율</th>
+              <th className="num">깊은</th>
+              <th className="num">얕은</th>
+              <th className="num">렘(추정)</th>
+              <th className="num">깬 시간</th>
+              <th className="num">깬 횟수</th>
+              <th className="num">호흡수</th>
+              <th className="num">숨 감지</th>
+              <th className="num">무호흡/저호흡</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.daily.map((d) => (
+              <tr key={d.day}>
+                <td>{fmtDay(d.day)}</td>
+                <td className="num cell-strong">{d.sleep_users || <span className="health-missing">0</span>}</td>
+                <td><SourceChips bySource={d.sleep_by_source} /></td>
+                <td className="num">{fmtMinutes(d.avg_asleep_minutes)}</td>
+                <td className={`num${d.odd_sleep_count ? " health-odd" : ""}`}>{d.odd_sleep_count || "—"}</td>
+                <td className="num">{d.sleep_detail_users || "—"}</td>
+                <td className="num">{dash(d.avg_sleep_efficiency, "%")}</td>
+                <td className="num">{d.avg_deep_minutes == null ? "—" : fmtMinutes(d.avg_deep_minutes)}</td>
+                <td className="num">{d.avg_light_minutes == null ? "—" : fmtMinutes(d.avg_light_minutes)}</td>
+                <td className="num">{d.avg_rem_minutes == null ? "—" : fmtMinutes(d.avg_rem_minutes)}</td>
+                <td className="num">{dash(d.avg_awake_minutes, "분")}</td>
+                <td className="num">{dash(d.avg_awakenings, "회")}</td>
+                <td className="num">{dash(d.avg_breathing_rate, "회/분")}</td>
+                <td className="num">{dash(d.avg_breathing_detected_pct, "%")}</td>
+                <td className="num">
+                  {d.sleep_detail_users ? `${d.apnea_total} / ${d.hypopnea_total}` : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="muted health-note">
+        효율 = 잔 시간 ÷ (일어난 시각 − 잠든 시각). 효율·단계·호흡·무호흡 지표는 앱 1.0.18 이상의 소리 측정에서만 나오는
+        추정값이에요(실제 사람으로 검증 전). <b>숨 감지</b>가 낮으면 호흡수·무호흡·렘은 믿기 어려워요. 이상 수면값은
+        3시간 미만이거나 12시간을 넘는 기록 수예요.
+      </p>
+
+      <div className="hm-users-head">
+        <h2 className="dashboard-section-title">회원별 최근 밤</h2>
+        <StaleToggle checked={staleOnly} onChange={setStaleOnly} />
+      </div>
+      <div className="table-wrap table-scroll">
+        <table className="data-table health-table sleep-table">
+          <thead>
+            <tr>
+              <th>회원</th>
+              <th>마지막 수면 기록</th>
+              <th className="num">잔 시간</th>
+              <th className="num">잠든 ~ 일어난</th>
+              <th className="num">효율</th>
+              <th className="num">깊은</th>
+              <th className="num">얕은</th>
+              <th className="num">렘(추정)</th>
+              <th className="num">깬 시간(횟수)</th>
+              <th className="num">호흡수</th>
+              <th className="num">숨 감지</th>
+              <th className="num">무호흡/저호흡</th>
+              <th className="num">최근 7일 기록</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={13} className="muted">해당하는 회원이 없어요.</td>
+              </tr>
+            )}
+            {users.map((u) => (
+              <tr key={u.id} className="row-clickable" onClick={() => navigate(`/users/${u.id}`)}>
+                <MemberCell u={u} />
+                <td><Freshness lastDay={u.last_sleep_day} source={u.last_sleep_source} today={data.today} /></td>
+                <td className="num">{fmtMinutes(u.last_asleep_minutes)}</td>
+                <td className="num">
+                  {fmtClock(u.last_bed_start)} ~ {fmtClock(u.last_wake_end)}
+                </td>
+                <td className="num cell-strong">{dash(u.last_sleep_efficiency, "%")}</td>
+                <td className="num">{u.last_deep_minutes == null ? "—" : fmtMinutes(u.last_deep_minutes)}</td>
+                <td className="num">{u.last_light_minutes == null ? "—" : fmtMinutes(u.last_light_minutes)}</td>
+                <td className="num">{u.last_rem_minutes == null ? "—" : fmtMinutes(u.last_rem_minutes)}</td>
+                <td className="num">
+                  {u.last_awake_minutes == null ? "—" : `${u.last_awake_minutes}분 (${u.last_awakenings ?? 0}회)`}
+                </td>
+                <td className="num">{dash(u.last_breathing_rate, "회/분")}</td>
+                <td className="num">{dash(u.last_breathing_detected_pct, "%")}</td>
+                <td className="num">
+                  {u.last_apnea_count == null ? "—" : `${u.last_apnea_count} / ${u.last_hypopnea_count ?? 0}`}
+                </td>
+                <td className="num">{u.sleep_days_7d}/7</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="muted health-note">
+        수면 데이터를 한 번이라도 보낸 회원만 나와요. 자동 기록을 켰는지는 폰에만 저장돼서 서버는 알 수 없어요. 가장 오래
+        끊긴 회원이 위에 있고, 줄을 누르면 회원 상세의 걸음·수면 탭에서 밤마다 볼 수 있어요.
+      </p>
+    </>
   );
 }

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.deps import get_current_admin
+from app.schemas.health import SLEEP_DETAIL_FIELDS
 from app.services.account import anonymize_user
 from app.models.chat import ChatMessage, ChatRole
 from app.models.daily_sleep import DailySleep
@@ -724,6 +725,7 @@ def get_user_health(
                 wake_end=sl.wake_end if sl else None,
                 sleep_source=sl.source if sl else None,
                 sleep_updated_at=sl.updated_at if sl else None,
+                **({f: getattr(sl, f) for f in SLEEP_DETAIL_FIELDS} if sl else {}),
             )
         )
 
@@ -738,6 +740,23 @@ def get_user_health(
         ),
         last_synced_at=max(synced) if synced else None,
     )
+
+
+def _sleep_detail_summary(rows: list, mean) -> dict:
+    """하루치 소리 수면 측정 추가 지표 평균 (AdminHealthDailyRow 의 sleep_detail 필드들)."""
+    return {
+        "sleep_detail_users": len(rows),
+        "avg_sleep_efficiency": mean(rows, "sleep_efficiency"),
+        "avg_deep_minutes": mean(rows, "deep_minutes"),
+        "avg_light_minutes": mean(rows, "light_minutes"),
+        "avg_rem_minutes": mean(rows, "rem_minutes"),
+        "avg_awake_minutes": mean(rows, "awake_minutes"),
+        "avg_awakenings": mean(rows, "awakenings", 1),
+        "avg_breathing_rate": mean(rows, "breathing_rate", 1),
+        "avg_breathing_detected_pct": mean(rows, "breathing_detected_pct"),
+        "apnea_total": sum(r.apnea_count or 0 for r in rows),
+        "hypopnea_total": sum(r.hypopnea_count or 0 for r in rows),
+    }
 
 
 SLEEP_ODD_SHORT_MIN = 180  # 3시간 미만 — 측정이 중간에 끊겼을 가능성
@@ -787,6 +806,24 @@ def health_overview(
         ),
     )
 
+    # 소리 수면 측정 추가 지표 — 날짜별 평균(지표가 있는 기록만)
+    detail_by_day: dict = {}
+    for r in db.execute(
+        select(DailySleep).where(
+            DailySleep.day >= start,
+            DailySleep.day <= today,
+            DailySleep.sleep_efficiency.is_not(None),
+        )
+    ).scalars():
+        detail_by_day.setdefault(r.day, []).append(r)
+
+    def _mean(rows, field, digits=None):
+        vals = [getattr(r, field) for r in rows if getattr(r, field) is not None]
+        if not vals:
+            return None
+        m = sum(vals) / len(vals)
+        return round(m, digits) if digits is not None else round(m)
+
     daily: list[AdminHealthDailyRow] = []
     for i in range(days):
         d = today - timedelta(days=i)
@@ -802,6 +839,7 @@ def health_overview(
                 sleep_by_source=sl["by"],
                 avg_asleep_minutes=round(sl["sum"] / sl["n"]) if sl["n"] else None,
                 odd_sleep_count=sl["odd"],
+                **_sleep_detail_summary(detail_by_day.get(d, []), _mean),
             )
         )
 
@@ -812,12 +850,12 @@ def health_overview(
             .subquery()
         )
         latest = {
-            r.user_id: (r.day, r.source)
+            r.user_id: r
             for r in db.execute(
-                select(model.user_id, model.day, model.source).join(
+                select(model).join(
                     last, (model.user_id == last.c.uid) & (model.day == last.c.last_day)
                 )
-            )
+            ).scalars()
         }
         week = dict(
             db.execute(
@@ -849,13 +887,18 @@ def health_overview(
                     id=u.id,
                     user_id=u.user_id,
                     nickname=u.nickname,
-                    last_steps_day=st[0] if st else None,
-                    last_steps_source=st[1] if st else None,
+                    last_steps_day=st.day if st else None,
+                    last_steps_source=st.source if st else None,
+                    last_steps=st.steps if st else None,
                     steps_days_7d=st_week.get(u.id, 0),
-                    last_sleep_day=sl[0] if sl else None,
-                    last_sleep_source=sl[1] if sl else None,
+                    last_sleep_day=sl.day if sl else None,
+                    last_sleep_source=sl.source if sl else None,
                     sleep_days_7d=sl_week.get(u.id, 0),
                     last_synced_at=max(synced) if synced else None,
+                    last_asleep_minutes=sl.asleep_minutes if sl else None,
+                    last_bed_start=sl.bed_start if sl else None,
+                    last_wake_end=sl.wake_end if sl else None,
+                    **({f"last_{f}": getattr(sl, f) for f in SLEEP_DETAIL_FIELDS} if sl else {}),
                 )
             )
 

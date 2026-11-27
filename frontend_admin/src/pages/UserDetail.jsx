@@ -413,8 +413,8 @@ function HealthTab({ userId }) {
             <Stat label="평균 걸음" value={data.avg_steps?.toLocaleString() ?? "—"} />
           </div>
 
-          <div className="table-wrap">
-            <table className="data-table health-table">
+          <div className="table-wrap table-scroll">
+            <table className="data-table health-table sleep-table">
               <thead>
                 <tr>
                   <th>날짜</th>
@@ -424,6 +424,14 @@ function HealthTab({ userId }) {
                   <th>잠든 시각</th>
                   <th>일어난 시각</th>
                   <th>수면 출처</th>
+                  <th className="num">효율</th>
+                  <th className="num">깊은</th>
+                  <th className="num">얕은</th>
+                  <th className="num">렘(추정)</th>
+                  <th className="num">깬 시간(횟수)</th>
+                  <th className="num">호흡수</th>
+                  <th className="num">숨 감지</th>
+                  <th className="num">무호흡/저호흡</th>
                 </tr>
               </thead>
               <tbody>
@@ -450,6 +458,24 @@ function HealthTab({ userId }) {
                       <td className="health-source">
                         {SLEEP_SOURCE_LABELS[d.sleep_source] || d.sleep_source || ""}
                       </td>
+                      {d.sleep_efficiency == null ? (
+                        <td colSpan={8} className="health-missing num" />
+                      ) : (
+                        <>
+                          <td className="num cell-strong">{d.sleep_efficiency}%</td>
+                          <td className="num">{fmtMinutes(d.deep_minutes)}</td>
+                          <td className="num">{fmtMinutes(d.light_minutes)}</td>
+                          <td className="num">{fmtMinutes(d.rem_minutes)}</td>
+                          <td className="num">
+                            {d.awake_minutes}분 ({d.awakenings ?? 0}회)
+                          </td>
+                          <td className="num">{d.breathing_rate == null ? "—" : `${d.breathing_rate}회/분`}</td>
+                          <td className="num">{d.breathing_detected_pct == null ? "—" : `${d.breathing_detected_pct}%`}</td>
+                          <td className="num">
+                            {d.apnea_count ?? 0} / {d.hypopnea_count ?? 0}
+                          </td>
+                        </>
+                      )}
                     </tr>
                   );
                 })}
@@ -458,7 +484,8 @@ function HealthTab({ userId }) {
           </div>
           <p className="muted health-note">
             수면 날짜는 일어난 날 기준이에요. 빨간 값은 3시간 미만·12시간 초과로, 측정이 끊겼거나
-            깨어 있던 시간이 잠으로 잡혔을 수 있어요.
+            깨어 있던 시간이 잠으로 잡혔을 수 있어요. 효율부터 오른쪽 지표는 앱 1.0.18 이상의 소리 측정에서만 나오는
+            추정값이에요 — 숨 감지가 낮은 밤은 호흡수·무호흡·렘을 믿기 어려워요.
           </p>
         </>
       )}

@@ -176,6 +176,17 @@ class AdminHealthDay(BaseModel):
     wake_end: datetime | None = None      # 일어난 시각
     sleep_source: str | None = None       # phone_mic | health_connect | healthkit
     sleep_updated_at: datetime | None = None
+    # 소리 수면 측정 추가 지표(앱 1.0.18+, 추정값) — 없으면 None
+    deep_minutes: int | None = None
+    light_minutes: int | None = None
+    rem_minutes: int | None = None
+    awake_minutes: int | None = None
+    awakenings: int | None = None
+    sleep_efficiency: int | None = None
+    breathing_rate: float | None = None
+    breathing_detected_pct: int | None = None
+    apnea_count: int | None = None
+    hypopnea_count: int | None = None
 
 
 class AdminUserHealth(BaseModel):
@@ -200,6 +211,18 @@ class AdminHealthDailyRow(BaseModel):
     sleep_by_source: dict[str, int]       # {"phone_mic": 8, "health_connect": 2}
     avg_asleep_minutes: int | None = None
     odd_sleep_count: int                  # 3시간 미만·12시간 초과 수면 기록 수
+    # 소리 수면 측정 추가 지표 — 그날 지표가 있는 기록(detail_users)만으로 평균
+    sleep_detail_users: int = 0
+    avg_sleep_efficiency: int | None = None
+    avg_deep_minutes: int | None = None
+    avg_light_minutes: int | None = None
+    avg_rem_minutes: int | None = None
+    avg_awake_minutes: int | None = None
+    avg_awakenings: float | None = None
+    avg_breathing_rate: float | None = None
+    avg_breathing_detected_pct: int | None = None
+    apnea_total: int = 0
+    hypopnea_total: int = 0
 
 
 class AdminHealthUserRow(BaseModel):
@@ -215,6 +238,21 @@ class AdminHealthUserRow(BaseModel):
     last_sleep_source: str | None = None
     sleep_days_7d: int = 0
     last_synced_at: datetime | None = None
+    # 최근 걸음 값 / 최근 밤 수면 값 (수면 탭 회원별 표)
+    last_steps: int | None = None
+    last_asleep_minutes: int | None = None
+    last_bed_start: datetime | None = None
+    last_wake_end: datetime | None = None
+    last_sleep_efficiency: int | None = None
+    last_deep_minutes: int | None = None
+    last_light_minutes: int | None = None
+    last_rem_minutes: int | None = None
+    last_awake_minutes: int | None = None
+    last_awakenings: int | None = None
+    last_breathing_rate: float | None = None
+    last_breathing_detected_pct: int | None = None
+    last_apnea_count: int | None = None
+    last_hypopnea_count: int | None = None
 
 
 class AdminHealthOverview(BaseModel):

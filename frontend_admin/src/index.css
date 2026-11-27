@@ -926,3 +926,5 @@ button { font-family: inherit; cursor: pointer; }
 .cell-nowrap { white-space: nowrap; }
 .users-table th { white-space: nowrap; }
 .sidebar-link-ext { margin-left: auto; opacity: 0.5; }
+.sleep-table th, .sleep-table td { white-space: nowrap; }
+.table-wrap.table-scroll { overflow-x: auto; }
