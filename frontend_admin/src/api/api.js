@@ -8,6 +8,9 @@
 async function request(path, options = {}) {
   const res = await fetch(`/api${path}`, {
     credentials: "include",
+    // 관리자 데이터는 항상 최신이어야 하고, CloudFront 가 API 404/403 을 index.html(200)로
+    // 바꿔 보내는 설정이 있어 그 HTML 이 브라우저 캐시에 남으면 계속 깨진다 → 캐시 사용 안 함.
+    cache: "no-store",
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
   });
@@ -19,6 +22,12 @@ async function request(path, options = {}) {
     throw err;
   }
   if (res.status === 204) return null;
+  // JSON 대신 HTML(index.html)이 왔다 = 서버에 그 API 가 없음(CloudFront 가 404 를 가림)
+  if (!(res.headers.get("content-type") || "").includes("application/json")) {
+    const err = new Error("서버에 이 기능이 아직 없어요. 백엔드 배포 상태를 확인해 주세요.");
+    err.status = 404;
+    throw err;
+  }
   return res.json();
 }
 
