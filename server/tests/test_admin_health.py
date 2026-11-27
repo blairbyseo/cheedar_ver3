@@ -132,3 +132,91 @@ def test_dashboard_health_counts(client, db_session):
     assert body["sleep_users_7d"] == 2
     assert body["steps_today_users"] == 1
     assert body["steps_users_7d"] == 1
+
+
+def test_user_list_and_csv_include_latest_sleep(client, db_session):
+    session, a, b = db_session
+    session.add_all(
+        [
+            _sleep(a, TODAY - timedelta(days=1), 390),
+            _sleep(a, TODAY, 435),
+            DailySteps(user_id=a.id, day=TODAY - timedelta(days=1), steps=4567),
+        ]
+    )
+    session.commit()
+
+    response = client.get("/api/admin/users")
+    assert response.status_code == 200
+    users = {item["user_id"]: item for item in response.json()["items"]}
+    assert users["a"]["last_sleep_day"] == "2026-11-09"
+    assert users["a"]["last_asleep_minutes"] == 435
+    assert users["a"]["last_steps_day"] == "2026-11-08"
+    assert users["a"]["last_steps"] == 4567
+    assert users["b"]["last_sleep_day"] is None
+    assert users["b"]["last_asleep_minutes"] is None
+    assert users["b"]["last_steps_day"] is None
+    assert users["b"]["last_steps"] is None
+
+    csv_response = client.get("/api/admin/users/export")
+    assert csv_response.status_code == 200
+    csv_content = csv_response.content.decode("utf-8-sig")
+    assert "최근 걸음일,최근 걸음수,최근 수면일(기상일 기준),최근 수면시간" in csv_content
+    assert "2026-11-08,4567,2026-11-09,7시간 15분" in csv_content
+
+
+def test_health_overview_daily_and_users(client, db_session):
+    session, a, b = db_session
+    deleted = User(user_id="gone", password_hash="x", deleted_at=datetime(2026, 11, 1, tzinfo=timezone.utc))
+    session.add(deleted)
+    session.commit()
+    session.add_all(
+        [
+            _sleep(a, TODAY, 420),                                   # phone_mic
+            _sleep(b, TODAY, 100, source="health_connect"),          # 이상값(3시간 미만)
+            _sleep(a, TODAY - timedelta(days=1), 400),
+            DailySteps(user_id=a.id, day=TODAY, steps=3000, source="phone_sensor"),
+            DailySteps(user_id=b.id, day=TODAY, steps=5000, source="health_connect"),
+            DailySteps(user_id=b.id, day=TODAY - timedelta(days=5), steps=1000, source="health_connect"),
+            DailySteps(user_id=deleted.id, day=TODAY, steps=1, source="phone_sensor"),
+        ]
+    )
+    session.commit()
+
+    res = client.get("/api/admin/health/overview?days=7")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["today"] == "2026-11-09"
+    assert len(body["daily"]) == 7
+
+    t = body["daily"][0]
+    assert t["day"] == "2026-11-09"
+    assert t["steps_users"] == 3  # 탈퇴 회원 기록도 '수신'은 된 것이라 집계엔 포함
+    assert t["steps_by_source"] == {"phone_sensor": 2, "health_connect": 1}
+    assert t["sleep_users"] == 2
+    assert t["sleep_by_source"] == {"phone_mic": 1, "health_connect": 1}
+    assert t["avg_asleep_minutes"] == 260
+    assert t["odd_sleep_count"] == 1
+    empty = body["daily"][2]
+    assert empty["steps_users"] == 0 and empty["avg_steps"] is None
+
+    users = {u["user_id"]: u for u in body["users"]}
+    assert set(users) == {"a", "b"}  # 탈퇴 회원은 목록에서 제외
+    assert users["a"]["last_sleep_day"] == "2026-11-09"
+    assert users["a"]["last_steps_source"] == "phone_sensor"
+    assert users["a"]["sleep_days_7d"] == 2 and users["a"]["steps_days_7d"] == 1
+    assert users["b"]["steps_days_7d"] == 2
+
+
+def test_health_overview_stale_user_first(client, db_session):
+    session, a, b = db_session
+    session.add_all(
+        [
+            DailySteps(user_id=a.id, day=TODAY - timedelta(days=20), steps=10),
+            DailySteps(user_id=b.id, day=TODAY, steps=10),
+        ]
+    )
+    session.commit()
+    body = client.get("/api/admin/health/overview").json()
+    assert [u["user_id"] for u in body["users"]] == ["a", "b"]
+    assert body["users"][0]["last_steps_day"] == "2026-10-20"
+    assert body["users"][0]["steps_days_7d"] == 0

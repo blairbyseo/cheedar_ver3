@@ -74,6 +74,10 @@ class AdminUserListItem(BaseModel):
     meal_count: int       # 이 회원이 기록한 총 식단 수
     chat_count: int       # 이 회원이 직접 보낸 채팅(user 발화) 수
     last_platform: str | None = None  # 마지막 접속 기기: ios | android | web
+    last_sleep_day: date | None = None  # 최근 수면 기록의 기상일
+    last_asleep_minutes: int | None = None  # 최근 수면 시간(분)
+    last_steps_day: date | None = None  # 최근 걸음 기록일
+    last_steps: int | None = None  # 최근 걸음수
     created_at: datetime
 
     class Config:
@@ -180,3 +184,37 @@ class AdminUserHealth(BaseModel):
     avg_steps: int | None = None
     avg_asleep_minutes: int | None = None
     last_synced_at: datetime | None = None  # 걸음·수면 중 가장 최근 업로드 시각
+
+
+class AdminHealthDailyRow(BaseModel):
+    """건강 데이터 수집 현황 — 하루치 집계 (출처별 회원 수 포함)."""
+
+    day: date
+    steps_users: int
+    steps_by_source: dict[str, int]       # {"phone_sensor": 12, "health_connect": 3}
+    avg_steps: int | None = None
+    sleep_users: int
+    sleep_by_source: dict[str, int]       # {"phone_mic": 8, "health_connect": 2}
+    avg_asleep_minutes: int | None = None
+    odd_sleep_count: int                  # 3시간 미만·12시간 초과 수면 기록 수
+
+
+class AdminHealthUserRow(BaseModel):
+    """건강 데이터를 한 번이라도 보낸 회원별 수집 상태."""
+
+    id: int
+    user_id: str
+    nickname: str | None = None
+    last_steps_day: date | None = None
+    last_steps_source: str | None = None
+    steps_days_7d: int = 0
+    last_sleep_day: date | None = None
+    last_sleep_source: str | None = None
+    sleep_days_7d: int = 0
+    last_synced_at: datetime | None = None
+
+
+class AdminHealthOverview(BaseModel):
+    today: date                           # KST 오늘 — 프론트가 '며칠째 끊김' 계산할 기준
+    daily: list[AdminHealthDailyRow]      # 최신 날짜부터
+    users: list[AdminHealthUserRow]       # 가장 오래 끊긴 회원부터

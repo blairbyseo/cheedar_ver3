@@ -66,6 +66,8 @@ export const api = {
   userChat: (id) => request(`/admin/users/${id}/chat-messages`),
   userPoints: (id) => request(`/admin/users/${id}/points`),
   // 최근 days일 걸음수·수면 (기록 없는 날도 빈 줄로 포함)
+  // 건강 데이터 수집 현황 — 날짜별·출처별 + 회원별 마지막 수신
+  healthOverview: ({ days } = {}) => request(`/admin/health/overview${qs({ days })}`),
   userHealth: (id, { days } = {}) => request(`/admin/users/${id}/health${qs({ days })}`),
   // 설문 응답 원본 — 기본은 완료분만, includeInProgress 로 진행 중도 포함.
   userSurveyResponses: (id, { includeInProgress } = {}) =>

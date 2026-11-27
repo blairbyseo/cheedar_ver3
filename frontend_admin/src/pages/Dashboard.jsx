@@ -113,7 +113,8 @@ export default function Dashboard() {
       </div>
       <p className="dashboard-note">
         '8 / 10명'은 최근 7일 안에 기록이 온 10명 중 8명이 오늘(어젯밤) 기록을 보냈다는 뜻이에요.
-        회원별 내역은 회원 상세 → 걸음 · 수면 탭에서 볼 수 있어요.
+        날짜별·회원별 수집 현황은{" "}
+        <button className="link-button" onClick={() => navigate("/health")}>건강 데이터 화면</button>에서 볼 수 있어요.
       </p>
 
       {stats && (

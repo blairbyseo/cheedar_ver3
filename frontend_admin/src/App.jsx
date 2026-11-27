@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
+import HealthMonitor from "./pages/HealthMonitor";
 import Inquiries from "./pages/Inquiries";
 import InviteCodes from "./pages/InviteCodes";
 import Login from "./pages/Login";
@@ -46,6 +47,14 @@ export default function App() {
         element={
           <RequireAdmin>
             <UserManagement />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/health"
+        element={
+          <RequireAdmin>
+            <HealthMonitor />
           </RequireAdmin>
         }
       />

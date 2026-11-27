@@ -888,3 +888,20 @@ button { font-family: inherit; cursor: pointer; }
 .health-missing { color: var(--muted-light); }
 .health-odd { color: var(--danger); font-weight: 600; }
 .health-note { margin-top: 12px; font-size: 13px; }
+
+/* --- 건강 데이터 모니터링 페이지 ------------------------------------------- */
+.hm-chips { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.hm-chip {
+  display: inline-block; padding: 2px 8px; border: 1px solid; border-radius: 999px;
+  font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--surface);
+}
+.hm-fresh { display: inline-flex; flex-direction: column; gap: 2px; }
+.hm-sub { color: var(--muted); font-size: 12px; }
+.hm-status { display: inline-block; width: fit-content; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.hm-status.ok { background: #ecfdf5; color: var(--success); }
+.hm-status.warn { background: #fffbeb; color: #d97706; }
+.hm-status.stale { background: var(--danger-soft); color: var(--danger); }
+.hm-status.none { background: var(--surface-2); color: var(--muted); }
+.hm-users-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.hm-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-soft); cursor: pointer; }
+.link-button { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }

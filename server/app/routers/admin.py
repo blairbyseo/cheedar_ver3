@@ -31,7 +31,10 @@ from app.schemas.admin import (
     AdminInviteCodeItem,
     AdminInviteCodeUpdateRequest,
     AdminSurveyResponseItem,
+    AdminHealthDailyRow,
     AdminHealthDay,
+    AdminHealthOverview,
+    AdminHealthUserRow,
     AdminUserDetail,
     AdminUserHealth,
     AdminUserListItem,
@@ -261,6 +264,28 @@ def _user_order_by(sort: str, order: str, extra: dict | None = None) -> tuple:
     return (sort_col.desc(), User.id.desc())
 
 
+def _latest_sleep_day_subquery():
+    return (
+        select(
+            DailySleep.user_id.label("user_id"),
+            func.max(DailySleep.day).label("day"),
+        )
+        .group_by(DailySleep.user_id)
+        .subquery()
+    )
+
+
+def _latest_steps_day_subquery():
+    return (
+        select(
+            DailySteps.user_id.label("user_id"),
+            func.max(DailySteps.day).label("day"),
+        )
+        .group_by(DailySteps.user_id)
+        .subquery()
+    )
+
+
 @router.get("/users", response_model=AdminUserListResponse)
 def list_users(
     q: str | None = Query(default=None, description="아이디/닉네임/이메일 부분검색"),
@@ -283,11 +308,39 @@ def list_users(
     # 회원별 식단 수·채팅 수를 한 번의 쿼리로 함께 가져온다 (N+1 방지).
     meal_count = func.count(Meal.id).label("meal_count")
     chat_count = _chat_count_expr().label("chat_count")
+    latest_sleep = _latest_sleep_day_subquery()
+    latest_steps = _latest_steps_day_subquery()
     stmt = (
-        select(User, meal_count, chat_count)
+        select(
+            User,
+            meal_count,
+            chat_count,
+            DailySleep.day,
+            DailySleep.asleep_minutes,
+            DailySteps.day,
+            DailySteps.steps,
+        )
         .outerjoin(Meal, Meal.user_id == User.id)
+        .outerjoin(latest_sleep, latest_sleep.c.user_id == User.id)
+        .outerjoin(
+            DailySleep,
+            (DailySleep.user_id == latest_sleep.c.user_id)
+            & (DailySleep.day == latest_sleep.c.day),
+        )
+        .outerjoin(latest_steps, latest_steps.c.user_id == User.id)
+        .outerjoin(
+            DailySteps,
+            (DailySteps.user_id == latest_steps.c.user_id)
+            & (DailySteps.day == latest_steps.c.day),
+        )
         .where(*filters)
-        .group_by(User.id)
+        .group_by(
+            User.id,
+            DailySleep.day,
+            DailySleep.asleep_minutes,
+            DailySteps.day,
+            DailySteps.steps,
+        )
         .order_by(*_user_order_by(sort, order, {"chat_count": chat_count}))
         .limit(page_size)
         .offset((page - 1) * page_size)
@@ -306,9 +359,13 @@ def list_users(
             meal_count=meal_cnt,
             chat_count=chat_cnt,
             last_platform=user.last_platform,
+            last_sleep_day=sleep_day,
+            last_asleep_minutes=asleep_minutes,
+            last_steps_day=steps_day,
+            last_steps=steps,
             created_at=user.created_at,
         )
-        for user, meal_cnt, chat_cnt in rows
+        for user, meal_cnt, chat_cnt, sleep_day, asleep_minutes, steps_day, steps in rows
     ]
 
     return AdminUserListResponse(
@@ -336,11 +393,39 @@ def export_users(
     """
     meal_count = func.count(Meal.id).label("meal_count")
     chat_count = _chat_count_expr().label("chat_count")
+    latest_sleep = _latest_sleep_day_subquery()
+    latest_steps = _latest_steps_day_subquery()
     stmt = (
-        select(User, meal_count, chat_count)
+        select(
+            User,
+            meal_count,
+            chat_count,
+            DailySleep.day,
+            DailySleep.asleep_minutes,
+            DailySteps.day,
+            DailySteps.steps,
+        )
         .outerjoin(Meal, Meal.user_id == User.id)
+        .outerjoin(latest_sleep, latest_sleep.c.user_id == User.id)
+        .outerjoin(
+            DailySleep,
+            (DailySleep.user_id == latest_sleep.c.user_id)
+            & (DailySleep.day == latest_sleep.c.day),
+        )
+        .outerjoin(latest_steps, latest_steps.c.user_id == User.id)
+        .outerjoin(
+            DailySteps,
+            (DailySteps.user_id == latest_steps.c.user_id)
+            & (DailySteps.day == latest_steps.c.day),
+        )
         .where(*_user_search_filters(q))
-        .group_by(User.id)
+        .group_by(
+            User.id,
+            DailySleep.day,
+            DailySleep.asleep_minutes,
+            DailySteps.day,
+            DailySteps.steps,
+        )
         .order_by(*_user_order_by(sort, order, {"chat_count": chat_count}))
     )
     rows = db.execute(stmt).all()
@@ -349,9 +434,25 @@ def export_users(
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow(
-            ["ID", "아이디", "닉네임", "이메일", "식단수", "채팅수", "XP", "CP", "관리자", "기기", "가입일"]
+            [
+                "ID",
+                "아이디",
+                "닉네임",
+                "이메일",
+                "식단수",
+                "채팅수",
+                "XP",
+                "CP",
+                "관리자",
+                "기기",
+                "최근 걸음일",
+                "최근 걸음수",
+                "최근 수면일(기상일 기준)",
+                "최근 수면시간",
+                "가입일",
+            ]
         )
-        for user, meal_cnt, chat_cnt in rows:
+        for user, meal_cnt, chat_cnt, sleep_day, asleep_minutes, steps_day, steps in rows:
             writer.writerow(
                 [
                     user.id,
@@ -364,6 +465,14 @@ def export_users(
                     user.cp,
                     "Y" if user.is_admin else "N",
                     _PLATFORM_LABELS.get(user.last_platform or "", ""),
+                    steps_day.isoformat() if steps_day else "",
+                    steps if steps is not None else "",
+                    sleep_day.isoformat() if sleep_day else "",
+                    (
+                        f"{asleep_minutes // 60}시간 {asleep_minutes % 60}분"
+                        if asleep_minutes is not None
+                        else ""
+                    ),
                     user.created_at.astimezone(KST).strftime("%Y-%m-%d %H:%M")
                     if user.created_at
                     else "",
@@ -578,6 +687,133 @@ def get_user_health(
         ),
         last_synced_at=max(synced) if synced else None,
     )
+
+
+SLEEP_ODD_SHORT_MIN = 180  # 3시간 미만 — 측정이 중간에 끊겼을 가능성
+SLEEP_ODD_LONG_MIN = 720  # 12시간 초과 — 깨어 있던 시간이 잠으로 잡혔을 가능성
+
+
+@router.get("/health/overview", response_model=AdminHealthOverview)
+def health_overview(
+    days: int = Query(default=14, ge=1, le=90),
+    db: Session = Depends(get_db),
+) -> AdminHealthOverview:
+    """건강 데이터(걸음·수면)가 잘 들어오는지 — 날짜별·출처별 집계 + 회원별 마지막 수신.
+
+    (user, day) 당 한 행이라 출처별 회원 수를 더하면 그날 전체 회원 수가 된다.
+    수면 day 는 '일어난 날' 기준(KST 오늘 = 어젯밤 잠).
+    """
+    today = datetime.now(KST).date()
+    start = today - timedelta(days=days - 1)
+    week_start = today - timedelta(days=6)
+
+    def _daily(model, value_col, odd_expr=None):
+        cols = [model.day, model.source, func.count(), func.avg(value_col)]
+        if odd_expr is not None:
+            cols.append(func.sum(case((odd_expr, 1), else_=0)))
+        rows = db.execute(
+            select(*cols)
+            .where(model.day >= start, model.day <= today)
+            .group_by(model.day, model.source)
+        ).all()
+        out: dict = {}
+        for r in rows:
+            d = out.setdefault(r[0], {"by": {}, "sum": 0.0, "n": 0, "odd": 0})
+            d["by"][r[1] or "unknown"] = r[2]
+            d["sum"] += float(r[3] or 0) * r[2]
+            d["n"] += r[2]
+            if odd_expr is not None:
+                d["odd"] += int(r[4] or 0)
+        return out
+
+    steps_daily = _daily(DailySteps, DailySteps.steps)
+    sleep_daily = _daily(
+        DailySleep,
+        DailySleep.asleep_minutes,
+        or_(
+            DailySleep.asleep_minutes < SLEEP_ODD_SHORT_MIN,
+            DailySleep.asleep_minutes > SLEEP_ODD_LONG_MIN,
+        ),
+    )
+
+    daily: list[AdminHealthDailyRow] = []
+    for i in range(days):
+        d = today - timedelta(days=i)
+        st = steps_daily.get(d, {"by": {}, "sum": 0.0, "n": 0, "odd": 0})
+        sl = sleep_daily.get(d, {"by": {}, "sum": 0.0, "n": 0, "odd": 0})
+        daily.append(
+            AdminHealthDailyRow(
+                day=d,
+                steps_users=st["n"],
+                steps_by_source=st["by"],
+                avg_steps=round(st["sum"] / st["n"]) if st["n"] else None,
+                sleep_users=sl["n"],
+                sleep_by_source=sl["by"],
+                avg_asleep_minutes=round(sl["sum"] / sl["n"]) if sl["n"] else None,
+                odd_sleep_count=sl["odd"],
+            )
+        )
+
+    def _per_user(model):
+        last = (
+            select(model.user_id.label("uid"), func.max(model.day).label("last_day"))
+            .group_by(model.user_id)
+            .subquery()
+        )
+        latest = {
+            r.user_id: (r.day, r.source)
+            for r in db.execute(
+                select(model.user_id, model.day, model.source).join(
+                    last, (model.user_id == last.c.uid) & (model.day == last.c.last_day)
+                )
+            )
+        }
+        week = dict(
+            db.execute(
+                select(model.user_id, func.count())
+                .where(model.day >= week_start, model.day <= today)
+                .group_by(model.user_id)
+            ).all()
+        )
+        synced = dict(
+            db.execute(
+                select(model.user_id, func.max(model.updated_at)).group_by(model.user_id)
+            ).all()
+        )
+        return latest, week, synced
+
+    st_last, st_week, st_sync = _per_user(DailySteps)
+    sl_last, sl_week, sl_sync = _per_user(DailySleep)
+    user_ids = set(st_last) | set(sl_last)
+
+    users: list[AdminHealthUserRow] = []
+    if user_ids:
+        for u in db.execute(
+            select(User).where(User.id.in_(user_ids), User.deleted_at.is_(None))
+        ).scalars():
+            st, sl = st_last.get(u.id), sl_last.get(u.id)
+            synced = [t for t in (st_sync.get(u.id), sl_sync.get(u.id)) if t]
+            users.append(
+                AdminHealthUserRow(
+                    id=u.id,
+                    user_id=u.user_id,
+                    nickname=u.nickname,
+                    last_steps_day=st[0] if st else None,
+                    last_steps_source=st[1] if st else None,
+                    steps_days_7d=st_week.get(u.id, 0),
+                    last_sleep_day=sl[0] if sl else None,
+                    last_sleep_source=sl[1] if sl else None,
+                    sleep_days_7d=sl_week.get(u.id, 0),
+                    last_synced_at=max(synced) if synced else None,
+                )
+            )
+
+    def _latest_day(r: AdminHealthUserRow) -> DateType:
+        days_ = [d for d in (r.last_steps_day, r.last_sleep_day) if d]
+        return max(days_) if days_ else DateType.min
+
+    users.sort(key=lambda r: (_latest_day(r), r.id))  # 가장 오래 끊긴 회원부터
+    return AdminHealthOverview(today=today, daily=daily, users=users)
 
 
 @router.get("/users/{user_id}/points", response_model=list[PointHistoryItem])
