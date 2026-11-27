@@ -130,6 +130,13 @@ class User(Base):
     # 이 컬럼이 생긴 뒤 한 번도 접속하지 않은 계정은 None.
     last_platform: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
+    # 최근 사용 시각 — 로그인된 요청이 오면 갱신한다(core/deps.py, 5분에 한 번만 저장).
+    # 걸음·수면 자동 업로드(/api/health/*)는 '사용'으로 치지 않는다.
+    # 컬럼 생기기 전 기록은 마이그레이션 0028 이 채팅·식단·화면 로그 등으로 채워 넣었다.
+    last_active_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+
     @property
     def ai_consented(self) -> bool:
         return self.ai_consent_at is not None

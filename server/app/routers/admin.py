@@ -266,6 +266,11 @@ def _user_order_by(sort: str, order: str, extra: dict | None = None) -> tuple:
     sort_columns = {"created_at": User.id, "xp": User.xp}
     if extra:
         sort_columns.update(extra)
+    if sort == "last_active":
+        # 사용 기록이 없는 회원은 '오래 안 쓴 순'에선 맨 앞, '최근 사용순'에선 맨 뒤
+        if order == "asc":
+            return (User.last_active_at.asc().nulls_first(), User.id.asc())
+        return (User.last_active_at.desc().nulls_last(), User.id.desc())
     sort_col = sort_columns.get(sort, User.id)
     if order == "asc":
         return (sort_col.asc(), User.id.asc())
@@ -299,7 +304,7 @@ def list_users(
     q: str | None = Query(default=None, description="아이디/닉네임/이메일 부분검색"),
     sort: str = Query(
         default="created_at",
-        description="정렬 기준: created_at | xp | chat_count",
+        description="정렬 기준: created_at | xp | chat_count | last_active",
     ),
     order: str = Query(default="desc", description="정렬 방향: asc | desc"),
     page: int = Query(default=1, ge=1),
@@ -367,6 +372,7 @@ def list_users(
             meal_count=meal_cnt,
             chat_count=chat_cnt,
             last_platform=user.last_platform,
+            last_active_at=user.last_active_at,
             last_sleep_day=sleep_day,
             last_asleep_minutes=asleep_minutes,
             last_steps_day=steps_day,
@@ -390,7 +396,7 @@ def export_users(
     q: str | None = Query(default=None, description="아이디/닉네임/이메일 부분검색"),
     sort: str = Query(
         default="created_at",
-        description="정렬 기준: created_at | xp | chat_count",
+        description="정렬 기준: created_at | xp | chat_count | last_active",
     ),
     order: str = Query(default="desc", description="정렬 방향: asc | desc"),
     db: Session = Depends(get_db),
@@ -453,6 +459,7 @@ def export_users(
                 "CP",
                 "관리자",
                 "기기",
+                "최근 사용 (한국시간)",
                 "최근 걸음일",
                 "최근 걸음수",
                 "최근 수면일(기상일 기준)",
@@ -473,6 +480,9 @@ def export_users(
                     user.cp,
                     "Y" if user.is_admin else "N",
                     _PLATFORM_LABELS.get(user.last_platform or "", ""),
+                    user.last_active_at.astimezone(KST).strftime("%Y-%m-%d %H:%M")
+                    if user.last_active_at
+                    else "",
                     steps_day.isoformat() if steps_day else "",
                     steps if steps is not None else "",
                     sleep_day.isoformat() if sleep_day else "",
@@ -537,6 +547,7 @@ def get_user(user_id: int, db: Session = Depends(get_db)) -> AdminUserDetail:
         cp=user.cp,
         is_admin=user.is_admin,
         last_platform=user.last_platform,
+        last_active_at=user.last_active_at,
         created_at=user.created_at,
         meal_count=meal_count,
         chat_count=chat_count,

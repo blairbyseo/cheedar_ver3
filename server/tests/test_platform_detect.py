@@ -41,10 +41,15 @@ class _Db:
         pass
 
 
+def _request(headers, path="/api/health/steps"):
+    # 기본은 걸음 자동 업로드 경로 — 최근 사용 시각은 건드리지 않아 기기 갱신만 본다.
+    return SimpleNamespace(headers=headers, url=SimpleNamespace(path=path))
+
+
 def _remember(headers, current):
-    user = SimpleNamespace(last_platform=current)
+    user = SimpleNamespace(last_platform=current, last_active_at=None)
     db = _Db()
-    deps._remember_platform(SimpleNamespace(headers=headers), user, db)
+    deps._remember_usage(_request(headers), user, db)
     return user.last_platform, db.commits
 
 
@@ -56,3 +61,34 @@ def test_platform_saved_when_changed():
 def test_platform_not_rewritten_when_same_or_unknown():
     assert _remember({"X-Client-Platform": "ios"}, "ios") == ("ios", 0)
     assert _remember({"User-Agent": "curl/8.4.0"}, "android") == ("android", 0)
+
+
+def test_last_active_set_on_normal_request():
+    user = SimpleNamespace(last_platform="ios", last_active_at=None)
+    db = _Db()
+    deps._remember_usage(_request({"X-Client-Platform": "ios"}, "/api/meals"), user, db)
+    assert user.last_active_at is not None and db.commits == 1
+
+
+def test_last_active_throttled_within_5_minutes():
+    from datetime import datetime, timedelta, timezone
+
+    recent = datetime.now(timezone.utc) - timedelta(minutes=2)
+    user = SimpleNamespace(last_platform="ios", last_active_at=recent)
+    db = _Db()
+    deps._remember_usage(_request({"X-Client-Platform": "ios"}, "/api/meals"), user, db)
+    assert user.last_active_at == recent and db.commits == 0
+
+    old = datetime.now(timezone.utc) - timedelta(minutes=10)
+    user.last_active_at = old
+    deps._remember_usage(_request({"X-Client-Platform": "ios"}, "/api/meals"), user, db)
+    assert user.last_active_at > old and db.commits == 1
+
+
+def test_background_health_upload_is_not_usage():
+    user = SimpleNamespace(last_platform="android", last_active_at=None)
+    db = _Db()
+    deps._remember_usage(
+        _request({"X-Client-Platform": "android"}, "/api/health/sleep"), user, db
+    )
+    assert user.last_active_at is None and db.commits == 0

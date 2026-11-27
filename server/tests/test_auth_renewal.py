@@ -25,12 +25,20 @@ def _token_issued_ago(age: timedelta) -> str:
 
 class _FakeDb:
     def get(self, _model, _id):
-        return SimpleNamespace(id=1, deleted_at=None)
+        return SimpleNamespace(
+            id=1, deleted_at=None, last_platform=None, last_active_at=None
+        )
+
+    def commit(self):
+        pass
+
+    def rollback(self):
+        pass
 
 
 def _call(cookie_token=None, auth_header=None):
     headers = {"Authorization": auth_header} if auth_header else {}
-    request = SimpleNamespace(headers=headers)
+    request = SimpleNamespace(headers=headers, url=SimpleNamespace(path="/api/auth/me"))
     response = Response()
     user = deps.get_current_user(request, response, _FakeDb(), cookie_token)
     return user, response.headers.get("set-cookie")

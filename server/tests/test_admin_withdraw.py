@@ -125,3 +125,22 @@ def test_withdrawn_user_hidden_from_list_and_export(ctx):
     assert client.get("/api/admin/users", params={"q": "deleted"}).json()["items"] == []
     csv_text = client.get("/api/admin/users/export").text
     assert f"deleted#{target.id}" not in csv_text
+
+
+def test_user_list_last_active_sort(ctx):
+    """회원 목록 '오래 안 쓴 순' — 사용 기록 없는 회원이 맨 앞, 그다음 오래된 순."""
+    from datetime import datetime, timezone
+
+    client, session, admin, target, _ = ctx
+    admin.last_active_at = datetime(2026, 11, 20, tzinfo=timezone.utc)
+    target.last_active_at = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    never = User(user_id="never", password_hash="x")
+    session.add(never)
+    session.commit()
+
+    asc = client.get("/api/admin/users", params={"sort": "last_active", "order": "asc"}).json()
+    assert [u["user_id"] for u in asc["items"]] == ["never", "sleepy", "admin"]
+    assert asc["items"][1]["last_active_at"].startswith("2026-10-01")
+
+    desc = client.get("/api/admin/users", params={"sort": "last_active", "order": "desc"}).json()
+    assert [u["user_id"] for u in desc["items"]] == ["admin", "sleepy", "never"]

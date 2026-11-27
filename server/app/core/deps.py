@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi import Cookie, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
@@ -60,13 +62,32 @@ def detect_platform(headers) -> str | None:
     return None
 
 
-def _remember_platform(request: Request, user: User, db: Session) -> None:
-    """접속 기기가 바뀌었을 때만 users.last_platform 을 갱신한다(관리자 화면 표시용)."""
+ACTIVE_TOUCH_INTERVAL = timedelta(minutes=5)
+# 앱을 열지 않아도 폰이 알아서 보내는 업로드 — '사용'으로 치지 않는다.
+_PASSIVE_PATH_PREFIXES = ("/api/health/",)
+
+
+def _remember_usage(request: Request, user: User, db: Session) -> None:
+    """관리자 화면 표시용 — 접속 기기(last_platform)와 최근 사용 시각(last_active_at)을 갱신한다.
+
+    매 요청마다 DB 에 쓰지 않도록 기기가 바뀌었거나 마지막 기록이 5분 넘게 지났을 때만 저장한다.
+    """
+    changed = False
     platform = detect_platform(request.headers)
-    if platform is None or user.last_platform == platform:
+    if platform is not None and user.last_platform != platform:
+        user.last_platform = platform
+        changed = True
+    if not request.url.path.startswith(_PASSIVE_PATH_PREFIXES):
+        now = datetime.now(timezone.utc)
+        last = user.last_active_at
+        if last is not None and last.tzinfo is None:  # SQLite 등 tz 없는 값 방어
+            last = last.replace(tzinfo=timezone.utc)
+        if last is None or now - last >= ACTIVE_TOUCH_INTERVAL:
+            user.last_active_at = now
+            changed = True
+    if not changed:
         return
     try:
-        user.last_platform = platform
         db.commit()
     except Exception:
         # 표시용 부가 정보일 뿐 — 저장에 실패해도 본 요청은 그대로 진행한다.
@@ -97,7 +118,7 @@ def get_current_user(
     # 앱 시작 때마다 부르는 /api/auth/me 는 모델을 반환하므로 여기서 확실히 연장된다.
     if cookie_token and token_needs_renewal(cookie_token):
         set_auth_cookie(response, create_access_token(user.id))
-    _remember_platform(request, user, db)
+    _remember_usage(request, user, db)
     return user
 
 

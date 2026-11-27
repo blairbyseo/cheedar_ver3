@@ -76,7 +76,7 @@ export default function UserDetail() {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("meals");
   const [error, setError] = useState("");
-  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const { admin } = useAuth();
 
   const load = () => api.user(userId).then(setUser).catch((e) => setError(e.message));
@@ -88,6 +88,25 @@ export default function UserDetail() {
 
   const isSelf = admin && user && admin.id === user.id;
 
+  // 회원 탈퇴(익명화) — 확인 한 번 후 처리하고, 탈퇴 회원은 목록에서 빠지므로 목록으로 돌아간다.
+  const withdraw = async () => {
+    if (
+      !window.confirm(
+        `${user.user_id} 회원을 정말 탈퇴시키겠습니까?\n\n되돌릴 수 없으며, 회원 목록에서 사라집니다.`
+      )
+    )
+      return;
+    setWithdrawing(true);
+    setError("");
+    try {
+      await api.withdrawUser(user.id);
+      navigate("/users", { replace: true });
+    } catch (e) {
+      setError(e.message);
+      setWithdrawing(false);
+    }
+  };
+
   return (
     <div className="page">
       <div className="detail-topbar">
@@ -95,7 +114,7 @@ export default function UserDetail() {
           <ArrowLeft size={16} /> 회원 목록
         </button>
         {user && !user.deleted_at && !isSelf && (
-          <button className="btn-danger-ghost" onClick={() => setWithdrawOpen(true)}>
+          <button className="btn-danger-ghost" onClick={withdraw} disabled={withdrawing}>
             <UserX size={15} /> 회원 탈퇴
           </button>
         )}
@@ -124,6 +143,10 @@ export default function UserDetail() {
               </p>
               <p className="detail-meta">
                 가입일 {new Date(user.created_at).toLocaleDateString("ko-KR")}
+                {" · 최근 사용 "}
+                {user.last_active_at
+                  ? new Date(user.last_active_at).toLocaleString("ko-KR")
+                  : "기록 없음"}
                 {user.age != null && ` · ${user.age}세`}
                 {user.height_cm != null && ` · ${user.height_cm}cm`}
                 {user.weight_kg != null && ` · ${user.weight_kg}kg`}
@@ -166,17 +189,6 @@ export default function UserDetail() {
           {tab === "survey" && <SurveyTab userId={userId} />}
           {tab === "safety" && <SafetyTab userId={userId} />}
         </>
-      )}
-
-      {withdrawOpen && user && (
-        <WithdrawDialog
-          user={user}
-          onClose={() => setWithdrawOpen(false)}
-          onDone={() => {
-            // 탈퇴 회원은 목록에서 빠지므로 바로 목록으로 돌아간다
-            navigate("/users", { replace: true });
-          }}
-        />
       )}
     </div>
   );
@@ -594,67 +606,6 @@ function SafetyTab({ userId }) {
           </div>
         );
       })}
-    </div>
-  );
-}
-
-// 회원 탈퇴 확인 창 — 되돌릴 수 없으니 아이디를 직접 입력해야 버튼이 켜진다.
-function WithdrawDialog({ user, onClose, onDone }) {
-  const [typed, setTyped] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const ok = typed.trim() === user.user_id;
-
-  const submit = async () => {
-    if (!ok || busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      await api.withdrawUser(user.id);
-      onDone();
-    } catch (e) {
-      setError(e.message);
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="modal-backdrop" onClick={busy ? undefined : onClose}>
-      <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <h2>회원 탈퇴</h2>
-        <p>
-          <b>{user.user_id}</b>
-          {user.nickname ? ` (${user.nickname})` : ""} 회원을 탈퇴시킬까요? <b>되돌릴 수 없어요.</b>
-        </p>
-        <ul className="modal-list">
-          <li>지워짐: 아이디·닉네임·이메일·비밀번호, 카카오/Apple 연결, 프로필·식단 사진, 걸음·수면 기록</li>
-          <li>익명으로 남음: 식단 영양수치, 운동, 설문, 감정, 채팅, 포인트 (연구 통계용)</li>
-          <li>이 회원은 바로 로그아웃되고, 같은 카카오로 다시 들어오면 새 계정이 돼요.</li>
-          <li>탈퇴하면 회원 목록에서 사라져요.</li>
-        </ul>
-        <label className="modal-label">
-          <span>
-            확인을 위해 아이디 <b>{user.user_id}</b> 를 입력해 주세요.
-          </span>
-          <input
-            className="modal-input"
-            value={typed}
-            onChange={(e) => setTyped(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submit()}
-            placeholder={user.user_id}
-            autoFocus
-          />
-        </label>
-        {error && <p className="error-banner">{error}</p>}
-        <div className="modal-actions">
-          <button className="btn-ghost" onClick={onClose} disabled={busy}>
-            취소
-          </button>
-          <button className="btn-danger" onClick={submit} disabled={!ok || busy}>
-            {busy ? "탈퇴 처리 중…" : "탈퇴시키기"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

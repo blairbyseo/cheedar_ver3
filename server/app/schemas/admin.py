@@ -74,6 +74,7 @@ class AdminUserListItem(BaseModel):
     meal_count: int       # 이 회원이 기록한 총 식단 수
     chat_count: int       # 이 회원이 직접 보낸 채팅(user 발화) 수
     last_platform: str | None = None  # 마지막 접속 기기: ios | android | web
+    last_active_at: datetime | None = None  # 최근 사용 시각
     last_sleep_day: date | None = None  # 최근 수면 기록의 기상일
     last_asleep_minutes: int | None = None  # 최근 수면 시간(분)
     last_steps_day: date | None = None  # 최근 걸음 기록일
@@ -106,6 +107,7 @@ class AdminUserDetail(BaseModel):
     cp: int
     is_admin: bool
     last_platform: str | None = None  # 마지막 접속 기기: ios | android | web
+    last_active_at: datetime | None = None  # 최근 사용 시각
     created_at: datetime
     # 집계값 — 탭별 데이터 양을 미리 보여주는 데 쓴다.
     meal_count: int

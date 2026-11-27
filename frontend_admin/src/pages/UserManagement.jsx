@@ -39,6 +39,29 @@ function formatKoreanDateTime(value) {
   return `${fields.year}-${fields.month}-${fields.day} ${fields.hour}:${fields.minute}:${fields.second}`;
 }
 
+// 최근 사용 — "오늘" / "어제" / "N일 전" (한국 날짜 기준) + 아래에 날짜
+function kstDate(value) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
+}
+
+function LastActive({ value }) {
+  if (!value) return <span className="health-missing">기록 없음</span>;
+  const day = kstDate(value);
+  const gap = Math.round((Date.parse(koreanToday()) - Date.parse(day)) / 86400000);
+  const label = gap <= 0 ? "오늘" : gap === 1 ? "어제" : `${gap}일 전`;
+  return (
+    <span title={formatKoreanDateTime(value)}>
+      <span className={gap >= 30 ? "last-active-stale" : undefined}>{label}</span>
+      <div className="muted">{day}</div>
+    </span>
+  );
+}
+
 function koreanToday() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
@@ -69,10 +92,10 @@ function downloadCsv(filename, rows) {
 const SORT_OPTIONS = [
   { value: "created_at:desc", label: "가입순 (최신순)" },
   { value: "created_at:asc", label: "가입순 (오래된순)" },
+  { value: "last_active:desc", label: "최근 사용순" },
+  { value: "last_active:asc", label: "오래 안 쓴 순" },
   { value: "xp:desc", label: "XP 높은순" },
   { value: "xp:asc", label: "XP 낮은순" },
-  { value: "chat_count:desc", label: "채팅 많은순" },
-  { value: "chat_count:asc", label: "채팅 적은순" },
 ];
 
 export default function UserManagement() {
@@ -165,6 +188,7 @@ export default function UserManagement() {
         "닉네임",
         "이메일",
         "기기",
+        "최근 사용 (한국시간)",
         "식단수",
         "채팅수",
         "XP",
@@ -208,6 +232,7 @@ export default function UserManagement() {
             user.nickname,
             user.email,
             user.last_platform,
+            formatKoreanDateTime(user.last_active_at),
             user.meal_count,
             user.chat_count,
             user.xp,
@@ -386,7 +411,7 @@ export default function UserManagement() {
       {error && <p className="error-banner">{error}</p>}
 
       <div className="table-wrap">
-        <table className="data-table">
+        <table className="data-table users-table">
           <thead>
             <tr>
               <th>ID</th>
@@ -394,10 +419,9 @@ export default function UserManagement() {
               <th>닉네임</th>
               <th>이메일</th>
               <th>기기</th>
+              <th>최근 사용</th>
               <th className="num">식단</th>
-              <th className="num">채팅</th>
               <th className="num">XP</th>
-              <th className="num">CP</th>
               <th className="num">수면시간</th>
               <th className="num">일어난 시각</th>
               <th className="num">잠든 시각</th>
@@ -421,13 +445,12 @@ export default function UserManagement() {
                     </span>
                   )}
                 </td>
-                <td>{u.nickname || "—"}</td>
+                <td className="cell-nowrap">{u.nickname || "—"}</td>
                 <td>{u.email || "—"}</td>
                 <td><PlatformBadge platform={u.last_platform} /></td>
+                <td className="cell-nowrap"><LastActive value={u.last_active_at} /></td>
                 <td className="num">{u.meal_count}</td>
-                <td className="num">{u.chat_count}</td>
                 <td className="num">{u.xp}</td>
-                <td className="num">{u.cp}</td>
                 {(() => {
                   const health = healthByUser[u.id];
                   const sleep = health?.health?.sleep;
@@ -465,7 +488,7 @@ export default function UserManagement() {
             ))}
             {!loading && data?.items.length === 0 && (
               <tr>
-                <td colSpan={14} className="table-empty">검색 결과가 없어요.</td>
+                <td colSpan={13} className="table-empty">검색 결과가 없어요.</td>
               </tr>
             )}
           </tbody>
