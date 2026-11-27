@@ -905,3 +905,44 @@ button { font-family: inherit; cursor: pointer; }
 .hm-users-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .hm-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-soft); cursor: pointer; }
 .link-button { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
+
+/* ---------- 회원 탈퇴 ---------- */
+.detail-topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.btn-danger-ghost {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 14px;
+  border: 1px solid #fecaca; border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--danger);
+  font-weight: 600; font-size: 13px; cursor: pointer;
+}
+.btn-danger-ghost:hover { background: var(--danger-soft); }
+.btn-danger {
+  height: 40px; padding: 0 16px; border: none; border-radius: var(--radius-sm);
+  background: var(--danger); color: #fff; font-weight: 600; font-size: 13px; cursor: pointer;
+}
+.btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+.badge-withdrawn {
+  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  background: var(--surface-2); color: var(--muted);
+}
+.withdrawn-meta { color: var(--danger); }
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal {
+  width: 100%; max-width: 460px;
+  background: var(--surface); border-radius: var(--radius); padding: 24px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+}
+.modal h2 { margin: 0 0 10px; font-size: 18px; }
+.modal p { margin: 0 0 10px; font-size: 14px; color: var(--text-soft); }
+.modal-list { margin: 0 0 16px; padding-left: 18px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+.modal-label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--text-soft); }
+.modal-input {
+  height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 14px; outline: none;
+}
+.modal-input:focus { border-color: var(--danger); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }

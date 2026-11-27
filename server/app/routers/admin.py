@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_admin
+from app.services.account import anonymize_user
 from app.models.chat import ChatMessage, ChatRole
 from app.models.daily_sleep import DailySleep
 from app.models.daily_steps import DailySteps
@@ -533,7 +534,30 @@ def get_user(user_id: int, db: Session = Depends(get_db)) -> AdminUserDetail:
         meal_count=meal_count,
         chat_count=chat_count,
         points_total=points_total,
+        deleted_at=user.deleted_at,
     )
+
+
+@router.post("/users/{user_id}/withdraw", status_code=status.HTTP_204_NO_CONTENT)
+def withdraw_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> None:
+    """관리자가 회원을 탈퇴시킨다 — 본인 탈퇴와 똑같이 '익명화'(anonymize_user).
+
+    되돌릴 수 없다. 기록(식단·설문·채팅·포인트)은 익명으로 남고, 개인정보·사진·건강 데이터는 지워진다.
+    그 회원의 남은 로그인은 deleted_at 때문에 다음 요청부터 막힌다.
+    """
+    user = _get_user_or_404(user_id, db)
+    if user.id == admin.id:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "내 계정은 여기서 탈퇴할 수 없어요. 앱의 설정 화면에서 해 주세요.",
+        )
+    if user.deleted_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "이미 탈퇴한 회원이에요.")
+    anonymize_user(db, user)
 
 
 @router.get("/users/{user_id}/meals", response_model=list[MealOut])

@@ -111,6 +111,7 @@ class AdminUserDetail(BaseModel):
     meal_count: int
     chat_count: int
     points_total: int
+    deleted_at: datetime | None = None  # 탈퇴(익명화)된 회원이면 그 시각
 
     class Config:
         from_attributes = True

@@ -71,6 +71,8 @@ export const api = {
     return { blob: await res.blob(), filename: match ? match[1] : "users.csv" };
   },
   user: (id) => request(`/admin/users/${id}`),
+  // 회원 탈퇴(익명화) — 되돌릴 수 없음
+  withdrawUser: (id) => request(`/admin/users/${id}/withdraw`, { method: "POST" }),
   userMeals: (id) => request(`/admin/users/${id}/meals`),
   userChat: (id) => request(`/admin/users/${id}/chat-messages`),
   userPoints: (id) => request(`/admin/users/${id}/points`),

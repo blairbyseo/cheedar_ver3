@@ -1,8 +1,9 @@
-import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { AlertTriangle, ArrowLeft, UserX } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/api";
+import { useAuth } from "../auth/AuthContext";
 import PlatformBadge from "../components/PlatformBadge";
 import { categoryLabel, riskMeta, STATUS_LABELS } from "../safety";
 
@@ -75,17 +76,30 @@ export default function UserDetail() {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("meals");
   const [error, setError] = useState("");
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const { admin } = useAuth();
 
+  const load = () => api.user(userId).then(setUser).catch((e) => setError(e.message));
   useEffect(() => {
     setError("");
-    api.user(userId).then(setUser).catch((e) => setError(e.message));
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  const isSelf = admin && user && admin.id === user.id;
 
   return (
     <div className="page">
-      <button className="back-btn" onClick={() => navigate(-1)}>
-        <ArrowLeft size={16} /> 회원 목록
-      </button>
+      <div className="detail-topbar">
+        <button className="back-btn" onClick={() => navigate(-1)}>
+          <ArrowLeft size={16} /> 회원 목록
+        </button>
+        {user && !user.deleted_at && !isSelf && (
+          <button className="btn-danger-ghost" onClick={() => setWithdrawOpen(true)}>
+            <UserX size={15} /> 회원 탈퇴
+          </button>
+        )}
+      </div>
 
       {error && <p className="error-banner">{error}</p>}
 
@@ -103,6 +117,7 @@ export default function UserDetail() {
               <h1>
                 {user.user_id}
                 {user.is_admin && <span className="badge-admin">관리자</span>}
+                {user.deleted_at && <span className="badge-withdrawn">탈퇴</span>}
               </h1>
               <p className="detail-meta">
                 {user.nickname || "닉네임 없음"} · {user.email || "이메일 없음"}
@@ -119,6 +134,11 @@ export default function UserDetail() {
                   </>
                 )}
               </p>
+              {user.deleted_at && (
+                <p className="detail-meta withdrawn-meta">
+                  {new Date(user.deleted_at).toLocaleString("ko-KR")}에 탈퇴(익명화)된 회원이에요.
+                </p>
+              )}
             </div>
             <div className="detail-stats">
               <Stat label="식단" value={user.meal_count} />
@@ -146,6 +166,17 @@ export default function UserDetail() {
           {tab === "survey" && <SurveyTab userId={userId} />}
           {tab === "safety" && <SafetyTab userId={userId} />}
         </>
+      )}
+
+      {withdrawOpen && user && (
+        <WithdrawDialog
+          user={user}
+          onClose={() => setWithdrawOpen(false)}
+          onDone={() => {
+            setWithdrawOpen(false);
+            load();
+          }}
+        />
       )}
     </div>
   );
@@ -563,6 +594,66 @@ function SafetyTab({ userId }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// 회원 탈퇴 확인 창 — 되돌릴 수 없으니 아이디를 직접 입력해야 버튼이 켜진다.
+function WithdrawDialog({ user, onClose, onDone }) {
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const ok = typed.trim() === user.user_id;
+
+  const submit = async () => {
+    if (!ok || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.withdrawUser(user.id);
+      onDone();
+    } catch (e) {
+      setError(e.message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={busy ? undefined : onClose}>
+      <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <h2>회원 탈퇴</h2>
+        <p>
+          <b>{user.user_id}</b>
+          {user.nickname ? ` (${user.nickname})` : ""} 회원을 탈퇴시킬까요? <b>되돌릴 수 없어요.</b>
+        </p>
+        <ul className="modal-list">
+          <li>지워짐: 아이디·닉네임·이메일·비밀번호, 카카오/Apple 연결, 프로필·식단 사진, 걸음·수면 기록</li>
+          <li>익명으로 남음: 식단 영양수치, 운동, 설문, 감정, 채팅, 포인트 (연구 통계용)</li>
+          <li>이 회원은 바로 로그아웃되고, 같은 카카오로 다시 들어오면 새 계정이 돼요.</li>
+        </ul>
+        <label className="modal-label">
+          <span>
+            확인을 위해 아이디 <b>{user.user_id}</b> 를 입력해 주세요.
+          </span>
+          <input
+            className="modal-input"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            placeholder={user.user_id}
+            autoFocus
+          />
+        </label>
+        {error && <p className="error-banner">{error}</p>}
+        <div className="modal-actions">
+          <button className="btn-ghost" onClick={onClose} disabled={busy}>
+            취소
+          </button>
+          <button className="btn-danger" onClick={submit} disabled={!ok || busy}>
+            {busy ? "탈퇴 처리 중…" : "탈퇴시키기"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
