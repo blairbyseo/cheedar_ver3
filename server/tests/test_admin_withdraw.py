@@ -109,3 +109,19 @@ def test_admin_cannot_withdraw_self(ctx):
 def test_admin_withdraw_unknown_user(ctx):
     client, *_ = ctx
     assert client.post("/api/admin/users/9999/withdraw").status_code == 404
+
+
+def test_withdrawn_user_hidden_from_list_and_export(ctx):
+    client, _, _, target, _ = ctx
+    before = client.get("/api/admin/users").json()
+    assert target.id in [u["id"] for u in before["items"]]
+
+    assert client.post(f"/api/admin/users/{target.id}/withdraw").status_code == 204
+
+    after = client.get("/api/admin/users").json()
+    assert target.id not in [u["id"] for u in after["items"]]
+    assert after["total"] == before["total"] - 1
+    # 검색해도 안 나온다
+    assert client.get("/api/admin/users", params={"q": "deleted"}).json()["items"] == []
+    csv_text = client.get("/api/admin/users/export").text
+    assert f"deleted#{target.id}" not in csv_text

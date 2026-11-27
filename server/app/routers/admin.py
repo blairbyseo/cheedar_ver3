@@ -72,7 +72,9 @@ def dashboard_stats(db: Session = Depends(get_db)) -> DashboardStats:
     """상단 요약 카드용 숫자들을 한 번에 모아 돌려준다."""
     today = datetime.now(KST).date()
 
-    total_users = db.scalar(select(func.count()).select_from(User)) or 0
+    total_users = db.scalar(
+        select(func.count()).select_from(User).where(User.deleted_at.is_(None))
+    ) or 0
     admin_count = db.scalar(
         select(func.count()).select_from(User).where(User.is_admin.is_(True))
     ) or 0
@@ -220,11 +222,16 @@ def update_safety_event(
 # -- 회원 목록 / 검색 -------------------------------------------------------
 
 def _user_search_filters(q: str | None) -> list:
-    """검색어(q)를 아이디/닉네임/이메일 부분검색 필터로 변환."""
+    """회원 목록 필터 — 탈퇴(익명화)한 회원은 빼고, 검색어(q)는 아이디/닉네임/이메일 부분검색.
+
+    탈퇴 회원의 기록은 연구용으로 DB 에 남지만 관리자 회원 목록·CSV 에는 보이지 않는다.
+    """
+    filters = [User.deleted_at.is_(None)]
     if not q:
-        return []
+        return filters
     like = f"%{q.strip()}%"
     return [
+        *filters,
         or_(
             User.user_id.ilike(like),
             User.nickname.ilike(like),

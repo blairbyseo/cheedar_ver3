@@ -173,8 +173,8 @@ export default function UserDetail() {
           user={user}
           onClose={() => setWithdrawOpen(false)}
           onDone={() => {
-            setWithdrawOpen(false);
-            load();
+            // 탈퇴 회원은 목록에서 빠지므로 바로 목록으로 돌아간다
+            navigate("/users", { replace: true });
           }}
         />
       )}
@@ -630,6 +630,7 @@ function WithdrawDialog({ user, onClose, onDone }) {
           <li>지워짐: 아이디·닉네임·이메일·비밀번호, 카카오/Apple 연결, 프로필·식단 사진, 걸음·수면 기록</li>
           <li>익명으로 남음: 식단 영양수치, 운동, 설문, 감정, 채팅, 포인트 (연구 통계용)</li>
           <li>이 회원은 바로 로그아웃되고, 같은 카카오로 다시 들어오면 새 계정이 돼요.</li>
+          <li>탈퇴하면 회원 목록에서 사라져요.</li>
         </ul>
         <label className="modal-label">
           <span>
