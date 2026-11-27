@@ -74,7 +74,10 @@ export default function OnboardingSurvey({ data, onDone }) {
 
   const userName = data.user_name || data.name || "";
   const rewardPoints = data.reward_points || 0;
-  const flow = useMemo(() => buildFlow(data.schema_json, userName), [data.schema_json, userName]);
+  const flow = useMemo(
+    () => buildFlow(data.schema_json, userName, data.due),
+    [data.schema_json, userName, data.due],
+  );
 
   const prefilledIds = useMemo(
     () => new Set(Object.keys(data.prefilled_answers || {})),
@@ -205,13 +208,15 @@ export default function OnboardingSurvey({ data, onDone }) {
       } catch {
         setError("제출 저장에 문제가 있었어요. 네트워크 확인 후 다시 시도해주세요.");
       }
+      // 재설문은 일부 문항만 물으므로 온보딩용 인사이트·첫 루틴을 만들지 않는다.
+      const recurring = data.due === "recurring";
       setResultData({
-        insights: buildInsights(answersRef.current),
-        routine: buildRoutine(answersRef.current),
+        insights: recurring ? [] : buildInsights(answersRef.current),
+        routine: recurring ? null : buildRoutine(answersRef.current),
         points,
       });
     })();
-  }, [step?.kind, data.response_id]);
+  }, [step?.kind, data.response_id, data.due]);
 
   // ── 스텝 렌더 ──
   let view = null;

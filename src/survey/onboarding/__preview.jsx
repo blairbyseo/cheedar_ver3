@@ -16,11 +16,25 @@ globalThis.fetch = (url, opts) => {
 };
 
 // ?section=C 로 특정 섹션부터, ?name=지우 로 인사 이름 바꿔 미리보기
+// ?due=recurring 으로 재설문(2주 주기) 축약본 미리보기 — 서버 필터와 같은 문항만 남긴다.
+const RECURRING_IDS = new Set([
+  "A-10", "B-2-1", "B-2-2", "B-2-3", "B-2-4", "C-1-1", "C-1-2",
+  "C-9-1", "C-10", "C-11-1", "C-11-2", "C-11-3",
+]);
 const params = new URLSearchParams(window.location.search);
+const due = params.get("due") === "recurring" ? "recurring" : "onboarding";
+const previewSchema = due === "recurring"
+  ? {
+      ...schema,
+      sections: schema.sections
+        .map((s) => ({ ...s, questions: s.questions.filter((q) => RECURRING_IDS.has(q.id)) }))
+        .filter((s) => s.questions.length > 0),
+    }
+  : schema;
 const data = {
-  due: "onboarding",
+  due,
   response_id: 1,
-  schema_json: schema,
+  schema_json: previewSchema,
   current_section: params.get("section") || null,
   answers: {},
   prefilled_answers: {},

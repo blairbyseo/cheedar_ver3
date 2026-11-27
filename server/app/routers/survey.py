@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.survey import SurveyResponse, SurveyResponseStatus
+from app.models.survey import SurveyKind, SurveyResponse, SurveyResponseStatus
 from app.models.user import User
 from app.schemas.survey import (
     SurveyNextResponse,
@@ -24,10 +24,12 @@ from app.services.points import SURVEY_REWARD_POINTS
 from app.services.survey.service import (
     build_prefilled_answers,
     compute_survey_due,
+    filter_schema_for_recurring,
     finalize_submission,
     get_active_schema,
     get_or_create_in_progress,
     merge_partial_answers,
+    previous_completed_response,
 )
 
 router = APIRouter(prefix="/api/survey", tags=["survey"])
@@ -60,6 +62,7 @@ def get_next_survey(
     - due 가 None 이면 띄울 설문 없음.
     - in_progress 가 있으면 그것을 이어쓰기 대상으로 반환, 없으면 새로 생성.
     - prefilled_answers 는 회원가입에서 이미 받은 값(A-1, B-1).
+    - 재설문(recurring)이면 schema_json 은 재설문 문항만 남긴 축약본이다.
     """
     due = compute_survey_due(db, current_user)
     if due is None:
@@ -73,12 +76,22 @@ def get_next_survey(
     response = get_or_create_in_progress(db, current_user, schema, due)
     prefilled = build_prefilled_answers(db, current_user)
 
+    # 재설문(2번째부터)은 변할 수 있는 문항만 다시 묻는다. 응답 kind 기준 —
+    # 온보딩을 이어쓰는 중이면 전 문항 그대로.
+    schema_json = schema.schema_json
+    # C-9-1·C-10 은 직전 응답에서 해당했던 사람에게만 다시 묻는다.
+    if response.kind == SurveyKind.RECURRING:
+        previous = previous_completed_response(db, current_user.id, exclude_id=response.id)
+        schema_json = filter_schema_for_recurring(
+            schema_json, schema.version, previous.answers if previous else None
+        )
+
     return SurveyNextResponse(
-        due=due,
+        due=response.kind.value,
         response_id=response.id,
         schema_id=schema.id,
         schema_version=schema.version,
-        schema_json=schema.schema_json,
+        schema_json=schema_json,
         current_section=response.current_section,
         answers=response.answers or {},
         prefilled_answers=prefilled,
