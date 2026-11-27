@@ -28,6 +28,16 @@ function isAndroid() {
   return Capacitor.getPlatform() === "android";
 }
 
+/**
+ * 건강 데이터(걸음수·수면) 연동을 켤 수 있는 플랫폼인지 — 지금은 안드로이드만.
+ * 2026-11-26: iOS(HealthKit)는 App Store 심사 준비(앱 개인정보 '건강 및 피트니스', HealthKit 표시)
+ * 전까지 끈다. iOS 빌드에는 플러그인도 넣지 않는다(capacitor.config.json 의 ios.includePlugins).
+ * 다시 켤 때: 여기 + includePlugins + App.entitlements(HealthKit) + Info.plist(NSHealthShareUsageDescription).
+ */
+export function isHealthSupported() {
+  return isNativeApp() && isAndroid();
+}
+
 // 연동 토글 상태. 기본값은 꺼짐 — 건강 데이터는 사용자가 직접 켜는 선택 기능.
 // (키 이름은 걸음수만 있던 시절 그대로 — 이미 켠 사용자의 설정을 유지하기 위해)
 export const HEALTH_SYNC_KEY = "health.steps";
@@ -60,7 +70,7 @@ function sleepSourceName() {
 
 /** Health Connect(안드로이드)/HealthKit(iOS)을 쓸 수 있는지 — 이제 안드로이드에선 수면용. */
 export async function checkHealthAvailable() {
-  if (!isNativeApp()) return { available: false, reason: "web" };
+  if (!isHealthSupported()) return { available: false, reason: isNativeApp() ? "ios-disabled" : "web" };
   try {
     const res = await Health.isAvailable();
     return { available: !!res?.available, reason: res?.reason || "" };
@@ -72,7 +82,7 @@ export async function checkHealthAvailable() {
 
 /** 걸음수를 읽을 수 있는지. 안드로이드=폰 센서(Play 서비스 버전), iOS=HealthKit. */
 export async function checkStepsAvailable() {
-  if (!isNativeApp()) return { available: false, reason: "web" };
+  if (!isHealthSupported()) return { available: false, reason: isNativeApp() ? "ios-disabled" : "web" };
   if (!isAndroid()) return checkHealthAvailable();
   try {
     const res = await StepSensor.isAvailable();
@@ -97,7 +107,7 @@ function authorizedSet(res) {
 /** 권한 창 없이 현재 허용 상태만 확인. { steps, sleep, any } */
 export async function checkHealthPermissions() {
   const none = { steps: false, sleep: false, any: false };
-  if (!isNativeApp()) return none;
+  if (!isHealthSupported()) return none;
   let steps = false;
   let sleep = false;
   if (isAndroid()) {
@@ -379,7 +389,7 @@ let lastSyncAt = 0;
 
 /** 토글이 켜져 있으면 동기화. 앱 진입·복귀 시 호출. 웹/꺼짐이면 null. */
 export async function syncHealthIfEnabled({ force = false } = {}) {
-  if (!isNativeApp() || !isHealthSyncEnabled()) return null;
+  if (!isHealthSupported() || !isHealthSyncEnabled()) return null;
   if (!force && Date.now() - lastSyncAt < SYNC_MIN_INTERVAL_MS) return null;
   lastSyncAt = Date.now();
   try {

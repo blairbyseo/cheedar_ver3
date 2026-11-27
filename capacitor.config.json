@@ -10,5 +10,13 @@
       "smallIcon": "ic_stat_cheddar",
       "iconColor": "#D1A916"
     }
+  },
+  "ios": {
+    "includePlugins": [
+      "@capacitor/app",
+      "@capacitor/browser",
+      "@capacitor/local-notifications",
+      "@capawesome/capacitor-app-update"
+    ]
   }
 }

@@ -10,7 +10,7 @@
  *   - 나중에 새 기능을 안내하려면 TUTORIAL_VERSION 을 1 올린다 → 모두에게 한 번 더 뜬다.
  * 설정 > 기타 > '앱 사용법 다시 보기'로 언제든 다시 볼 수 있다.
  */
-import { isNativeApp } from "../health/healthData";
+import { isHealthSupported } from "../health/healthData";
 
 export const TUTORIAL_VERSION = 1;
 const SEEN_KEY = "cheddar.tutorial.seen"; // 마지막으로 본 TUTORIAL_VERSION
@@ -20,7 +20,7 @@ export const TUTORIAL_STEPS = [
     target: "home-greeting",
     title: "걸음수와 수면",
     body: "휴대폰이 잰 걸음수와 어젯밤 수면을 체다가 여기서 알려줘요.\n설정의 '건강 데이터'에서 언제든 켜고 끌 수 있어요.",
-    when: () => isNativeApp(), // 걸음수·수면은 앱에서만 잰다
+    when: () => isHealthSupported(), // 걸음수·수면은 안드로이드 앱에서만 잰다(iOS 는 아직 끔)
   },
   {
     target: "home-ranking",
