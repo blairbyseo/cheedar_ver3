@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.deps import get_current_admin
 from app.services.account import anonymize_user
@@ -63,6 +64,14 @@ router = APIRouter(
 
 # '오늘'을 한국 시간 기준으로 묶기 위한 타임존 (points 라우터와 동일 기준).
 KST = timezone(timedelta(hours=9))
+
+
+# -- 바로가기 링크 -----------------------------------------------------------
+
+@router.get("/links")
+def admin_links() -> dict:
+    """사이드바 바로가기 주소 — 공개 번들에 넣으면 안 되는 주소라 관리자에게만 내려준다."""
+    return {"google_sheet_url": get_settings().google_sheet_url}
 
 
 # -- 대시보드 ---------------------------------------------------------------

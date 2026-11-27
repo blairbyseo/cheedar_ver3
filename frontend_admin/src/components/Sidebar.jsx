@@ -1,6 +1,8 @@
 import {
   Activity,
   AlertTriangle,
+  ExternalLink,
+  FileSpreadsheet,
   LayoutDashboard,
   LogOut,
   MessageSquare,
@@ -8,7 +10,10 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
+
+import { api } from "../api/api";
 
 import { useAuth } from "../auth/AuthContext";
 
@@ -24,6 +29,14 @@ const NAV = [
 
 export default function Sidebar() {
   const { admin, logout } = useAuth();
+  // 구글시트 주소는 공개 번들에 넣지 않고 서버(.env)에서 받아온다. 설정 안 됐으면 버튼 숨김.
+  const [sheetUrl, setSheetUrl] = useState(null);
+  useEffect(() => {
+    api
+      .links()
+      .then((l) => setSheetUrl(l.google_sheet_url))
+      .catch(() => setSheetUrl(null));
+  }, []);
 
   return (
     <aside className="sidebar">
@@ -46,6 +59,13 @@ export default function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
+        {sheetUrl && (
+          <a className="sidebar-link" href={sheetUrl} target="_blank" rel="noopener noreferrer">
+            <FileSpreadsheet size={18} />
+            <span>구글시트 연결</span>
+            <ExternalLink size={13} className="sidebar-link-ext" />
+          </a>
+        )}
       </nav>
 
       <div className="sidebar-footer">

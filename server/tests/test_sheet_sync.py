@@ -106,3 +106,17 @@ def test_returns_two_sheets(ctx):
     assert row["평균 일어난 시각(30일)"] == "05:00"
     assert row["이상 수면 기록 수(180일, 3시간 미만·12시간 초과)"] == 1
     assert all(len(r) == len(header) for r in rows)
+
+
+def test_admin_links_requires_admin_and_returns_url(monkeypatch):
+    from app.core.deps import get_current_admin
+
+    url = "https://docs.google.com/spreadsheets/d/example/edit"
+    monkeypatch.setattr(get_settings(), "google_sheet_url", url)
+    client = TestClient(app)
+    assert client.get("/api/admin/links").status_code == 401  # 비로그인
+    app.dependency_overrides[get_current_admin] = lambda: None
+    try:
+        assert client.get("/api/admin/links").json() == {"google_sheet_url": url}
+    finally:
+        app.dependency_overrides.clear()

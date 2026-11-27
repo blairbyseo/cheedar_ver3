@@ -70,6 +70,8 @@ export const api = {
     const match = cd.match(/filename="?([^"]+)"?/);
     return { blob: await res.blob(), filename: match ? match[1] : "users.csv" };
   },
+  // 사이드바 바로가기 주소(구글시트 등) — 관리자에게만 내려온다
+  links: () => request("/admin/links"),
   user: (id) => request(`/admin/users/${id}`),
   // 회원 탈퇴(익명화) — 되돌릴 수 없음
   withdrawUser: (id) => request(`/admin/users/${id}/withdraw`, { method: "POST" }),

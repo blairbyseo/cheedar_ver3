@@ -98,6 +98,9 @@ class Settings(BaseSettings):
     # 구글시트 Apps Script 가 X-Sync-Token 헤더로 이 값을 보내야 데이터를 준다.
     # 비어 있으면 동기화 주소 자체가 꺼진다(404). 32자 이상 무작위 값으로.
     sheet_sync_token: str | None = None
+    # 관리자 사이드바 '구글시트 연결' 버튼 주소. 레포·관리자 번들이 공개라 코드에 넣지 않고
+    # 여기(.env)에만 두고, 관리자 로그인 후 /api/admin/links 로만 내려준다.
+    google_sheet_url: str | None = None
 
     # --- OpenAI ------------------------------------------------------------
     openai_api_key: str | None = None

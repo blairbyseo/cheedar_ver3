@@ -925,3 +925,4 @@ button { font-family: inherit; cursor: pointer; }
 .last-active-stale { color: var(--danger); font-weight: 600; }
 .cell-nowrap { white-space: nowrap; }
 .users-table th { white-space: nowrap; }
+.sidebar-link-ext { margin-left: auto; opacity: 0.5; }
