@@ -99,8 +99,17 @@ def test_returns_two_sheets(ctx):
     assert row["수면시간"] == "7시간 0분"
     assert row["잠든 시각"] == "2026-11-26 23:30"
     assert row["일어난 시각"] == "2026-11-27 06:30"
-    assert row["걸음 출처"] == "폰 센서"
-    assert row["수면 출처"] == "폰 마이크"
+    assert "걸음 출처" not in header and "수면 출처" not in header
+    # 걸음 열끼리, 수면 열끼리 모여 있다 (시트 머리글 색 구분용)
+    import re
+
+    kinds = [
+        "steps" if "걸음" in h else "sleep" if re.search("수면|잠든|일어난", h) else "common"
+        for h in header
+    ]
+    body = [k for k in kinds if k != "common"]
+    assert body == sorted(body, key=lambda k: k != "steps")  # steps... 다음 sleep...
+    assert kinds[:2] == ["common", "common"] and kinds[-1] == "common"
     # 23:30 과 01:30 의 평균은 자정을 넘어 00:30
     assert row["평균 잠든 시각(30일)"] == "00:30"
     assert row["평균 일어난 시각(30일)"] == "05:00"

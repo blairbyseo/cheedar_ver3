@@ -2,7 +2,7 @@
 
 시트에 붙인 Apps Script(docs/google_sheet_sync.gs)가 10분마다 호출해 두 시트를 덮어쓴다.
 - 참여율: 아이디 · 닉네임 · XP (높은 순)
-- 건강 데이터: 걸음·수면 요약 (건강 기록이 있는 회원만)
+- 건강 데이터: 걸음·수면 요약 (건강 기록이 있는 회원만, 출처 열은 넣지 않음)
 
 보안: 관리자 로그인 대신 비밀 토큰(X-Sync-Token)으로 연다. 토큰은 시트 편집자에게 보일 수
 있으므로, 이 주소는 **시트에 이미 보이는 값만** 돌려준다(이메일·채팅·설문 등은 절대 넣지 않는다).
@@ -29,46 +29,9 @@ HEALTH_DAYS = 180
 SLEEP_ODD_SHORT_MIN = 180  # 3시간 미만
 SLEEP_ODD_LONG_MIN = 720  # 12시간 초과
 
-SOURCE_LABELS = {
-    "phone_sensor": "폰 센서",
-    "phone_mic": "폰 마이크",
-    "health_connect": "Health Connect",
-    "healthkit": "HealthKit",
-}
-
 PARTICIPATION_HEADER = ["아이디", "닉네임 (카카오아이디)", "XP (참여율 높은 순)"]
-
-HEALTH_HEADER = [
-    # 기존 시트 열 (순서 유지)
-    "아이디",
-    "닉네임",
-    "최근 걸음수",
-    "걸음 기록일수(180일)",
-    "평균 걸음수(180일)",
-    "수면시간(분)",
-    "수면시간",
-    "잠든 시각",
-    "일어난 시각",
-    "수면 기록일수(180일)",
-    "평균 수면시간(분, 180일)",
-    "평균 수면시간(180일)",
-    # 추가 열
-    "최근 걸음 기록일",
-    "걸음 출처",
-    "최근 7일 평균 걸음수",
-    "최근 30일 평균 걸음수",
-    "최근 7일 걸음 기록일수",
-    "최근 수면 기록일(기상일)",
-    "수면 출처",
-    "최근 7일 평균 수면시간",
-    "최근 30일 평균 수면시간",
-    "최근 7일 수면 기록일수",
-    "평균 잠든 시각(30일)",
-    "평균 일어난 시각(30일)",
-    "이상 수면 기록 수(180일, 3시간 미만·12시간 초과)",
-    "마지막 건강정보 업로드",
-]
-
+# 건강 기록이 있는 회원이 한 명도 없을 때 시트에 남길 머리글
+_EMPTY_HEALTH_HEADER = ["아이디", "닉네임", "건강 기록 없음"]
 
 def _check_token(token: str | None) -> None:
     expected = get_settings().sheet_sync_token
@@ -160,6 +123,7 @@ def sheet_sync(
         days = [r.day for r in steps.get(uid, []) + sleep.get(uid, [])]
         return max(days) if days else DateType.min
 
+    health_header: list[str] = []
     health_rows = []
     for uid in sorted(set(steps) | set(sleep), key=lambda i: (_latest_day(i), -i), reverse=True):
         u = by_id[uid]
@@ -179,39 +143,41 @@ def sheet_sync(
         )
         uploaded = [r.updated_at for r in st + sl if r.updated_at]
 
-        health_rows.append(
-            [
-                u.user_id,
-                u.nickname or "",
-                st_last.steps if st_last else "",
-                len(st),
-                _round(_avg([r.steps for r in st])),
-                sl_last.asleep_minutes if sl_last else "",
-                _fmt_minutes(sl_last.asleep_minutes) if sl_last else "",
-                _fmt_dt(sl_last.bed_start) if sl_last else "",
-                _fmt_dt(sl_last.wake_end) if sl_last else "",
-                len(sl),
-                _round(avg_sleep_all),
-                _fmt_minutes(avg_sleep_all),
-                st_last.day.isoformat() if st_last else "",
-                SOURCE_LABELS.get(st_last.source, st_last.source) if st_last else "",
-                _round(_avg(st7)),
-                _round(_avg(st30)),
-                len(st7),
-                sl_last.day.isoformat() if sl_last else "",
-                SOURCE_LABELS.get(sl_last.source, sl_last.source) if sl_last else "",
-                _fmt_minutes(_avg(sl7)),
-                _fmt_minutes(_avg([r.asleep_minutes for r in sl30])),
-                len(sl7),
-                _avg_clock([r.bed_start for r in sl30 if r.bed_start], pivot_hour=12),
-                _avg_clock([r.wake_end for r in sl30 if r.wake_end], pivot_hour=0),
-                odd,
-                _fmt_dt(max(uploaded)) if uploaded else "",
-            ]
-        )
+        # (머리글, 값) 쌍 — 걸음 열끼리, 수면 열끼리 모아 둔다(시트에서 머리글 색으로 구분).
+        cols = [
+            ("아이디", u.user_id),
+            ("닉네임", u.nickname or ""),
+            # 걸음
+            ("최근 걸음 기록일", st_last.day.isoformat() if st_last else ""),
+            ("최근 걸음수", st_last.steps if st_last else ""),
+            ("최근 7일 평균 걸음수", _round(_avg(st7))),
+            ("최근 30일 평균 걸음수", _round(_avg(st30))),
+            ("평균 걸음수(180일)", _round(_avg([r.steps for r in st]))),
+            ("최근 7일 걸음 기록일수", len(st7)),
+            ("걸음 기록일수(180일)", len(st)),
+            # 수면 (최근 = 기상일이 가장 늦은 하룻밤)
+            ("최근 수면 기록일(기상일)", sl_last.day.isoformat() if sl_last else ""),
+            ("수면시간(분)", sl_last.asleep_minutes if sl_last else ""),
+            ("수면시간", _fmt_minutes(sl_last.asleep_minutes) if sl_last else ""),
+            ("잠든 시각", _fmt_dt(sl_last.bed_start) if sl_last else ""),
+            ("일어난 시각", _fmt_dt(sl_last.wake_end) if sl_last else ""),
+            ("최근 7일 평균 수면시간", _fmt_minutes(_avg(sl7))),
+            ("최근 30일 평균 수면시간", _fmt_minutes(_avg([r.asleep_minutes for r in sl30]))),
+            ("평균 수면시간(분, 180일)", _round(avg_sleep_all)),
+            ("평균 수면시간(180일)", _fmt_minutes(avg_sleep_all)),
+            ("평균 잠든 시각(30일)", _avg_clock([r.bed_start for r in sl30 if r.bed_start], pivot_hour=12)),
+            ("평균 일어난 시각(30일)", _avg_clock([r.wake_end for r in sl30 if r.wake_end], pivot_hour=0)),
+            ("최근 7일 수면 기록일수", len(sl7)),
+            ("수면 기록일수(180일)", len(sl)),
+            ("이상 수면 기록 수(180일, 3시간 미만·12시간 초과)", odd),
+            # 공통
+            ("마지막 건강정보 업로드", _fmt_dt(max(uploaded)) if uploaded else ""),
+        ]
+        health_header = [name for name, _ in cols]
+        health_rows.append([value for _, value in cols])
 
     return {
         "updated_at": datetime.now(KST).strftime("%Y-%m-%d %H:%M"),
         "participation": participation,
-        "health": [HEALTH_HEADER] + health_rows,
+        "health": [health_header or _EMPTY_HEALTH_HEADER] + health_rows,
     }
